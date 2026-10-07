@@ -1,18 +1,19 @@
-# MSG-SEED: eae0e366
-# PATCH_ID: 33
+# MSG-SEED: 84f439b9
+# PATCH_ID: 34
 [APPLY]
 
-[P33] [EDIT] run.py
-  [OK]   [1/1] applied
-[P33] [EDIT] run.py
-  [OK]   [1/1] applied
-[P33] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
+[P34] [EDIT] PROJECT_CONTEXT.md
+  [FAIL] [1/1] anchor not found
+         start: ### ۴-۱۳. رفتار `clear` و مدیریت لاگ
+         nearest: 96% match, line 748
+         ------------------------------------------------------------
+         | ### ۴-۱۳. رفتار `clear` و مدیریت لاگ
+         ------------------------------------------------------------
 
 ============================================================
-PATCH_ID: 33  |  OK: 3  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 34  |  OK: 0  |  SKIP: 0  |  FAIL: 1
 
-[ARCH] _work\applied\P0033-20261008-012010.txt
-       input.txt emptied - ready for next patch
-
-[GIT] commit: patch 33: 20261008-012010
+[ARCH] _work\applied\P0034-20261008-012201.txt
+       1 patch(es) FAILED
+       input.txt emptied anyway
+       >>> FAILED parts shown above <<<
