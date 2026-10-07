@@ -738,6 +738,9 @@ def main():
         if '--version' in args or '-v' in args:
             print(f"run.py v{VERSION}")
             return 0
+        if '--init' in args:
+            do_init()
+            return 0
         # فلگ‌های خواندن (بدون apply)
         if '--status' in args or '-s' in args:
             do_status()
@@ -800,6 +803,39 @@ def main():
         return do_apply()
     do_dump()
     return 0
+
+
+def do_init():
+    """One-command project setup: makes _work/, .gitignore, empty input/output."""
+    WORK.mkdir(parents=True, exist_ok=True)
+    APPLIED.mkdir(parents=True, exist_ok=True)
+    INPUT.write_text('', encoding='utf-8')
+    OUTPUT.write_text('', encoding='utf-8')
+
+    gitignore = Path('.gitignore')
+    if not gitignore.exists():
+        gitignore.write_text(
+            "_work/input.txt\n"
+            "_work/output.txt\n"
+            "_work/applied/\n"
+            "_work/cache.json\n"
+            "_work/.patch_id\n"
+            "_work/PROJECT_STATE.md\n"
+            "*.pyc\n__pycache__/\n.venv/\nvenv/\n"
+            "build/\ndist/\n*.log\n.DS_Store\nThumbs.db\n",
+            encoding='utf-8'
+        )
+        print("[INIT] .gitignore written")
+    else:
+        print("[INIT] .gitignore already exists - skipped")
+
+    print("[INIT] _work/ ready")
+    print()
+    print("Next:")
+    if not Path('PROJECT_CONTEXT.md').exists():
+        print("  - Add PROJECT_CONTEXT.md to the root")
+    print("  - Fill sections 2 and 13")
+    print("  - Run: python run.py --status")
 
 
 if __name__ == '__main__':
