@@ -1,0 +1,16 @@
+# context-forge — ignored files
+_work/input.txt
+_work/output.txt
+_work/applied/
+_work/cache.json
+_work/.patch_id
+_work/ctx_delta.txt
+*.pyc
+__pycache__/
+.venv/
+venv/
+build/
+dist/
+*.log
+.DS_Store
+Thumbs.db
