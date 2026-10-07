@@ -44,6 +44,7 @@ SKIP_NAMES = {'run.py'}
 MAX_SIZE = 2 * 1024 * 1024
 
 HEADER_RE = re.compile(r'^={3,}\s*(FILE|CREATE|DELETE|CMD|MKDIR)\s*:\s*(.+?)\s*={3,}\s*$')
+MOVE_RE   = re.compile(r'^={3,}\s*MOVE\s*:\s*(.+?)\s*->\s*(.+?)\s*={3,}\s*$')
 FIND, REPLACE, CONTENT, END = '<<<FIND>>>', '<<<REPLACE>>>', '<<<CONTENT>>>', '<<<END>>>'
 RUN_MARKER = '<<<RUN>>>'
 HASH_MARKER_RE = re.compile(r'^<<<EXPECTED_HASH>>>\s*(.+?)\s*<<<END>>>\s*$')
@@ -154,6 +155,13 @@ def parse(text):
     lines = text.splitlines()
     ops, i, n = [], 0, len(lines)
     while i < n:
+        mv = MOVE_RE.match(lines[i])
+        if mv:
+            ops.append({'kind': 'move',
+                        'src': mv.group(1).strip(),
+                        'dst': mv.group(2).strip()})
+            i += 1
+            continue
         m = HEADER_RE.match(lines[i])
         if not m:
             i += 1
@@ -455,6 +463,22 @@ def do_apply():
             out.append("  [OK]   created")
             ok += 1
 
+        elif kind == 'move':
+            src = Path(op['src']); dst = Path(op['dst'])
+            out.append(f"[P{patch_id}] [MOVE] {op['src']} -> {op['dst']}")
+            if not src.exists():
+                out.append(f"  [FAIL] source not found: {op['src']}")
+                fail += 1
+                continue
+            if dst.exists():
+                out.append(f"  [FAIL] dest exists (no overwrite)")
+                fail += 1
+                continue
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src), str(dst))
+            out.append(f"  [OK]   moved")
+            ok += 1
+
         elif kind == 'cmd':
             out.append(f"[P{patch_id}] [CMD]  {op['desc']}")
             script = op['script']
@@ -509,6 +533,12 @@ def do_apply():
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
         out.append("       >>> FAILED parts shown above <<<")
+
+    # Auto-block: update AUTO markers before git commit
+    try:
+        _update_auto_block(patch_id, seed)
+    except Exception:
+        pass
 
     # ─── git commit اگر apply موفق بود ───
     if fail == 0:
@@ -803,6 +833,47 @@ def main():
         return do_apply()
     do_dump()
     return 0
+
+
+def _git_head():
+    """Short hash of last commit (for auto-block)."""
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                           capture_output=True, text=True, timeout=5)
+        return (r.stdout or '').strip() or '-'
+    except Exception:
+        return '-'
+
+
+def _update_auto_block(patch_id, seed):
+    """Update AUTO block in PROJECT_CONTEXT.md between markers.
+    Frees Session Tracker from AI memory dependency."""
+    ctx = Path("PROJECT_CONTEXT.md")
+    if not ctx.exists():
+        return
+    text = ctx.read_text(encoding="utf-8")
+    START, END = "<!-- AUTO:START -->", "<!-- AUTO:END -->"
+    if START not in text or END not in text:
+        return
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+    h = _git_head()
+    block = (
+        f"{START}\n"
+        f"## \u0622\u062e\u0631\u06cc\u0646 \u067e\u0686 "
+        f"(\u062e\u0648\u062f\u06a9\u0627\u0631 \u2014 "
+        f"\u062f\u0633\u062a \u0646\u0632\u0646)\n\n"
+        f"| \u0641\u06cc\u0644\u062f | \u0645\u0642\u062f\u0627\u0631 |\n"
+        f"|------|-------|\n"
+        f"| \u0622\u062e\u0631\u06cc\u0646 \u067e\u0686 | P{patch_id} |\n"
+        f"| \u0622\u062e\u0631\u06cc\u0646 \u06a9\u0627\u0645\u06cc\u062a "
+        f"| `{h}` |\n"
+        f"| \u0632\u0645\u0627\u0646 | {ts} |\n"
+        f"| MSG-SEED | `{seed}` |\n"
+        f"{END}"
+    )
+    before = text[:text.index(START)]
+    after = text[text.index(END) + len(END):]
+    ctx.write_text(before + block + after, encoding="utf-8")
 
 
 def do_init():

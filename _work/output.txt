@@ -1,14 +1,17 @@
-# MSG-SEED: 68d4d8be
-# PATCH_ID: 28
+# MSG-SEED: 4d9e9f6b
+# PATCH_ID: 29
 [APPLY]
 
-[P28] [EDIT] PROJECT_CONTEXT.md
+[P29] [EDIT] PROJECT_CONTEXT.md
+  [FAIL] [1/1] anchor not found
+         start: ### ۰-ج-۵-ج. حذف شود
+[P29] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 28  |  OK: 1  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 29  |  OK: 1  |  SKIP: 0  |  FAIL: 1
 
-[ARCH] _work\applied\P0028-20261007-175035.txt
-       input.txt emptied - ready for next patch
-
-[GIT] commit: patch 28: 20261007-175035
+[ARCH] _work\applied\P0029-20261008-010641.txt
+       1 patch(es) FAILED
+       input.txt emptied anyway
+       >>> FAILED parts shown above <<<
