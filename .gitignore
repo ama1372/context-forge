@@ -5,6 +5,7 @@ _work/applied/
 _work/cache.json
 _work/.patch_id
 _work/ctx_delta.txt
+_work/CONTEXT_DEV.md
 *.pyc
 __pycache__/
 .venv/

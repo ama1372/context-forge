@@ -1,21 +1,16 @@
-# MSG-SEED: 447ab553
-# PATCH_ID: 10
+# MSG-SEED: 0376018f
+# PATCH_ID: 11
 [APPLY]
 
-[P10] [EDIT] PROJECT_CONTEXT.md
+[P11] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
-[P10] [EDIT] PROJECT_CONTEXT.md
-  [FAIL] [1/1] anchor not found
-         start: ## 🎯 پایان سند
-         nearest: 64% match, line 1179
-         ------------------------------------------------------------
-         | 1. این سند.
-         ------------------------------------------------------------
+[P11] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 10  |  OK: 1  |  SKIP: 0  |  FAIL: 1
+PATCH_ID: 11  |  OK: 2  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0010-20261007-171203.txt
-       1 patch(es) FAILED
-       input.txt emptied anyway
-       >>> FAILED parts shown above <<<
+[ARCH] _work\applied\P0011-20261007-171316.txt
+       input.txt emptied - ready for next patch
+
+[GIT] commit: patch 11: 20261007-171316
