@@ -1,16 +1,18 @@
-# MSG-SEED: 0376018f
-# PATCH_ID: 11
+# MSG-SEED: a29b5a94
+# PATCH_ID: 12
 [APPLY]
 
-[P11] [EDIT] PROJECT_CONTEXT.md
+[P12] [NEW]  _work/CONTEXT_DEV.md
+  [OK]   created (2312 chars)
+[P12] [EDIT] .gitignore
   [OK]   [1/1] applied
-[P11] [EDIT] PROJECT_CONTEXT.md
+[P12] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 11  |  OK: 2  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 12  |  OK: 3  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0011-20261007-171316.txt
+[ARCH] _work\applied\P0012-20261007-171559.txt
        input.txt emptied - ready for next patch
 
-[GIT] commit: patch 11: 20261007-171316
+[GIT] commit: patch 12: 20261007-171559
