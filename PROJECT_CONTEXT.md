@@ -1099,12 +1099,7 @@ Reason: next ===== FILE ===== found before <<<END>>>
 4. **اگر anchor یا CONTENT خیلی بزرگ است، به دو بلاک جدا بشکن** — ولی هر بلاک باید کامل و مستقل باشد.
 5. **هیچ نشانه‌ی پارسر (`===== FILE`، `<<<FIND>>>`، `<<<END>>>` و...) نباید در prose بیرون بلاک ظاهر شود.**
 
-**الگوی درست:**
-
-```` (چهار بک‌تیک)
-===== FILE: a.py =====
-<<<FIND>>>
-old
+new
 <<<REPLACE>>>
 new
 
@@ -2357,7 +2352,274 @@ git tag step-15-ok
 
 ---
 
-## 🎯 پایان سند
+## بخش ۳۲ — Quick Start Walkthrough (از صفر تا اولین پچ)
+
+### ۳۲-۱. پیش‌نیاز
+
+- Python 3.8 یا بالاتر
+- یک پوشه‌ی خالی (پروژه‌ی جدید) یا پروژه‌ی موجود
+- یک AI (DeepSeek توصیه می‌شود چون روش لنگر/جایگزین را دقیق اجرا می‌کند)
+
+### ۳۲-۲. گام‌به‌گام
+
+**گام ۱ — ساخت ساختار اولیه**
+
+در ریشه‌ی پروژه:
+
+    mkdir _work
+    mkdir _work\applied
+
+**گام ۲ — کپی این سند**
+
+`PROJECT_CONTEXT.md` (همین فایل) را در ریشه‌ی پروژه بگذار.
+
+**گام ۳ — ساخت `run.py`**
+
+سورس کامل `run.py` در بخش ۳۳ آمده. آن را در ریشه‌ی پروژه بگذار.
+
+**گام ۴ — تست نصب**
+
+    python run.py --version
+    python run.py --status
+
+اگر هر دو بدون خطا کار کردند → آماده‌ای.
+
+**گام ۵ — اولین چت با AI**
+
+این سند را در چت پیست کن و این پیام را بفرست:
+
+    پروژه‌ی جدید. این سند قانون اساسی است.
+    run.py را ساختم و نصب کردم.
+    هدف پروژه: <توضیح یک خطی>
+    اولین قابلیت: <توضیح یک خطی>
+
+**گام ۶ — دریافت پچ**
+
+AI یک پچ در قالب `===== FILE =====` می‌دهد. آن را در `_work/input.txt` بریز.
+
+**گام ۷ — اعمال**
+
+    python run.py
+
+اگر موفق: کامیت خودکار انجام می‌شود (اگر git نصب و پروژه در git باشد).
+
+**گام ۸ — ارسال وضعیت به AI**
+
+    python run.py --status
+
+خروجی را به AI بفرست.
+
+**گام ۹ — تکرار**
+
+از گام ۶ تکرار کن. هر پیام AI = یک پچ. هر پچ = یک کامیت.
+
+### ۳۲-۳. نشانه‌های موفقیت
+
+- هر پچ بدون FAIL اعمال می‌شود.
+- خروجی `output.txt` با `MSG-SEED` شروع می‌شود.
+- AI در هر پاسخ، `CTX-DELTA` دارد.
+- تگ‌های git مرتب اضافه می‌شوند.
+
+### ۳۲-۴. عیب‌یابی سریع
+
+| مشکل | راه‌حل |
+|------|-------|
+| `python` شناخته نمی‌شود | پایتون نصب است؟ در PATH هست؟ |
+| `anchor not found` | `python run.py --file X` بزن و متن را از فایل واقعی کپی کن |
+| `input.txt` اعمال نمی‌شود | فایل را با UTF-8 ذخیره کن |
+| AI پچ نمی‌دهد | این سند را پیست کردی؟ |
+| چت به لیمیت خورد | چت جدید باز کن، سند + `--status` را بفرست |
+| `_work` پیدا نمی‌شود | پوشه را دستی بساز (گام ۱) |
+
+### ۳۲-۵. قانون طلایی
+
+> **بدون تست، کامیت نده. بدون کامیت، پچ بعدی نده.**
+
+---
+
+## بخش ۳۳ — Minimal run.py (کد کامل)
+
+اگر فقط همین سند را داری، این کد را در فایل `run.py` در ریشه‌ی پروژه بگذار. کار می‌کند.
+
+**توجه:** این یک نسخه‌ی حداقلی است — فقط `dump` و `apply` و `MSG-SEED`. برای امکانات پیشرفته (hash verification، fuzzy matching پیشرفته، فلگ‌های `--status`/`--file`)، می‌توانی از AI بخواهی کد را گسترش دهد.
+
+````python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""run.py minimal — for context-forge standalone use."""
+import hashlib, json, os, re, secrets, sys
+from datetime import datetime
+from pathlib import Path
+
+VERSION = "1.0.0"
+WORK = Path('_work')
+INPUT = WORK / 'input.txt'
+OUTPUT = WORK / 'output.txt'
+APPLIED = WORK / 'applied'
+SKIP_DIRS = {'.git', '_work', '__pycache__', 'node_modules', '.venv', 'venv', 'build', 'dist', 'target'}
+SKIP_EXTS = {'.exe', '.dll', '.so', '.dylib', '.zip', '.png', '.jpg', '.gif', '.ico', '.pdf', '.bin', '.pyc'}
+HEADER_RE = re.compile(r'^={3,}\s*(FILE|CREATE|DELETE)\s*:\s*(.+?)\s*={3,}\s*$')
+FIND, REPLACE, CONTENT, END = '<<<FIND>>>', '<<<REPLACE>>>', '<<<CONTENT>>>', '<<<END>>>'
+
+
+def read(p):
+    for enc in ('utf-8', 'utf-8-sig', 'latin-1'):
+        try: return p.read_text(encoding=enc)
+        except: continue
+    return ''
+
+
+def write(p, t):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(t, encoding='utf-8')
+
+
+def walk(root):
+    out = []
+    for dp, dns, fns in os.walk(root):
+        dns[:] = [d for d in dns if d not in SKIP_DIRS and not d.startswith('.')]
+        for fn in fns:
+            if fn == 'run.py': continue
+            p = Path(dp) / fn
+            if p.suffix.lower() in SKIP_EXTS: continue
+            try:
+                if p.stat().st_size > 2*1024*1024: continue
+            except: continue
+            out.append(p)
+    return sorted(out, key=lambda p: str(p).lower())
+
+
+def parse(text):
+    lines = text.splitlines()
+    ops, i, n = [], 0, len(lines)
+    while i < n:
+        m = HEADER_RE.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        kind, path = m.group(1).lower(), m.group(2).strip()
+        i += 1
+        if kind == 'delete':
+            ops.append({'kind': 'delete', 'path': path})
+            continue
+        if kind == 'create':
+            while i < n and lines[i].rstrip() != CONTENT:
+                if HEADER_RE.match(lines[i]): break
+                i += 1
+            if i < n and lines[i].rstrip() == CONTENT: i += 1
+            block = []
+            while i < n and lines[i].rstrip() != END:
+                if HEADER_RE.match(lines[i]): break
+                block.append(lines[i]); i += 1
+            if i < n and lines[i].rstrip() == END: i += 1
+            ops.append({'kind': 'create', 'path': path, 'content': '\n'.join(block)})
+            continue
+        patches = []
+        while i < n:
+            if HEADER_RE.match(lines[i]): break
+            if lines[i].rstrip() == FIND:
+                i += 1
+                a = []
+                while i < n and lines[i].rstrip() != REPLACE:
+                    a.append(lines[i]); i += 1
+                if i >= n or lines[i].rstrip() != REPLACE: break
+                i += 1
+                r = []
+                while i < n and lines[i].rstrip() != END:
+                    r.append(lines[i]); i += 1
+                if i < n and lines[i].rstrip() == END: i += 1
+                patches.append(('\n'.join(a), '\n'.join(r)))
+                continue
+            i += 1
+        ops.append({'kind': 'file', 'path': path, 'patches': patches})
+    return ops
+
+
+def apply_patches(path, patches, out):
+    p = Path(path)
+    if not p.exists():
+        out.append(f"  [FAIL] file not found: {path}")
+        return 0, len(patches)
+    text = read(p)
+    ok = fail = 0
+    for a, r in patches:
+        if a in text:
+            text = text.replace(a, r, 1)
+            out.append("  [OK]   applied")
+            ok += 1
+        elif r and r in text:
+            out.append("  [SKIP] already applied")
+            ok += 1
+        else:
+            out.append("  [FAIL] anchor not found")
+            fail += 1
+    if ok: write(p, text)
+    return ok, fail
+
+
+def do_apply():
+    content = INPUT.read_text(encoding='utf-8-sig').strip()
+    if not content: return 0
+    ops = parse(content)
+    out = [f"# MSG-SEED: {secrets.token_hex(4)}", "", "[APPLY]", ""]
+    if not ops:
+        out.append("[FAIL] no valid patches")
+        write(OUTPUT, '\n'.join(out)); print('\n'.join(out)); return 2
+    ok = fail = 0
+    for op in ops:
+        k = op['kind']
+        if k == 'file':
+            out.append(f"[EDIT] {op['path']}")
+            a, b = apply_patches(op['path'], op['patches'], out)
+            ok += a; fail += b
+        elif k == 'create':
+            write(Path(op['path']), op['content'])
+            out.append(f"[NEW]  {op['path']}"); ok += 1
+        elif k == 'delete':
+            p = Path(op['path'])
+            if p.exists(): p.unlink()
+            out.append(f"[DEL]  {op['path']}"); ok += 1
+    out.append(""); out.append(f"OK: {ok}  FAIL: {fail}")
+    APPLIED.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+    if INPUT.exists(): INPUT.rename(APPLIED / f'{ts}.txt')
+    INPUT.write_text('', encoding='utf-8')
+    txt = '\n'.join(out); write(OUTPUT, txt); print(txt)
+    return 0 if fail == 0 else 2
+
+
+def do_dump():
+    root = Path('.').resolve()
+    files = walk(root)
+    L = [f"# MSG-SEED: {secrets.token_hex(4)}",
+         f"# DUMP - {datetime.now().isoformat(timespec='seconds')}",
+         f"# {len(files)} files",
+         ""]
+    for p in files:
+        rel = p.relative_to(root)
+        L.append("-" * 60)
+        L.append(f"FILE: {rel}")
+        L.append("-" * 60)
+        L.append(read(p).rstrip())
+        L.append("")
+    write(OUTPUT, '\n'.join(L))
+    print(f"[DUMP] {OUTPUT} — {len(files)} files")
+
+
+def main():
+    args = sys.argv[1:]
+    if '--version' in args or '-v' in args:
+        print(f"run.py v{VERSION}"); return 0
+    WORK.mkdir(exist_ok=True)
+    if not INPUT.exists(): INPUT.write_text('', encoding='utf-8')
+    if INPUT.read_text(encoding='utf-8').strip():
+        return do_apply()
+    do_dump()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
 
 **این یک قالب جهانی است. برای پروژه‌ی خودت پر کن و استفاده کن.**
 
