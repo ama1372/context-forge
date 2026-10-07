@@ -1,0 +1,63 @@
+===== FILE: PROJECT_CONTEXT.md =====
+<<<FIND>>>
+## بخش ۲۷ — راه‌اندازی و مدیریت پروژه
+<<<REPLACE>>>
+## بخش ۳۱ — راه‌اندازی و مدیریت پروژه
+<<<END>>>
+
+===== CREATE: README.md =====
+<<<CONTENT>>>
+# 🔨 context-forge
+
+> **Universal PROJECT_CONTEXT template + `run.py` for AI-assisted coding.**
+> Kill chat limits, token waste, and lost context.
+
+<p align="center">
+  <img alt="status" src="https://img.shields.io/badge/status-active-success">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
+  <img alt="python" src="https://img.shields.io/badge/python-3.8%2B-blue">
+  <img alt="ai" src="https://img.shields.io/badge/AI-agnostic-purple">
+</p>
+
+<p align="center">
+  <b>English</b> · <a href="#-فارسی">فارسی</a>
+</p>
+
+---
+
+## 🎯 The Problem
+
+If you code with an AI, you've felt this pain:
+
+- ❌ **Chat hits the limit** → open a new chat, re-explain everything from scratch.
+- ❌ **Token waste** → you paste the entire project every time.
+- ❌ **AI misses the anchor** → the code gets corrupted.
+- ❌ **Account gets banned** → because you send repetitive messages.
+- ❌ **AI forgets to update context** → the next chat is lost.
+
+## 💡 The Solution
+
+**context-forge** is a single document + a single tool that solves all of the above:
+
+- ✅ **`PROJECT_CONTEXT.md`** — the project constitution, sent once per new chat.
+- ✅ **`run.py`** — a flag-based tool with 15+ flags for minimal data transfer.
+- ✅ **Pull, not push** — the AI asks only for what it needs.
+- ✅ **`MSG-SEED`** — an anti-ban mechanism.
+- ✅ **`CTX-DELTA`** — an anti-amnesia mechanism.
+- ✅ **`CHANGELOG.md` + `ADR.md`** — for history and decisions.
+
+## 🚀 Quick Start
+
+```bash
+# 1. Clone as a template
+git clone https://github.com/ama1372/context-forge.git my-project
+cd my-project
+
+# 2. Create the work directory
+mkdir _work
+
+# 3. Fill the Project ID (sections 2, 13, 15, 16 of PROJECT_CONTEXT.md)
+
+# 4. Test
+python run.py --version
+python run.py --status
