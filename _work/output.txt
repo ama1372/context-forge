@@ -1,19 +1,14 @@
-# MSG-SEED: 84f439b9
-# PATCH_ID: 34
+# MSG-SEED: e23255ad
+# PATCH_ID: 35
 [APPLY]
 
-[P34] [EDIT] PROJECT_CONTEXT.md
-  [FAIL] [1/1] anchor not found
-         start: ### ۴-۱۳. رفتار `clear` و مدیریت لاگ
-         nearest: 96% match, line 748
-         ------------------------------------------------------------
-         | ### ۴-۱۳. رفتار `clear` و مدیریت لاگ
-         ------------------------------------------------------------
+[P35] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 34  |  OK: 0  |  SKIP: 0  |  FAIL: 1
+PATCH_ID: 35  |  OK: 1  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0034-20261008-012201.txt
-       1 patch(es) FAILED
-       input.txt emptied anyway
-       >>> FAILED parts shown above <<<
+[ARCH] _work\applied\P0035-20261008-012222.txt
+       input.txt emptied - ready for next patch
+
+[GIT] commit: patch 35: 20261008-012222
