@@ -6,6 +6,12 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 
+<p align="center">
+  <b>English</b> ·
+  <a href="README.fa.md">فارسی</a> ·
+  <a href="README.ar.md">العربية</a>
+</p>
+
 ---
 
 ## 🎯 مشکل

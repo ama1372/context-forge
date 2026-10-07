@@ -1,18 +1,17 @@
-# MSG-SEED: a29b5a94
-# PATCH_ID: 12
+# MSG-SEED: 5d24171d
+# PATCH_ID: 13
 [APPLY]
 
-[P12] [NEW]  _work/CONTEXT_DEV.md
-  [OK]   created (2312 chars)
-[P12] [EDIT] .gitignore
-  [OK]   [1/1] applied
-[P12] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
+[P13] [NEW]  README.fa.md
+  [OK]   created (3557 chars)
+[P13] [EDIT] README.md
+  [FAIL] [1/1] anchor not found
+         start: <p align="center">
 
 ============================================================
-PATCH_ID: 12  |  OK: 3  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 13  |  OK: 1  |  SKIP: 0  |  FAIL: 1
 
-[ARCH] _work\applied\P0012-20261007-171559.txt
-       input.txt emptied - ready for next patch
-
-[GIT] commit: patch 12: 20261007-171559
+[ARCH] _work\applied\P0013-20261007-171706.txt
+       1 patch(es) FAILED
+       input.txt emptied anyway
+       >>> FAILED parts shown above <<<
