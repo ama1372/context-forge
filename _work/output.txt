@@ -1,28 +1,26 @@
-# MSG-SEED: 74d34024
-# PATCH_ID: 24
+# MSG-SEED: c8a632e5
+# PATCH_ID: 25
 [APPLY]
 
-[P24] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P24] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P24] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P24] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P24] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P24] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P24] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P24] [EDIT] PROJECT_CONTEXT.md
+[P25] [EDIT] run.py
+  [FAIL] [1/1] anchor not found
+         start: def main():
+         nearest: 83% match, line 735
+         ------------------------------------------------------------
+         | 
+         |     args = sys.argv[1:]
+         |     if args:
+         |         if '--version' in args or '-v' in args:
+         |             print(f"run.py v{VERSION}")
+         |             return 0
+         ------------------------------------------------------------
+[P25] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 24  |  OK: 8  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 25  |  OK: 1  |  SKIP: 0  |  FAIL: 1
 
-[ARCH] _work\applied\P0024-20261007-174359.txt
-       input.txt emptied - ready for next patch
-
-[GIT] commit: patch 24: 20261007-174359
+[ARCH] _work\applied\P0025-20261007-174538.txt
+       1 patch(es) FAILED
+       input.txt emptied anyway
+       >>> FAILED parts shown above <<<
