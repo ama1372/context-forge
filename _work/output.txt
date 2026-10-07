@@ -1,28 +1,14 @@
-# MSG-SEED: f5f2f69c
-# PATCH_ID: 30
+# MSG-SEED: 56a0d6c8
+# PATCH_ID: 32
 [APPLY]
 
-[P30] [EDIT] run.py
-  [OK]   [1/1] applied
-[P30] [EDIT] run.py
-  [OK]   [1/1] applied
-[P30] [EDIT] run.py
-  [OK]   [1/1] applied
-[P30] [EDIT] run.py
-  [OK]   [1/1] applied
-[P30] [EDIT] run.py
-  [OK]   [1/1] applied
-[P30] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P30] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P30] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
+[P32] [MOVE] _work/input.old -> _work/input.txt
+  [FAIL] dest exists (no overwrite)
 
 ============================================================
-PATCH_ID: 30  |  OK: 8  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 32  |  OK: 0  |  SKIP: 0  |  FAIL: 1
 
-[ARCH] _work\applied\P0030-20261008-011709.txt
-       input.txt emptied - ready for next patch
-
-[GIT] commit: patch 30: 20261008-011709
+[ARCH] _work\applied\P0032-20261008-011809.txt
+       1 patch(es) FAILED
+       input.txt emptied anyway
+       >>> FAILED parts shown above <<<

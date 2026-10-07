@@ -739,6 +739,19 @@ def do_files(names):
         do_file(name)
 
 
+def do_capabilities():
+    """چاپ فهرست کامل توانایی‌های run.py — برای AI"""
+    print(f"run.py v{VERSION}")
+    print("FLAGS: --version, --status, --init, --tree, --hash, --git, "
+          "--file, --files, --errors, --auto-verify, --force, "
+          "dump [--full], apply, clean, --capabilities")
+    print("PATCH_TYPES: FILE, CREATE, DELETE, MOVE, MKDIR, CMD")
+    print("AUTO_BLOCK: yes")
+    print("MSG_SEED: yes")
+    print("FUZZY: yes (levels 1, 2, 3)")
+    print("HASH_VERIFY: yes (optional in FILE block)")
+
+
 def do_errors():
     if not OUTPUT.exists():
         print("[INFO] no output.txt yet")
@@ -770,6 +783,9 @@ def main():
             return 0
         if '--init' in args:
             do_init()
+            return 0
+        if '--capabilities' in args:
+            do_capabilities()
             return 0
         # فلگ‌های خواندن (بدون apply)
         if '--status' in args or '-s' in args:
