@@ -1,16 +1,49 @@
-# MSG-SEED: e0128c74
-# PATCH_ID: 18
+# MSG-SEED: bf10e0f5
+# PATCH_ID: 19
 [APPLY]
 
-[P18] [EDIT] PROJECT_CONTEXT.md
+[P19] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
-[P18] [EDIT] PROJECT_CONTEXT.md
+[P19] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P19] [EDIT] README.md
+  [FAIL] [1/1] anchor not found
+         start: - ✅ **PROJECT_CONTEXT.md** — قانون اساسی (۳۶+ بخش، همه‌چیز این‌جاست).
+         nearest: 99% match, line 31
+         ------------------------------------------------------------
+         | - ✅ **PROJECT_CONTEXT.md** — قانون اساسی (۳۵+ بخش، همه‌چیز این‌جاست).
+         ------------------------------------------------------------
 
 ============================================================
-PATCH_ID: 18  |  OK: 2  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 19  |  OK: 15  |  SKIP: 0  |  FAIL: 1
 
-[ARCH] _work\applied\P0018-20261007-173409.txt
-       input.txt emptied - ready for next patch
-
-[GIT] commit: patch 18: 20261007-173409
+[ARCH] _work\applied\P0019-20261007-173449.txt
+       1 patch(es) FAILED
+       input.txt emptied anyway
+       >>> FAILED parts shown above <<<
