@@ -1,11 +1,11 @@
-# MSG-SEED: c8a632e5
-# PATCH_ID: 25
+# MSG-SEED: 49bf4b29
+# PATCH_ID: 26
 [APPLY]
 
-[P25] [EDIT] run.py
+[P26] [EDIT] run.py
   [FAIL] [1/1] anchor not found
          start: def main():
-         nearest: 83% match, line 735
+         nearest: 96% match, line 735
          ------------------------------------------------------------
          | 
          |     args = sys.argv[1:]
@@ -14,13 +14,15 @@
          |             print(f"run.py v{VERSION}")
          |             return 0
          ------------------------------------------------------------
-[P25] [EDIT] PROJECT_CONTEXT.md
+[P26] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P26] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 25  |  OK: 1  |  SKIP: 0  |  FAIL: 1
+PATCH_ID: 26  |  OK: 2  |  SKIP: 0  |  FAIL: 1
 
-[ARCH] _work\applied\P0025-20261007-174538.txt
+[ARCH] _work\applied\P0026-20261007-174652.txt
        1 patch(es) FAILED
        input.txt emptied anyway
        >>> FAILED parts shown above <<<
