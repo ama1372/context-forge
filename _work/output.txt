@@ -1,28 +1,16 @@
-# MSG-SEED: 49bf4b29
-# PATCH_ID: 26
+# MSG-SEED: 5f2e1a68
+# PATCH_ID: 27
 [APPLY]
 
-[P26] [EDIT] run.py
-  [FAIL] [1/1] anchor not found
-         start: def main():
-         nearest: 96% match, line 735
-         ------------------------------------------------------------
-         | 
-         |     args = sys.argv[1:]
-         |     if args:
-         |         if '--version' in args or '-v' in args:
-         |             print(f"run.py v{VERSION}")
-         |             return 0
-         ------------------------------------------------------------
-[P26] [EDIT] PROJECT_CONTEXT.md
+[P27] [EDIT] run.py
   [OK]   [1/1] applied
-[P26] [EDIT] PROJECT_CONTEXT.md
+[P27] [EDIT] run.py
   [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 26  |  OK: 2  |  SKIP: 0  |  FAIL: 1
+PATCH_ID: 27  |  OK: 2  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0026-20261007-174652.txt
-       1 patch(es) FAILED
-       input.txt emptied anyway
-       >>> FAILED parts shown above <<<
+[ARCH] _work\applied\P0027-20261007-174751.txt
+       input.txt emptied - ready for next patch
+
+[GIT] commit: patch 27: 20261007-174751
