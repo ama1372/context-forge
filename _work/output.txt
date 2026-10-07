@@ -1,26 +1,20 @@
-# MSG-SEED: facf83ec
-# PATCH_ID: 7
+# MSG-SEED: ce9ae176
+# PATCH_ID: 8
 [APPLY]
 
-[P7] [EDIT] PROJECT_CONTEXT.md
+[P8] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
-[P7] [EDIT] PROJECT_CONTEXT.md
+[P8] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
-[P7] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
-[P7] [EDIT] a.py
-  [FAIL] file not found: a.py
-[P7] [NEW]  README.md
-  [OK]   created (5053 chars)
-[P7] [NEW]  LICENSE
-  [OK]   created (1082 chars)
-[P7] [NEW]  .gitignore
-  [OK]   created (203 chars)
+[P8] [DEL]  CHANGELOG.md
+[P8] [DEL]  ADR.md
+[P8] [NEW]  README.md
+  [OK]   updated (2335 chars)
 
 ============================================================
-PATCH_ID: 7  |  OK: 6  |  SKIP: 0  |  FAIL: 1
+PATCH_ID: 8  |  OK: 5  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0007-20261007-170254.txt
-       1 patch(es) FAILED
-       input.txt emptied anyway
-       >>> FAILED parts shown above <<<
+[ARCH] _work\applied\P0008-20261007-170554.txt
+       input.txt emptied - ready for next patch
+
+[GIT] commit: patch 8: 20261007-170554
