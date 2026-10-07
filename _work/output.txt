@@ -1,36 +1,26 @@
-# MSG-SEED: a4570d6f
-# PATCH_ID: 16
+# MSG-SEED: 562575bb
+# PATCH_ID: 17
 [APPLY]
 
-[P16] [EDIT] PROJECT_CONTEXT.md
+[P17] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
-[P16] [EDIT] PROJECT_CONTEXT.md
+[P17] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
-[P16] [EDIT] PROJECT_CONTEXT.md
+[P17] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
-[P16] [EDIT] PROJECT_CONTEXT.md
+[P17] [EDIT] PROJECT_CONTEXT.md
   [OK]   [1/1] applied
-[P16] [EDIT] PROJECT_CONTEXT.md
-  [FAIL] [1/1] anchor not found
-         start: - **بخش ۳۳** — Minimal run.py
-[P16] [EDIT] _work/CONTEXT_DEV.md
-  [FAIL] [1/1] anchor not found
-         start: | آخرین تگ | v1.6.0 |
-         nearest: 71% match, line 22
-         ------------------------------------------------------------
-         | | آخرین تگ | v1.5.1 |
-         | | آخرین کامیت | (خودکار) |
-         | | آخرین کار | P15 — rule 4-13 (clear) + README count fix |
-         | | قدم بعدی | README.ar.md (اختیاری) یا پایان |
-         ------------------------------------------------------------
-[P16] [EDIT] _work/CONTEXT_DEV.md
-  [FAIL] [1/1] anchor not found
-         start: | v1.6.0 | پاک‌سازی + rule 4-14 (زبان پاسخ) |
+[P17] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P17] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
+[P17] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 16  |  OK: 4  |  SKIP: 0  |  FAIL: 3
+PATCH_ID: 17  |  OK: 7  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0016-20261007-172317.txt
-       3 patch(es) FAILED
-       input.txt emptied anyway
-       >>> FAILED parts shown above <<<
+[ARCH] _work\applied\P0017-20261007-172903.txt
+       input.txt emptied - ready for next patch
+
+[GIT] commit: patch 17: 20261007-172903
