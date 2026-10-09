@@ -210,6 +210,10 @@ def read_directives(text):
         s = lines[idx].strip()
         if not s:
             idx += 1; continue
+        if not s.startswith('#@'):
+            if s.startswith('#'):
+                idx += 1; continue
+            break
         m = re.match(r'^#@ID:\s*(\d+)', s)
         if m: patch_id = int(m.group(1)); idx += 1; continue
         m = re.match(r'^#@CMD:\s*(.+)$', s)

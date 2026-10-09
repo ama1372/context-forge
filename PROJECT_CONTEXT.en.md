@@ -940,5 +940,349 @@ The user runs `python run.py` once (no flags). The `output.txt` contains:
 
 **Why this rule matters:** every manual step the user performs is a chance for error, and a token cost when pasted back to the AI. The single-block workflow removes both.
 
-<!-- CONTINUE: 5 -->
+## Section 5 — `run.py` Workflow (v2.0)
+
+### 5-0. Available flags
+
+| Flag | What it does | Approx. size |
+|------|--------------|--------------|
+| (none) | smart: apply if input is full, dump if empty | medium |
+| `--status` | tiny summary (start of every chat) | ~300 bytes |
+| `--tree` | file tree only | ~2 KB |
+| `--hash` | hash of every file | ~2 KB |
+| `--git` | git log + tag + status | ~1 KB |
+| `--file X` | one file's content + hash | 1–5 KB |
+| `--files X Y Z` | several files | variable |
+| `--errors` | last-run errors only | ~500 bytes |
+| `--auto-verify` | hash mismatch → auto reject | — |
+| `--force` | hash mismatch → apply without warning | — |
+| `dump [--full]` | full or incremental dump | large |
+| `apply` | apply patches from input.txt | — |
+| `clean` | wipe `_work/` | — |
+
+### 5-0-1. The Pull rule for the AI
+
+Never jump straight to a full dump. Order:
+
+1. First: `python run.py --status`
+2. If insufficient: `python run.py --file <name>`
+3. If still necessary: `python run.py dump --full`
+
+### 5-0-2. Hash Verification
+
+A patch can carry an expected hash. During apply, the file's current hash is compared:
+
+- If equal → applied.
+- If mismatch → warns (but applies by default).
+- With `--auto-verify` → rejects on mismatch.
+- With `--force` → applies without warning.
+
+This mechanism prevents applying patches to modified code.
+
+### 5-0-3. Parser-marker rule (new red line)
+
+When writing docs or comments, **never place parser markers inside REPLACE/CONTENT content as real markers at column zero** (the parser will interpret them as block terminators). To show them, **indent by 4 spaces** or wrap them in quotes. See Section 12 for details.
+
+### 5-0-4. Directives — full workflow inside `input.txt`
+
+Directives are lines starting with `#@` at the top of `input.txt`, before the first patch block. They control what `run.py` does beyond applying patches.
+
+| Directive | Effect |
+|-----------|--------|
+| `#@ID: N` | Set the patch ID manually |
+| `#@CMD: <args>` | Replace this run's args with `<args>` |
+| `#@POST: <args>` | After a successful apply, run `<args>` and append output |
+| `#@NEED: <args>` | After apply, dump `<args>` and append output (same commands as `--file`, `--status`, etc.) |
+| `#@COMMIT: <msg>` | Custom git commit message (default: `patch N: <timestamp>`) |
+| `#@TAG: <name>` | Git tag created after a successful commit |
+
+**Order of execution:** apply → POST → NEED → auto-context update → git commit → git tag.
+
+**Comment lines:** any line starting with `#` (but not `#@`) is skipped. So `# INPUT: ...` at the top is fine, and does not break directive parsing.
+
+**The whole loop in one shot:**
+
+    # INPUT: fix bug + verify
+    #@COMMIT: 🐛 fix X + context
+    #@TAG: step-42-ok
+    #@POST: verify
+    #@NEED: errors
+    ===== FILE: src/main.py =====
+    ...
+
+The user runs `python run.py` (no flags). Everything else is automatic.
+
+### 5-1. First-time installation
+
+```
+1. Put this document in the project root: PROJECT_CONTEXT.md
+2. Create _work/ with its subfolders:
+   _work/
+   ├── input.txt      (empty)
+   ├── output.txt     (empty)
+   ├── applied/       (empty)
+   └── cache.json     (optional — created automatically)
+3. Build run.py from the template in Section 35
+4. Configure .gitignore:
+   _work/input.txt
+   _work/output.txt
+   _work/applied/
+   _work/cache.json
+```
+
+### 5-2. Daily flow
+
+```
+1. AI gives a patch (template in Section 7)
+2. User drops it into _work/input.txt
+3. User runs: python run.py
+   - if input.txt is full → patches are applied
+   - if empty → dump (per default flag)
+4. User sends _work/output.txt back to the AI
+5. AI sees the state and gives the next patch
+```
+
+### 5-3. Why this method?
+
+- **No manual copy/paste.**
+- **One file for communication.**
+- **The AI sees the exact state, doesn't guess.**
+- **Flag-driven: only what's needed.**
+
+---
+
+## Section 6 — `run.py` Flags (the heart of token savings)
+
+### 6-1. Base flags
+
+| Flag | Output | Approx. size |
+|------|--------|--------------|
+| (none) | apply if input is full / simple dump if empty | medium |
+| `--status` | summary only: project name, version, last tag, modified files, errors | ~300 bytes |
+| `--tree` | project tree only (depth 4) | ~2 KB |
+| `--hash` | hash of every file | ~2 KB |
+| `--git` | git log + tag + status | ~1 KB |
+| `--diff` | files changed since last dump | variable |
+| `--file X` | content of one file | ~1–5 KB |
+| `--files X Y Z` | several specific files | variable |
+| `--all` | full dump (only if necessary) | large |
+| `--errors` | last-run errors only | ~500 bytes |
+
+### 6-2. Advanced flags
+
+| Flag | Effect |
+|------|--------|
+| `--auto-verify` | hash mismatch → auto reject (no prompt) |
+| `--force` | hash mismatch → apply without prompt |
+| `--dry-run` | preview only, no changes |
+| `--fuzzy` | if the exact anchor fails, use the nearest |
+| `--no-fuzzy` | exact match only |
+| `--backup` | take a backup before applying |
+
+### 6-3. Pull rule for the AI
+
+**The AI must follow this order:**
+
+```
+Step 1: python run.py --status
+        ↓ (if insufficient)
+Step 2: python run.py --file <relevant file>
+        ↓ (if still needed)
+Step 3: python run.py --all
+```
+
+**Never jump from step 1 straight to step 3 unless the user asked for it.**
+
+### 6-4. `--status` output template
+
+```
+PROJECT: MyApp v1.2.3
+LAST TAG: step-42-ok
+MODIFIED FILES: src/main.py, src/utils.py
+LAST ERROR: None
+UNCOMMITTED: 3 files
+```
+
+~300 bytes.
+
+### 6-5. `--file X` output template
+
+```
+FILE: src/main.py
+HASH: a1b2c3d4e5f6...
+SIZE: 1234 bytes
+MODIFIED: 2026-10-07 14:30
+---CONTENT---
+[full file content]
+```
+
+### 6-6. `--all` output template
+
+```
+PROJECT: MyApp v1.2.3
+LAST TAG: step-42-ok
+GIT LOG: <last 10 commits>
+GIT TAG: <last 10 tags>
+GIT STATUS: <summary>
+
+---TREE---
+[project tree]
+
+---FILES---
+FILE: src/main.py
+HASH: ...
+---CONTENT---
+...
+
+FILE: src/utils.py
+HASH: ...
+---CONTENT---
+...
+```
+
+---
+
+## Section 6-B — Exact `run.py` parser spec
+
+### 6-B-1. Recognized markers
+
+The parser recognizes only these markers:
+
+**Block headers (at column zero):**
+- 3+ equals signs + type (FILE/CREATE/DELETE/MOVE/MKDIR/CMD/DUMP) + colon + path + 3+ equals signs.
+
+**Inner markers (at column zero):**
+- FIND — start of the old-text block.
+- REPLACE — start of the new-text block.
+- CONTENT — start of the new file's content.
+- RUN — start of a CMD script.
+- END — end of each block.
+- EXPECTED_HASH — optional hash (same line as END).
+
+### 6-B-2. Critical rules
+
+1. **All markers must be at column zero** (no leading space).
+2. **If a marker appears inside REPLACE/CONTENT content as a real marker, the parser closes the block early → the file is corrupted.**
+3. **To show a marker in docs, indent it by 4 spaces** or wrap it in quotes.
+4. **Block order matters** — they run in the order they appear.
+
+### 6-B-3. Error behaviour
+
+| Error | Behaviour |
+|-------|-----------|
+| Incomplete block (no END) | Parser ignores it |
+| Target file not found | FAIL file not found |
+| Anchor mismatch | fuzzy → suggest → FAIL |
+| Hash mismatch | warning → apply (unless auto-verify) |
+| File has invalid chars | write with utf-8 — no error |
+
+### 6-B-4. Execution order
+
+- CREATE, FILE, DELETE, MKDIR, CMD run in the order they appear.
+- If MKDIR precedes CREATE, the folder is created first.
+- If CMD precedes FILE, the command runs first — keep that in mind.
+
+### 6-B-5. If the parser fails
+
+1. Look at `_work/output.txt`.
+2. The FAIL line says exactly where and which block.
+3. SUGGEST shows the nearest text (percent similarity + line number).
+4. If it's a parser error (not an anchor error), check `_work/input.txt` by hand — probably a marker at column zero inside content.
+
+### 6-B-6. Why this section matters
+
+Because the most common mistakes come from here:
+
+- Putting a real END inside REPLACE (without indent).
+- Putting a FILE header inside docs content.
+- Using tab instead of space for a marker.
+
+**Golden rule:** if unsure, indent the marker by 4 spaces. Always safe.
+
+---
+
+### 6-B-7. The input.txt golden rule
+
+**Never fill `input.txt` with `output.txt` content.** That causes wrong patches to be applied.
+
+**Rules:**
+
+1. `input.txt` should always be **empty** — except during apply.
+2. If `input.txt` is non-empty and you're not running, a patch is unfinished.
+3. To check: `python run.py` (if input is full, it applies).
+4. To empty manually: in VS Code, select all and delete.
+5. **Never** copy `output.txt` output into `input.txt`.
+
+**Danger sign:** if you see several `===== FILE =====` blocks tangled together in `run.py` output, `input.txt` was polluted. Empty `input.txt` and start over.
+
+**Consequence of pollution:** wrong blocks get applied, unwanted commits appear, and you'll need to `git reset`.
+
+---
+
+## Section 7 — Standard Patch Template
+
+### 7-1. Base template (with hash)
+
+    ===== FILE: <relative path> =====
+    <<<EXPECTED_HASH>>>a1b2c3d4...<<<END>>>
+    <<<FIND>>>
+    [exact text — character by character from the user's file]
+    <<<REPLACE>>>
+    [new text]
+    <<<END>>>
+
+### 7-2. Template without hash (if the user has no hash)
+
+    ===== FILE: <relative path> =====
+    <<<FIND>>>
+    [exact text]
+    <<<REPLACE>>>
+    [new text]
+    <<<END>>>
+
+### 7-3. New-file template
+
+    ===== CREATE: <relative path> =====
+    <<<CONTENT>>>
+    [full new-file content]
+    <<<END>>>
+
+### 7-4-A. File-move template (MOVE)
+
+    ===== MOVE: <source path> -> <dest path> =====
+
+**Rules:**
+- If source doesn't exist → FAIL.
+- If dest exists → FAIL (no overwrite).
+- The dest folder is created automatically.
+
+**Example:**
+
+    ===== MOVE: src/old.py -> src/new/old.py =====
+
+### 7-4. File-delete template
+
+    ===== DELETE: <relative path> =====
+
+### 7-5. Shell-command template
+
+    ===== CMD: <short description> =====
+    RUN
+    <PowerShell/Bash script>
+    END
+
+### 7-6. Make-folder template
+
+    ===== MKDIR: <relative path> =====
+
+### 7-7. Important template notes
+
+1. **Markers at column zero only** (no leading space).
+2. **If a marker appears inside a patch's content, the parser misinterprets it.** Safe options:
+   - Wrap in quotes: "the END marker"
+   - Internal space: `< END >`
+   - Indent to the right (4 spaces is the recommended amount).
+3. **Patch order matters.** They run in the order they appear.
+
+<!-- CONTINUE: 8 -->
 ```
