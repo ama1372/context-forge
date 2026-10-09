@@ -1738,11 +1738,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.2.0-en` |
-| **Last commit** | after v1.2.0 patch |
-| **Last work** | v1.2.0: doc structure fixed, run.py re-embedded |
+| **Last safe tag** | `v1.2.1-en` |
+| **Last commit** | after v1.2.1 patch |
+| **Last work** | v1.2.1: `--check-md` skips `_archive/` |
 | **Next step** | First real test-project, end-to-end cycle with a small CLI |
-| **Current phase** | v1.2.0, structurally complete |
+| **Current phase** | v1.2.1, structurally complete |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; README.fa.md review |
@@ -1879,6 +1879,8 @@ The single most painful bug in this project's history came from nested fences. W
     python run.py --check-md
 
 Scans every `.md` file in the project. Reports any nested or unclosed fence with file:line. Zero output beyond `[OK]` means the document is clean.
+
+**Note:** `_archive/` is skipped by default — it is deliberately unmaintained (see Section 33-5). Pass explicit paths to scan it.
 
 Use it before committing any change to a `.md` file.
 

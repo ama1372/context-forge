@@ -46,7 +46,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1079,6 +1079,7 @@ def do_errors():
 def do_check_md(files):
     if not files:
         files = [str(p) for p in walk(Path('.')) if p.suffix.lower() == '.md']
+        files = [f for f in files if '_archive' not in Path(f).parts]
     if not files:
         print("[INFO] no markdown files found"); return 0
     issues = 0
@@ -1173,6 +1174,7 @@ def do_capabilities():
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP #@NEXT #@ROADMAP #@PUSH")
     print("FEATURES: MSG-SEED RATE-WARN AUTO-BLOCK AUTODUMP "
           "FUZZY-MATCH SUGGEST HASH-VERIFY GIT-AUTO-COMMIT")
+    print("NOTE: --check-md skips _archive/ by default (unmaintained)")
 
 
 def do_check(args):
