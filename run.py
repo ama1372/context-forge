@@ -46,7 +46,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.2.6"
+VERSION = "1.2.7"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -738,6 +738,10 @@ def do_apply(patch_id=None):
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
 
+    if fail == 0:
+        try: _update_auto_block(patch_id, seed)
+        except Exception: pass
+
     if post_cmds and fail == 0:
         for sub_args in post_cmds:
             out.append(""); out.append("=" * 60)
@@ -756,10 +760,6 @@ def do_apply(patch_id=None):
             sub_out = dispatch_capture(real_args)
             if sub_out:
                 out.append(sub_out)
-
-    if fail == 0:
-        try: _update_auto_block(patch_id, seed)
-        except Exception: pass
 
     if fail == 0:
         try:
