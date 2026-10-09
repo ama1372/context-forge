@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P105 |
-| Last commit | `5ab6ac7` |
-| Time | 2026-10-09 14:21 |
-| MSG-SEED | `928a668e` |
+| Last patch | P106 |
+| Last commit | `f2c9a6a` |
+| Time | 2026-10-09 14:22 |
+| MSG-SEED | `0594be9a` |
 <!-- AUTO:END -->
 
 > نسخه‌ی رویایی. طراحی‌شده برای هر پروژه، هر زبان، هر هوش مصنوعی. مخصوص DeepSeek.

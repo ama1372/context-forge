@@ -1,44 +1,22 @@
-# MSG-SEED: b9caf571
+# MSG-SEED: 928a668e
 [APPLY]
 
-# PATCH_ID: 104
+# PATCH_ID: 105
 
-[P104] [CMD]  audit PROJECT_CONTEXT.md
-  | ===== VERSION MENTIONS (3.0 or 3.x) =====
-  | 
-  | PROJECT_CONTEXT.md:398:    run.py v3.0.0
-  | 
-  | ===== PROJECT NAMES (context-forge / Hamk) =====
-  | 
-  | ===== SPECIFIC BRANDS (SkyVent / msrt / hamkai) =====
-  | 
-  | ===== PROJECT-SPECIFIC TERMS (���� / ��) =====
-  | 
-  | ===== SECTION COUNT =====
-  | 43
-  | ===== SUBSECTION COUNT =====
-  | 204
-  | ===== FILE SIZE =====
-  | 119460
-  | ===== LINE COUNT =====
-  | 2400
-  [OK]   exit 0
+[P105] [EDIT] PROJECT_CONTEXT.md
+  [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 104  |  OK: 1  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 105  |  OK: 1  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0104-20261009-142124.txt
+[ARCH] _work\applied\P0105-20261009-142149.txt
        input.txt emptied - ready for next patch
 
-[GIT] commit: patch 104: 20261009-142124
+[GIT] commit: patch 105: 20261009-142149
 
 ============================================================
-POST: dump --head 3
+POST: file PROJECT_CONTEXT.md --grep "ابجد|جفر|SkyVent" --head 10
 ============================================================
 
-[DUMP] _work\output.txt
-       mode: incremental
-       6 files total  |  2 included
-       size: 120,449 bytes
-
-[NEW] send this file to assistant: _work\output.txt
+[FAIL] unknown command: file
+usage: python run.py [--version|--init|--capabilities|--status|--tree|--hash|--git|--file X|--files ...|--errors|dump [--full]|check|verify|find-dup|apply|clean]
