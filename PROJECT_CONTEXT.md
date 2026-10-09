@@ -4,14 +4,14 @@
 > If you only have this file, the AI guides you through setup.
 
 <!-- AUTO:START -->
-## آخرین پچ (خودکار — دست نزن)
+## Last patch (auto - do not edit)
 
-| فیلد | مقدار |
-|------|-------|
-| آخرین پچ | P100 |
-| آخرین کامیت | `0614ca6` |
-| زمان | 2026-10-09 13:58 |
-| MSG-SEED | `2f51cdfc` |
+| Field | Value |
+|-------|-------|
+| Last patch | P36 |
+| Last commit | `54e33dc` |
+| Time | 2026-10-09 14:10 |
+| MSG-SEED | `f524209c` |
 <!-- AUTO:END -->
 
 ---
