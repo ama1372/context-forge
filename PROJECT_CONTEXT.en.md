@@ -512,6 +512,131 @@ This document is in English so that:
 
 ---
 
+## Section 0-C-10 — The absolute I/O discipline (the biggest red line)
+
+> **🔴🔴🔴 This is the single most important rule in this document. It outranks every other rule in every section. No exceptions.**
+
+The AI **must never** step outside the `input.txt` / `output.txt` protocol:
+
+- ❌ **Never** ask the user to run a shell command other than `python run.py`.
+- ❌ **Never** ask the user to edit a file by hand outside `input.txt`.
+- ❌ **Never** give a test command outside the `input.txt` block.
+- ❌ **Never** give a `git` command outside `#@COMMIT:` / `#@TAG:`.
+- ❌ **Never** send a patch outside the `input.txt` format.
+- ❌ **Never** propose an alternate workflow ("just edit this line in your editor", "run this in your terminal", "paste this into a file").
+- ❌ **Never** break out of the format "just this once" — not even for a one-character fix.
+
+**Every AI message has exactly four parts:**
+
+1. A one-line summary.
+2. One `input.txt` block — starting with `#@COMMIT:` and `#@TAG:`, optionally `#@NEXT:`, `#@ROADMAP:`, `#@POST:`, `#@NEED:`, then the patch blocks.
+3. A `[CTX-DELTA]` block with TAG, WORK, NEXT, ROADMAP, FILES.
+4. The end-of-message reminder.
+
+**If the AI ever feels the urge to give a "just run this in your terminal" command:**
+
+- Put it inside the patch as `===== CMD: ... =====` followed by `<<<RUN>>>`, or
+- Put it as a `#@POST:` directive in `input.txt`.
+
+**If the AI ever feels the urge to give a "just edit this line" instruction:**
+
+- Give a `===== FILE: <path> =====` patch with `<<<FIND>>>` / `<<<REPLACE>>>`.
+
+**Why this rule is absolute:** every step the user performs outside the protocol is a chance for error, a token cost when pasted back to the AI, and — most importantly — a gap in the context. The protocol exists to keep the project continuable across chat limits, and the AI must not poke holes in it.
+
+**If the AI realizes mid-message that it broke the discipline:**
+
+1. Stop.
+2. Apologize in one line.
+3. Re-send the entire message in the correct format.
+
+---
+
+## Section 0-C-11 — Newcomer onboarding (script for the first reply)
+
+A user who sends this document may not know:
+
+- What the document is.
+- What `input.txt` / `output.txt` are.
+- That they need `run.py`.
+- That Python is required.
+- How to run anything.
+
+**The AI must walk them through it — one step per message.** Never two questions. Never jargon.
+
+**Message 1 — what they have:**
+
+> 📌 I read the document. It's the rulebook we'll use to build your project together.
+>
+> What files do you have right now — just this document, or also `run.py`?
+
+**Message 2 — if they don't have `run.py`:**
+
+> We need one more file called `run.py`. It's the tool that moves your project forward.
+>
+> I'll send you the entire file in a single block. Copy it into a new file called `run.py`, in the same folder as this document.
+
+Then send a `===== CREATE: run.py =====` block.
+
+**Message 3 — Python check:**
+
+> Do you have Python installed? Open a terminal in that folder and run:
+>
+> `python --version`
+>
+> If it says "not recognized", install Python from python.org/downloads — then come back.
+
+**Message 4 — init:**
+
+> Now run this one command — nothing else:
+>
+> `python run.py --init`
+
+**Message 5 — first goal:**
+
+> What would you like to build? A program, a website, a bot, a small tool?
+> Give me one line, and I'll send the first patch.
+
+**Rules for the AI during onboarding:**
+
+- One instruction per message.
+- No jargon: not "project", not "repository", not "patch", not "flag", not "terminal" (explain if needed).
+- Never ask two questions in one message.
+- Never assume they know what a terminal is.
+- Never leave them with an unfinished step.
+- Confirm after each step: "Done? Send me what you see."
+
+**If the user says "I don't know how" at any step:**
+
+- Stop the plan.
+- Explain the step from the ground up, in plain language.
+- Wait.
+
+---
+
+## Section 0-C-12 — Language policy
+
+> **The document is English. The conversation is in the user's language.**
+
+- The AI **detects** the user's language from their first message (Section 0-C-1).
+- The AI **replies** in the user's language.
+- The AI **never** asks the user to change language.
+- The AI **never** assumes the document's language equals the conversation's language.
+- The AI **never** translates: file names, commands, tags, parser markers, code identifiers, or the contents of `input.txt` / `output.txt`.
+- The AI **always** keeps the document itself English — even if the user's language is something else.
+
+If the user's first message is ambiguous (e.g. just a file with no words), the AI asks once: *"Which language should I speak?"* — in the user's own script if identifiable, in English otherwise.
+
+**Why the document is English:**
+
+1. It's read by users of every language (with translation help if needed).
+2. It's parsed the same way by every AI (DeepSeek, Claude, GPT, Gemini).
+3. `run.py`'s parser and file names stay consistent across projects and languages.
+
+The document's language ≠ the reply's language. That is the entire point of the English edition.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -918,6 +1043,18 @@ The user runs `python run.py` once (no flags). The `output.txt` contains:
 
 **Best practice:** batch 2–4 small patches into one `input.txt` file, with a single `#@COMMIT:` and `#@TAG:` at the top.
 
+### 4-17. When the user asks "why update the context every time?"
+
+Explain, in one line:
+
+> "We don't know when the chat will hit its rate limit. If the context isn't in every message, the project stops — and the next chat has to start from scratch."
+
+Do not lecture. One sentence is enough. If the user asks again, add:
+
+> "The cost of one extra line is zero. The cost of a lost context is a whole session."
+
+**Never** justify it with jargon like "state persistence" or "context window management". Just the plain reason.
+
 ### 4-15. The complete workflow — everything inside `input.txt`
 
 > **🔴 This is the single most important rule for the AI.**
@@ -1017,6 +1154,8 @@ Directives are lines starting with `#@` at the top of `input.txt`, before the fi
 | `#@NEED: <args>` | After apply, dump `<args>` and append output (same commands as `--file`, `--status`, etc.) |
 | `#@COMMIT: <msg>` | Custom git commit message (default: `patch N: <timestamp>`) |
 | `#@TAG: <name>` | Git tag created after a successful commit |
+| `#@NEXT: <line>` | One-line "what's next" for the auto-generated `_work/ctx_delta.txt` |
+| `#@ROADMAP: a \| b \| c` | Pipe-separated roadmap for `_work/ctx_delta.txt` (at least 2 items) |
 
 **Order of execution:** apply → POST → NEED → auto-context update → git commit → git tag.
 
@@ -1533,22 +1672,36 @@ Solution: at the end of every message, the AI must write this block:
     TAG: step-XX-ok
     WORK: <one line describing what was done>
     NEXT: <one line describing the next step>
+    ROADMAP:
+      1. <step after the next>
+      2. <step after that>
+      3. <...>
     FILES: <list of changed files>
     [/CTX-DELTA]
 
 **Hard rules:**
 
-- Only 4–5 lines.
-- Always at the end of the message, after test and commit.
+- Always at the end of the message.
+- **Always include NEXT** — never leave it blank.
+- **Always include ROADMAP** — at least 2 future steps. Even if the project is ending, write `ROADMAP: (none — release complete)`.
+- Always list FILES — even if empty, write `FILES: (none)`.
 - Big change → also update the context paragraphs.
 - Small change → CTX-DELTA alone is enough.
+
+**Why ROADMAP is mandatory:** the next chat may open with only this block. If it contains only `NEXT`, the AI after the next message loses the trail again. With a 3-step ROADMAP, three consecutive chats can bootstrap cleanly without ever asking the user "where were we?". This is the whole point of the anti-amnesia design — it must survive more than one message.
+
+**What the AI must never do:**
+
+- ❌ Write `NEXT: (unspecified)` — if you don't know, guess a plausible next step and mark it with `?`.
+- ❌ Skip ROADMAP because "it's just a small patch".
+- ❌ Put the ROADMAP in prose instead of the block — `run.py` reads the block, not your prose.
 
 **Benefits:**
 
 - If the AI forgets the main context, this block is a lifesaver.
 - The user sees at a glance whether the AI is working properly.
 - In a new chat, CTX-DELTA alone can bootstrap continuation.
-- `run.py` can (in v3) save this block automatically to `_work/ctx_delta.txt`.
+- `run.py` saves this block automatically to `_work/ctx_delta.txt` after every successful apply — so the user can retrieve it with `python run.py --ctx` at any time.
 
 ### 10-7. Complete AI message pattern
 
@@ -1715,14 +1868,14 @@ Before sending a message, check:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.1.0` |
-| **Last commit** | after v1.1 patch |
-| **Last work** | run.py v1.1 — flags + auto-CTX-DELTA; LICENSE; Section 37 |
-| **Next step** | Sync PROJECT_CONTEXT.fa.md with the v1.1 additions |
-| **Current phase** | v1.1 — feature parity with doc |
-| **Completion** | 100% EN, 100% FA (Persian needs v1.1 sync) |
+| **Last safe tag** | `v1.1.1-en` |
+| **Last commit** | after v1.1.1 patch |
+| **Last work** | v1.1.1: absolute I/O discipline (0-C-10) + newcomer onboarding (0-C-11) + language policy (0-C-12) + CTX-DELTA ROADMAP (10-6) |
+| **Next step** | Sync `PROJECT_CONTEXT.fa.md` with all v1.1 / v1.1.1 additions |
+| **Current phase** | v1.1.1 — I/O discipline locked down |
+| **Completion** | 100% EN, 100% FA (Persian needs v1.1+ sync) |
 | **Last error** | none |
-| **Open issues** | Persian v1.1 sync; bootstrap helper for newcomers |
+| **Open issues** | Persian v1.1 sync; bootstrap helper for newcomers; `--check-md` (nested fence detector) |
 
 ### 13-2. Update
 
@@ -1806,6 +1959,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Reason:** a documented-but-missing flag is worse than no documentation at all — the user loses trust.
 - **Alternatives:** remove them from the doc (rejected — they're useful).
 
+**ADR-9: Absolute I/O discipline as red line #0 (Section 0-C-10)**
+
+- **Decision:** make "never leave the `input.txt` protocol" the biggest red line, above all others.
+- **Reason:** every step outside the protocol is a chance for user error, a token cost, and — most importantly — a gap in the context. The project must survive chat limits, and the AI must not poke holes in the protocol.
+- **Alternatives:** allow occasional out-of-band commands (rejected — the discipline must be absolute to be trustworthy).
+
+**ADR-10: Mandatory ROADMAP in CTX-DELTA (Section 10-6)**
+
+- **Decision:** every `[CTX-DELTA]` block must have NEXT **and** a 2+ item ROADMAP.
+- **Reason:** a single NEXT field only survives one message. A ROADMAP survives three or more, letting consecutive chats bootstrap without ever asking the user "where were we?".
+- **Alternatives:** NEXT-only (rejected — the failure mode is exactly what happened in this project); a long-form history log (rejected — token-heavy).
+
 ## Section 14 — Starting a New Chat
 
 ### 14-1. What to send
@@ -1851,6 +2016,11 @@ Goal of this chat: <one line>
 
 ### 15-1. General red lines
 
+**0. 🔴 The biggest red line — never leave the `input.txt` protocol.**
+   No shell command outside `input.txt`. No manual edits. No alternate workflow.
+   The AI's message contains only: one-line summary + one `input.txt` block + `[CTX-DELTA]` + reminder.
+   See Section 0-C-10.
+
 1. **Never change things on your own.**
 2. **Never delete a file without user approval.**
 3. **Never make a big change without a commit.**
@@ -1859,6 +2029,8 @@ Goal of this chat: <one line>
 6. **Never touch a sacred function or module.**
 7. **Never change the software version on your own.**
 8. **Never modify a critical environment variable or config.**
+9. **Never skip `[CTX-DELTA]`** — including NEXT and ROADMAP (Section 10-6).
+10. **Never send a message without an `input.txt` block** unless the user asked a question, asked for context, or asked for an explanation (Section 0-C-7-3).
 
 ### 15-2. This document's red lines
 

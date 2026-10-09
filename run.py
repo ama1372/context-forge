@@ -35,6 +35,8 @@ Directives (in _work/input.txt, first lines):
   #@TAG: <name>        git tag created after a successful commit
   #@NODUMP:            suppress AUTODUMP of failed files on the next run
   #@DUMP: <mode>       set AUTODUMP mode: compact (default), full, off
+  #@NEXT: <line>       one-line "what's next" for _work/ctx_delta.txt
+  #@ROADMAP: a | b | c pipe-separated roadmap for _work/ctx_delta.txt
 
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.md section 2.
 """
@@ -789,13 +791,14 @@ def do_apply(patch_id=None):
     if fail == 0:
         try:
             next_step = extract_next(content)
+            roadmap = extract_roadmap(content)
             paths = []
             for op in ops:
                 if op['kind'] in ('file', 'create', 'delete'):
                     paths.append(op.get('path', ''))
                 elif op['kind'] == 'move':
                     paths.append(op.get('dst', ''))
-            _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, paths)
+            _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, roadmap, paths)
             out.append("")
             out.append("[CTX] ctx_delta saved -> _work/ctx_delta.txt")
         except Exception as e:
@@ -974,10 +977,23 @@ def extract_next(content):
     return None
 
 
-def _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, paths):
+def extract_roadmap(content):
+    for line in content.split('\n'):
+        s = line.strip()
+        if not s:
+            continue
+        m = re.match(r'^#@ROADMAP:\s*(.+)$', s)
+        if m:
+            return [x.strip() for x in m.group(1).split('|') if x.strip()]
+        if not s.startswith('#'):
+            break
+    return []
+
+
+def _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, roadmap, paths):
     tag = tag_name or f'patch-{patch_id}'
     work = commit_msg or f'patch {patch_id}'
-    for emoji in ('✨', '🐛', '🌍', '⚡', '🎉', '🧹', '📘', '📄', '🔍', '📌'):
+    for emoji in ('✨', '🐛', '🌍', '⚡', '🎉', '🧹', '📘', '📄', '🔍', '📌', '🚨'):
         if work.startswith(emoji + ' '):
             work = work[len(emoji) + 1:]
             break
@@ -986,10 +1002,14 @@ def _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, paths):
         f'TAG: {tag}',
         f'WORK: {work}',
         f'NEXT: {next_step or "(unspecified)"}',
-        f'FILES: {", ".join(paths) if paths else "(none)"}',
-        '[/CTX-DELTA]',
-        '',
     ]
+    if roadmap:
+        lines.append('ROADMAP:')
+        for i, step in enumerate(roadmap, 1):
+            lines.append(f'  {i}. {step}')
+    lines.append(f'FILES: {", ".join(paths) if paths else "(none)"}')
+    lines.append('[/CTX-DELTA]')
+    lines.append('')
     WORK.mkdir(parents=True, exist_ok=True)
     (WORK / 'ctx_delta.txt').write_text('\n'.join(lines), encoding='utf-8')
 
@@ -1036,7 +1056,7 @@ def do_capabilities():
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
-    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP")
+    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP #@NEXT #@ROADMAP")
     print("FEATURES: MSG-SEED RATE-WARN AUTO-BLOCK AUTODUMP "
           "FUZZY-MATCH SUGGEST HASH-VERIFY GIT-AUTO-COMMIT")
 
