@@ -1767,5 +1767,224 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Reason:** removes one full round trip per verification step.
 - **Alternatives:** user manually runs `python run.py --file X` after applying (rejected — extra step).
 
-<!-- CONTINUE: 14 -->
+## Section 14 — Starting a New Chat
+
+### 14-1. What to send
+
+**Minimum:**
+1. This document.
+2. `python run.py --status` output.
+
+**Ideal:**
+1. This document.
+2. `CHANGELOG.md` (last 100 lines).
+3. `python run.py --status`.
+4. If needed: `python run.py --all`.
+
+### 14-2. Message pattern
+
+```
+Continuing the project. Here is the document and current state:
+
+[paste document]
+
+[paste --status output]
+
+Goal of this chat: <one line>
+```
+
+### 14-3. What the AI should do
+
+1. **Confirm it read the document** (one line).
+2. **Understand where we are from the Session Tracker.**
+3. **Without extra questions, give the next patch.**
+
+### 14-4. What the AI should NOT ask
+
+- ❌ "What did you do before?"
+- ❌ "Which phase should I continue?"
+- ❌ "Explain the project."
+- ✅ "I read the document. Ready. What's the last error?"
+
+---
+
+## Section 15 — Red Lines
+
+### 15-1. General red lines
+
+1. **Never change things on your own.**
+2. **Never delete a file without user approval.**
+3. **Never make a big change without a commit.**
+4. **Never break the project-specific red lines (Section 2-4).**
+5. **Never guess a library API.**
+6. **Never touch a sacred function or module.**
+7. **Never change the software version on your own.**
+8. **Never modify a critical environment variable or config.**
+
+### 15-2. This document's red lines
+
+1. **Never rewrite this entire document** — only the changed parts.
+2. **Never place parser markers inside a patch body as real markers.**
+3. **Never skip the context update in a message.**
+
+### 15-3. If a red line is broken?
+
+1. **Inform the user immediately.**
+2. **Suggest a rollback:** `git reset --hard <tag-safe>`.
+3. **Explain the reason** — one line.
+4. **After rollback, retry.**
+
+---
+
+## Section 16 — Git Workflow
+
+### 16-1. Standard flow
+
+```bash
+# Step 1 — before changes (orange)
+git add -A
+git commit -m "🟠 SAFE before step-XX: <description>"
+git tag safe-before-XX
+
+# Step 2 — code + context changes
+# (code and PROJECT_CONTEXT.md together)
+
+# Step 3 — after a passing test (green)
+git add -A
+git commit -m "🎉 step-XX: <description> + context updated"
+git tag step-XX-ok
+git push origin main
+git push origin step-XX-ok
+
+# Step 4 — on failure
+git reset --hard safe-before-XX
+```
+
+### 16-2. Commit message pattern
+
+```
+🎉 step-XX: <short description> + context updated
+🐛 step-XX: fix <bug name> + context updated
+✨ step-XX: add <feature name> + context updated
+🧹 step-XX: cleanup <name> + context updated
+```
+
+### 16-3. Important tags list
+
+```
+<recent tag>     ← description
+```
+
+### 16-4. Broken commits
+
+```
+<warning>  ← description of the breakage
+```
+
+---
+
+## Section 17 — Testing
+
+### 17-1. Types of tests
+
+1. **Compile/run** — no errors.
+2. **Unit** — a single function.
+3. **Integration** — several modules.
+4. **Usage** — a real scenario.
+5. **Regression** — previous tests still pass.
+
+### 17-2. Pattern
+
+```
+📌 Test:
+1. <step one>
+2. <step two>
+3. <expected: what should happen>
+4. <on error: what to send>
+```
+
+### 17-3. If a test fails
+
+Answer these 5 questions:
+
+1. **What exactly failed?** (error message)
+2. **Where did it fail?** (file and line)
+3. **When did it fail?** (after which change)
+4. **What was expected?**
+5. **What actually happened?**
+
+---
+
+## Section 18 — Bug Fixing
+
+### 18-1. Steps
+
+1. **Reproduce:** see the bug again.
+2. **Isolate:** smallest code that shows it.
+3. **Root-cause:** why?
+4. **Fix:** minimal change.
+5. **Test:** fix + no regression.
+6. **Commit.**
+
+### 18-2. Pattern
+
+```
+## 🐛 Fix — <bug name>
+
+**Cause:** <one line>
+
+🔍 Anchor (Ctrl+F):
+[exact text]
+
+✂️ Replacement:
+[new text]
+
+📌 Test: <how to test>
+
+💾 Commit:
+git add -A
+git commit -m "🐛 step-XX: fix <name> + context updated"
+git tag step-XX-ok
+```
+
+### 18-3. If it's unclear
+
+Ask the user for:
+1. **Reproduction steps.**
+2. **Full log.**
+3. **Environment.**
+
+**Without these, don't touch the code.**
+
+---
+
+## Section 19 — Adding a Feature
+
+### 19-1. Steps
+
+1. **Design** and user approval.
+2. **Split** into small steps.
+3. **Implement each step** with a test.
+4. **Document.**
+5. **Final test.**
+
+### 19-2. Design pattern
+
+```
+## 🎯 New feature: <name>
+
+**Goal:** <one line>
+
+**Steps:**
+1. <step one>
+2. <step two>
+
+**Affected files:** <list>
+
+**Red lines:** <list>
+
+**Shall we start?**
+```
+
+<!-- CONTINUE: 20 -->
 ```
