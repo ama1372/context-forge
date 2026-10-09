@@ -1304,5 +1304,468 @@ Because the most common mistakes come from here:
    - Indent to the right (4 spaces is the recommended amount).
 3. **Patch order matters.** They run in the order they appear.
 
-<!-- CONTINUE: 8 -->
+## Section 8 — Hash verification (tamper detection)
+
+### 8-1. Why?
+
+- **Prevent applying patches to already-modified code.**
+- **Let the AI confirm its anchor is still valid.**
+- **If the hash changed, the AI knows the user edited something — and can ask "what did you change?".**
+
+### 8-2. Pattern
+
+Every file in the dump:
+
+    FILE: src/main.py
+    HASH: a1b2c3d4e5f6...
+
+The AI in the patch:
+
+    ===== FILE: src/main.py =====
+    <<<EXPECTED_HASH>>>a1b2c3d4e5f6...<<<END>>>
+    <<<FIND>>>
+    ...
+    <<<REPLACE>>>
+    ...
+    <<<END>>>
+
+### 8-3. `run.py` behaviour
+
+1. Compute the file's current hash.
+2. Compare with `EXPECTED_HASH`.
+3. **Equal:** apply the patch.
+4. **Not equal:**
+
+    [WARN] Hash mismatch on src/main.py
+    Expected: a1b2c3d4e5f6...
+    Actual:   f9e8d7c6b5a4...
+    Apply anyway? (y/N):
+
+### 8-4. Related flags
+
+    --auto-verify    # auto-reject on mismatch
+    --force          # apply without prompt
+
+### 8-5. Hash computation
+
+    SHA256(file content + last-modified timestamp)
+
+**Not just content** — because if someone swaps the content back and forth, the hash would stay the same. Adding the timestamp closes that hole.
+
+---
+
+## Section 8-B — Anti-block (MSG-SEED)
+
+### 8-B-1. The real problem
+
+DeepSeek and some other services are sensitive not just to too many messages, but to **similar** messages. If a user sends 10 messages like:
+
+    [APPLY] PATCH_ID: 2
+    [P2] [EDIT] FILE
+      [OK] applied
+
+the account is likely to get blocked.
+
+**Critical rule:** every message must look unique.
+
+### 8-B-2. Primary solution: MSG-SEED
+
+`run.py` (v1.0+) writes a line at the top of every output:
+
+    # MSG-SEED: <random hex>
+
+**Send-to-AI pattern:**
+
+    # MSG-SEED: a1b2c3d4
+    [APPLY]
+    PATCH_ID: 2
+    ...
+
+**Rules:**
+
+- The first line of the message is the MSG-SEED.
+- It changes every run.
+- That line alone is enough for the AI to see the message as unique.
+
+### 8-B-3. Complementary solution: batching
+
+If you have 3 small patches, send them together, not one by one.
+
+- Bad: message 1 patch A, message 2 patch B, message 3 patch C.
+- Good: message 1 = patch A + B + C.
+
+Benefit: message count drops by 3×.
+
+### 8-B-4. Complementary solution: time spacing
+
+Between two back-to-back messages, wait at least 30 seconds.
+
+### 8-B-5. Complementary solution: structural variety
+
+Vary the message shape occasionally:
+
+- Sometimes start with MSG-SEED.
+- Sometimes start with a different sentence.
+- Sometimes send status, sometimes a file.
+
+### 8-B-6. Final safe-message pattern
+
+    # MSG-SEED: a1b2c3d4e5f6
+    <short status: e.g. "previous patch succeeded">
+    <output.txt content>
+
+### 8-B-7. If you still get blocked
+
+- **Account Warning:** usually temporary (30 min to 24 h).
+- **Permanent ban:** rare.
+- **Fix:** in a new account, follow this protocol from the start.
+
+### 8-B-8. If the user wants to move very fast
+
+**Recommendation:** instead of sending every tiny change, bundle:
+
+- 5 patches → one message
+- Each message carries a clear CTX-DELTA
+- After every 3 messages, run a status
+
+This is both faster and safer.
+
+---
+
+## Section 9 — Fuzzy matching (drift tolerance)
+
+### 9-1. The problem
+
+Anchors shift after changes.
+
+### 9-2. Solution: three-level matching
+
+    Level 1: exact match
+    Level 2: rstrip (drop trailing whitespace)
+    Level 3: strip (drop leading + trailing whitespace)
+    Level 4: nearest block with similarity > 85%
+
+### 9-3. Multi-line anchors
+
+The anchor should not be **one line only** — include 2–3 lines above + 2–3 lines below:
+
+    <<<FIND>>>
+    def process_data(items):
+        if not items:
+            return []
+        result = [transform(i) for i in items]
+    <<<REPLACE>>>
+    def process_data(items):
+        if not items:
+            return []
+        result = [transform(i) for i in items if i is not None]
+
+**Benefit:** even if lines above/below shift, these 5 lines stay glued together.
+
+### 9-4. If fuzzy fails too
+
+    [FAIL] Anchor not found in src/main.py
+    Closest match at line 45 (85% similarity):
+    <nearest text>
+
+The AI can read this message and understand what happened.
+
+---
+
+## Section 10 — Context Update (mandatory)
+
+> **🔴 This section is the project's heart against chat limits.**
+
+### 10-1. Why?
+
+- The user doesn't know whether the next message will hit the limit.
+- If the context isn't updated, a new chat won't know where we were.
+
+### 10-2. What to update in every message?
+
+Every message with a real change:
+
+1. **Code patch** (Section 7).
+2. **Section 13 (Session Tracker)** — always.
+3. **Section 15 (Red Lines)** — if a new red line was added.
+4. **Section 16 (Git tag)** — if a new tag was added.
+5. **Any other section** that changed.
+
+### 10-3. Update pattern
+
+    ===== FILE: PROJECT_CONTEXT.md =====
+    <<<FIND>>>
+    ## Section 13 — Session Tracker
+
+    ### 13-1. Session Tracker
+    | Field | Value |
+    |-------|-------|
+    | **Last safe tag** | `step-XX-ok` |
+    | **Last work** | <previous> |
+    | **Next step** | <previous> |
+    <<<REPLACE>>>
+    ### 13-1. Session Tracker
+    | Field | Value |
+    |-------|-------|
+    | **Last safe tag** | `step-YY-ok` |
+    | **Last work** | <new> |
+    | **Next step** | <new> |
+    <<<END>>>
+
+### 10-4. If you forget
+
+The new AI doesn't know where we are → the user must re-explain from scratch → wasted time.
+
+### 10-5. Golden rule
+
+> **Every AI message = one code patch + one context patch.**
+> If the context patch is missing, the message is incomplete.
+
+### 10-6. CTX-DELTA — the anti-amnesia mechanism
+
+Real problem: even with strong emphasis, the AI forgets to update the context in the message.
+
+Solution: at the end of every message, the AI must write this block:
+
+    [CTX-DELTA]
+    TAG: step-XX-ok
+    WORK: <one line describing what was done>
+    NEXT: <one line describing the next step>
+    FILES: <list of changed files>
+    [/CTX-DELTA]
+
+**Hard rules:**
+
+- Only 4–5 lines.
+- Always at the end of the message, after test and commit.
+- Big change → also update the context paragraphs.
+- Small change → CTX-DELTA alone is enough.
+
+**Benefits:**
+
+- If the AI forgets the main context, this block is a lifesaver.
+- The user sees at a glance whether the AI is working properly.
+- In a new chat, CTX-DELTA alone can bootstrap continuation.
+- `run.py` can (in v3) save this block automatically to `_work/ctx_delta.txt`.
+
+### 10-7. Complete AI message pattern
+
+Every AI message must have this structure:
+
+1. **📌 Summary** — one line.
+2. **Code patch** — template in Section 7.
+3. **📌 Test** — what to test and how.
+4. **💾 Commit** — ready-made command.
+5. **Context** — if the change is big, a PROJECT_CONTEXT.md patch.
+6. **[CTX-DELTA]** — always.
+7. **End-of-message reminder** — "If there was an error: ...".
+
+**Note:** Since run.py v1.0+ supports `#@COMMIT:` and `#@TAG:` directives, steps 3–4 are folded **inside** `input.txt`. See Section 4-15. The AI writes only `input.txt` + the CTX-DELTA block + the reminder.
+
+---
+
+## Section 11 — The Big-Context Problem (solution)
+
+### 11-1. The problem
+
+If this document reaches 5000 lines, sending it every time itself burns tokens.
+
+### 11-2. Solution: three layers
+
+**Layer 1 — main document (this file):**
+- This document is **complete** and **stable**.
+- Only Sections 2, 13, 15, 16 change.
+- Sending it once is enough.
+
+**Layer 2 — separate CHANGELOG.md:**
+- Full history of changes.
+- The AI reads it only when needed.
+- Included in `_work/output.txt`.
+
+**Layer 3 — ADR.md (Architecture Decision Records):**
+- Past architectural decisions.
+- Only for a new AI that wants to understand the "whys".
+
+### 11-3. Practical pattern
+
+**Every new chat:**
+
+    1. This document (PROJECT_CONTEXT.md)
+    2. CHANGELOG.md (last 100 lines)
+    3. python run.py --status
+    4. If needed: python run.py --all
+
+**Savings:** ~30% tokens compared to sending everything.
+
+### 11-4. How big should the document be?
+
+- **Minimum:** 500 lines (start).
+- **Ideal:** 2000–3000 lines.
+- **Maximum:** 5000 lines (beyond this, it burns tokens).
+
+**If it grows past that:**
+- Historical sections → CHANGELOG.md
+- ADRs → ADR.md
+- Only active rules stay in the main document.
+
+---
+
+## Section 12 — Special Characters & Escape
+
+### 12-1. The problem
+
+Triple backticks (` ``` `), asterisks (`*`), and other markdown characters cause rendering issues.
+
+### 12-2. Solution: the markers rule
+
+**1. Parser markers (FILE, FIND, REPLACE, END, CONTENT, RUN) must never appear in a patch body as real markers.**
+
+**2. If you must show a marker:**
+
+- ✅ Wrap in quotes: "the END marker"
+- ✅ Internal space: `< END >`
+- ✅ Indent by 4 spaces: `    ===== FILE =====` (parser only sees column zero)
+
+**3. If the file content contains triple backticks:**
+
+Use `<<<FIND>>>` / `<<<REPLACE>>>` — no outer markdown.
+
+    ===== FILE: src/README.md =====
+    <<<FIND>>>
+    This is a code block:
+    ```
+    print("hello")
+    ```
+    <<<REPLACE>>>
+    This is an updated code block:
+    ```
+    print("hello world")
+    ```
+    <<<END>>>
+
+### 12-3. Safe markdown template
+
+If the patch contains markdown, **always** use the `===== FILE =====` shell — not triple backticks.
+
+### 12-4. Pre-send test
+
+Before sending a message, check:
+
+- [ ] No unmatched ` ``` ` in the text.
+- [ ] No `===== ` inside a patch body.
+- [ ] No `<<<` without a matching `>>>`.
+
+### 12-5. If `run.py` reports a parser error
+
+    [FAIL] Parser error: unterminated block
+    Line 45: <<<FIND>>>
+    Reason: next ===== FILE ===== found before <<<END>>>
+
+**Cause:** a marker likely appeared in the body. The user must check by hand.
+
+---
+
+### 12-6. Golden rule for the AI: `input.txt` output format
+
+**Every time the AI wants to give a patch, it must give the entire `input.txt` in a single code block** — not piecemeal, not with prose in between.
+
+**Hard rules:**
+
+1. **One single block from `===== FILE` to the last `<<<END>>>`.**
+2. **If the content contains triple backticks, use four backticks for the outer fence.** Example: ` ```` ` instead of ` ``` `.
+3. **No prose between blocks.** If an explanation is needed, before or after the block — not inside.
+4. **If the anchor or CONTENT is very large, split into two separate blocks** — but each block must be complete and self-contained.
+5. **No parser markers (`===== FILE`, `<<<FIND>>>`, `<<<END>>>`, etc.) should appear in prose outside a block.**
+
+---
+
+## Section 13 — Session Tracker
+
+> **Note:** This section is for your real project. **Send the document as a template, this section is filled in** with the project's real state.
+> If using the document as a template (new project), **clear this section** and fill it in again.
+
+### 13-1. Session Tracker
+
+| Field | Value |
+|-------|-------|
+| **Last safe tag** | `<tag>` |
+| **Last commit** | `<after P N>` |
+| **Last work** | `<one-line description>` |
+| **Next step** | `<one-line description>` |
+| **Current phase** | `<phase name>` |
+| **Completion** | `<percent>` |
+| **Last error** | `<none or text>` |
+| **Open issues** | `<list>` |
+
+### 13-2. Update
+
+**This section must be updated in every AI message.**
+
+### 13-3. Tag palette
+
+| Color | Tag name | Meaning | When |
+|-------|----------|---------|------|
+| 🟠 | `safe-before-XX` | Rollback point | Before big changes |
+| 🟢 | `step-XX-ok` | Verified by tests | After a passing test |
+| 🟡 | `step-XX-wip` | Work in progress | Mid-work |
+| 🔴 | `broken-XX` | Broken (do not return here) | For documentation |
+
+### 13-4. Project tag table
+
+| Tag | Description | Date |
+|-----|-------------|------|
+| `<tag-1>` | `<description>` | `<YYYY-MM-DD>` |
+| `<tag-2>` | `<description>` | `<YYYY-MM-DD>` |
+
+---
+
+## Section 13-B — Inline CHANGELOG and ADR (optional)
+
+If the document is short (under 2000 lines), keep history and decisions here. If it grows, move them to `CHANGELOG.md` and `ADR.md`.
+
+### Inline CHANGELOG
+
+| Tag | Description |
+|-----|-------------|
+| v1.0.0 | First release — base template |
+
+### Inline ADR
+
+**ADR-1: Using `run.py` to coordinate with the AI**
+
+- **Decision:** all AI communication goes through `input.txt` / `output.txt` + `run.py`.
+- **Reason:** avoid token burn, improve precision, resist chat limits.
+- **Alternatives:** manual copy/paste, manual Ctrl+H.
+
+**ADR-2: MSG-SEED mechanism**
+
+- **Decision:** every message begins with a unique seed (random hex).
+- **Reason:** DeepSeek and others are sensitive to similar messages and block accounts.
+- **Alternatives:** time spacing, batching, structural variety.
+
+**ADR-3: `input.txt` output as a single code block**
+
+- **Decision:** the AI always gives `input.txt` as one code block (preferably with 4 backticks).
+- **Reason:** a 3-backtick fence clashes with content that contains triple backticks.
+- **Alternatives:** 5-backtick fence (hard to type), manual escape.
+
+**ADR-4: File structure based on "one document, one tool"**
+
+- **Decision:** keep the number of project files minimal.
+- **Reason:** file clutter conflicts with the "one document" principle.
+- **Alternatives:** multiple files (separate CHANGELOG, separate ADR, etc.).
+
+**ADR-5: Directives `#@COMMIT:` and `#@TAG:` inside `input.txt`**
+
+- **Decision:** commit message and tag are specified as directives inside `input.txt`, not as separate shell commands.
+- **Reason:** fewer manual steps for the user, fewer tokens for the AI, and per the "everything in one block" rule (Section 4-15).
+- **Alternatives:** separate `git` commands in chat (rejected — 3 extra messages, 2 extra chances for user error).
+
+**ADR-6: `#@NEED:` for batched verification**
+
+- **Decision:** the AI can request additional file dumps via `#@NEED: file X` inside `input.txt`.
+- **Reason:** removes one full round trip per verification step.
+- **Alternatives:** user manually runs `python run.py --file X` after applying (rejected — extra step).
+
+<!-- CONTINUE: 14 -->
 ```

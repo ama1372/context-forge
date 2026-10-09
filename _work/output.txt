@@ -1,20 +1,18 @@
-# MSG-SEED: 929db1c6
+# MSG-SEED: b66abd9f
 [APPLY]
 
-# PATCH_ID: 40
+# PATCH_ID: 41
 
-[P40] [EDIT] run.py
+[P41] [EDIT] run.py
   [OK]   [1/1] applied
-[P40] [EDIT] PROJECT_CONTEXT.en.md
-  [HASH] expected: a1b2c3d4...
-  [HASH] actual:   1e4c07ee59db
-  [WARN] hash mismatch - applying anyway
+[P41] [EDIT] PROJECT_CONTEXT.en.md
   [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 40  |  OK: 2  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 41  |  OK: 2  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0040-20261009-144050.txt
+[ARCH] _work\applied\P0041-20261009-144333.txt
        input.txt emptied - ready for next patch
 
-[GIT] commit: patch 40: 20261009-144050
+[GIT] commit: 🔍 debug read_directives + 📘 add 4-16 quality rule
+[GIT] tag: en-part-2a-b-ok
