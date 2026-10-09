@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" fill="none" role="img" aria-label="context-forge">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#60a5fa"/>
+      <stop offset="0.5" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#f472b6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6366f1" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="320" fill="url(#bg)"/>
+  <circle cx="1050" cy="70" r="220" fill="url(#glow)"/>
+  <circle cx="150" cy="280" r="160" fill="url(#glow)"/>
+  <text x="60" y="150" font-family="ui-sans-serif,system-ui,-apple-system,sans-serif" font-size="84" font-weight="800" fill="url(#title)" letter-spacing="-2">context-forge</text>
+  <text x="62" y="205" font-family="ui-sans-serif,system-ui,-apple-system,sans-serif" font-size="26" font-weight="500" fill="#cbd5e1">You vs. the AI chat that forgets everything.</text>
+  <text x="62" y="250" font-family="ui-sans-serif,system-ui,-apple-system,sans-serif" font-size="18" font-weight="400" fill="#94a3b8">One document · One tool · One command · Any AI · Any language</text>
+  <rect x="60" y="270" width="60" height="4" rx="2" fill="url(#title)"/>
+</svg>

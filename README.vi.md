@@ -21,7 +21,12 @@
   <b>Tiếng Việt</b> ·
   <a href="README.th.md">ไทย</a> ·
   <a href="README.he.md">עברית</a> ·
-  <a href="README.uk.md">Українська</a>
+  <a href="README.uk.md">Українська</a> ·
+  <a href="README.pl.md">Polski</a> ·
+  <a href="README.nl.md">Nederlands</a> ·
+  <a href="README.el.md">Ελληνικά</a> ·
+  <a href="README.sv.md">Svenska</a> ·
+  <a href="README.ro.md">Română</a>
 </p>
 
 ---

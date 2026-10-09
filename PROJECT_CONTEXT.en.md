@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P77 |
-| Last commit | `c85f75b` |
-| Time | 2026-10-09 18:14 |
-| MSG-SEED | `b5d8361a` |
+| Last patch | P78 |
+| Last commit | `40fda3a` |
+| Time | 2026-10-09 18:16 |
+| MSG-SEED | `1940377b` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1738,14 +1738,14 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.0.4` |
-| **Last commit** | fix bar CRLF bug + badges + CI + community files |
-| **Last work** | v1.0.4: badges in README, GitHub Actions lint workflow, CONTRIBUTING, CODE_OF_CONDUCT, bar fixer (CRLF-safe) |
-| **Next step** | Add 5 more languages (pl, nl, el, sv, ro) + banner SVG |
-| **Current phase** | v1.0.4 — released |
+| **Last safe tag** | `v1.0.5` |
+| **Last commit** | final 5 READMEs + banner SVG |
+| **Last work** | v1.0.5: 24 languages total (added pl, nl, el, sv, ro); banner SVG in README.md |
+| **Next step** | Share on communities (Reddit, HN, awesome-lists) |
+| **Current phase** | v1.0.5 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
-| **Open issues** | Next batch: pl/nl/el/sv/ro; banner SVG; share on communities |
+| **Open issues** | Distribution: share on communities; first real test-project |
 
 ### 13-2. Update
 
