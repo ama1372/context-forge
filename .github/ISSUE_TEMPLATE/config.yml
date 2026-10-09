@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Read the rule document first
+    url: https://github.com/ama1372/context-forge/blob/main/PROJECT_CONTEXT.en.md
+    about: Many questions are answered in PROJECT_CONTEXT.en.md — please skim it before opening an issue.
+  - name: Contributing guide
+    url: https://github.com/ama1372/context-forge/blob/main/CONTRIBUTING.md
+    about: How to contribute — README translations, bug reports, patches.

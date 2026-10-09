@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P79 |
-| Last commit | `ca90572` |
-| Time | 2026-10-09 18:19 |
-| MSG-SEED | `e71ce2b3` |
+| Last patch | P80 |
+| Last commit | `7589e09` |
+| Time | 2026-10-09 18:20 |
+| MSG-SEED | `382f07bd` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1829,11 +1829,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.0.6` |
-| **Last commit** | declare run.py as reference; protocol is language-agnostic |
-| **Last work** | v1.0.6: Section 0-C-13 (tool rewrite contract); updated 0-C-4-B, 2-1, 2-3, 5-1, 26-1, 32-1, 35; ADR-16 |
-| **Next step** | Share on communities (Reddit, HN, awesome-lists) |
-| **Current phase** | v1.0.6 — released |
+| **Last safe tag** | `v1.0.7` |
+| **Last commit** | fix CI workflow (24 files) + issue templates |
+| **Last work** | v1.0.7: CI checks all 24 READMEs + required files + language bars; issue templates added |
+| **Next step** | Share on communities (Reddit, HN, awesome-lists); create GitHub Release v1.0.7 |
+| **Current phase** | v1.0.7 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | Distribution: share on communities; first real test-project |

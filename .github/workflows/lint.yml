@@ -29,12 +29,49 @@ jobs:
       - name: run.py --check-md
         run: python run.py --check-md
 
-      - name: Verify all README translations exist
+      - name: Verify every README translation exists
         run: |
-          for f in README.md README.fa.md README.zh.md README.es.md README.ar.md \
-                   README.hi.md README.fr.md README.ru.md README.pt.md README.de.md \
-                   README.ja.md README.ko.md README.tr.md README.it.md README.id.md \
-                   README.vi.md README.th.md README.he.md README.uk.md; do
+          missing=0
+          for f in \
+            README.md \
+            README.fa.md README.zh.md README.es.md README.ar.md \
+            README.hi.md README.fr.md README.ru.md README.pt.md \
+            README.de.md README.ja.md README.ko.md README.tr.md \
+            README.it.md README.id.md README.vi.md README.th.md \
+            README.he.md README.uk.md README.pl.md README.nl.md \
+            README.el.md README.sv.md README.ro.md ; do
+            if [ ! -f "$f" ]; then
+              echo "MISSING: $f"
+              missing=$((missing + 1))
+            fi
+          done
+          if [ "$missing" -gt 0 ]; then
+            echo ""
+            echo "FAIL: $missing README file(s) missing"
+            exit 1
+          fi
+          echo "OK: all 24 README files present"
+
+      - name: Verify required top-level files
+        run: |
+          for f in PROJECT_CONTEXT.en.md run.py LICENSE \
+                   CONTRIBUTING.md CODE_OF_CONDUCT.md \
+                   assets/banner.svg .gitignore ; do
             test -f "$f" || { echo "MISSING: $f"; exit 1; }
           done
-          echo "All 19 README files present."
+          echo "OK: all required files present"
+
+      - name: Verify every README has the language bar
+        run: |
+          for f in README.md README.fa.md README.zh.md README.es.md \
+                   README.ar.md README.hi.md README.fr.md README.ru.md \
+                   README.pt.md README.de.md README.ja.md README.ko.md \
+                   README.tr.md README.it.md README.id.md README.vi.md \
+                   README.th.md README.he.md README.uk.md README.pl.md \
+                   README.nl.md README.el.md README.sv.md README.ro.md ; do
+            if ! grep -q 'href="README\.' "$f"; then
+              echo "NO LANGUAGE BAR: $f"
+              exit 1
+            fi
+          done
+          echo "OK: all 24 READMEs have the language bar"
