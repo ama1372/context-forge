@@ -4,7 +4,19 @@
 
 <p align="center">
   <b>English</b> ·
-  <a href="README.fa.md">فارسی</a>
+  <a href="README.fa.md">فارسی</a> ·
+  <a href="README.zh.md">中文</a> ·
+  <a href="README.es.md">Español</a> ·
+  <a href="README.ar.md">العربية</a> ·
+  <a href="README.hi.md">हिन्दी</a> ·
+  <a href="README.fr.md">Français</a> ·
+  <a href="README.ru.md">Русский</a> ·
+  <a href="README.pt.md">Português</a> ·
+  <a href="README.de.md">Deutsch</a> ·
+  <a href="README.ja.md">日本語</a> ·
+  <a href="README.ko.md">한국어</a> ·
+  <a href="README.tr.md">Türkçe</a> ·
+  <a href="README.it.md">Italiano</a>
 </p>
 
 ---
@@ -24,7 +36,7 @@
 
 ## What is it?
 
-A **single document** (`PROJECT_CONTEXT.md`) you paste into any AI chat — DeepSeek, Claude, ChatGPT, Gemini. It turns a chatty AI into a **disciplined project partner** that:
+A **single document** (`PROJECT_CONTEXT.en.md`) you paste into any AI chat — DeepSeek, Claude, ChatGPT, Gemini. It turns a chatty AI into a **disciplined project partner** that:
 
 - ✅ **Never loses context** — every reply carries the project's state forward.
 - ✅ **Never edits your code by hand** — it sends a patch, you paste, one command applies it.
@@ -83,11 +95,30 @@ The rule document is **English only** — so every AI parses it identically, and
 
 ---
 
+## Available README translations
+
+- [English](README.md)
+- [فارسی (Persian)](README.fa.md)
+- [中文 (Chinese)](README.zh.md)
+- [Español (Spanish)](README.es.md)
+- [العربية (Arabic)](README.ar.md)
+- [हिन्दी (Hindi)](README.hi.md)
+- [Français (French)](README.fr.md)
+- [Русский (Russian)](README.ru.md)
+- [Português (Portuguese)](README.pt.md)
+- [Deutsch (German)](README.de.md)
+- [日本語 (Japanese)](README.ja.md)
+- [한국어 (Korean)](README.ko.md)
+- [Türkçe (Turkish)](README.tr.md)
+- [Italiano (Italian)](README.it.md)
+
+---
+
 ## Files you get
 
 - `PROJECT_CONTEXT.en.md` — the rule document (paste this into your AI)
 - `run.py` — the tool (given to you by the AI on first use)
-- `README.md` + `README.fa.md` — this page, two languages
+- `README.md` + translations — this page, 14 languages
 - `LICENSE` — MIT, do whatever you want
 
 ---

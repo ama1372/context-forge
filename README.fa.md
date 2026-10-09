@@ -4,7 +4,19 @@
 
 <p align="center">
   <a href="README.md">English</a> ·
-  <b>فارسی</b>
+  <b>فارسی</b> ·
+  <a href="README.zh.md">中文</a> ·
+  <a href="README.es.md">Español</a> ·
+  <a href="README.ar.md">العربية</a> ·
+  <a href="README.hi.md">हिन्दी</a> ·
+  <a href="README.fr.md">Français</a> ·
+  <a href="README.ru.md">Русский</a> ·
+  <a href="README.pt.md">Português</a> ·
+  <a href="README.de.md">Deutsch</a> ·
+  <a href="README.ja.md">日本語</a> ·
+  <a href="README.ko.md">한국어</a> ·
+  <a href="README.tr.md">Türkçe</a> ·
+  <a href="README.it.md">Italiano</a>
 </p>
 
 ---
@@ -24,7 +36,7 @@
 
 ## این چیست؟
 
-یک **سند واحد** (`PROJECT_CONTEXT.md`) که آن را در هر چت AI پیست می‌کنی — DeepSeek، Claude، ChatGPT، Gemini. AI را از یک چت‌باز ساده تبدیل می‌کند به **همکار منظم پروژه** که:
+یک **سند واحد** (`PROJECT_CONTEXT.en.md`) که آن را در هر چت AI پیست می‌کنی — DeepSeek، Claude، ChatGPT، Gemini. AI را از یک چت‌باز ساده تبدیل می‌کند به **همکار منظم پروژه** که:
 
 - ✅ **هرگز کانتکست را گم نمی‌کند** — هر پاسخ، وضعیت پروژه را به جلو می‌برد.
 - ✅ **هرگز کدت را دستی دست نمی‌زند** — یک پچ می‌فرستد، تو پیست می‌کنی، یک دستور اجرا می‌شود.
@@ -83,11 +95,30 @@ Rust، Python، Node، Go، C++، هر چیزی. یک بار به `run.py` می�
 
 ---
 
+## ترجمه‌های موجود README
+
+- [English](README.md)
+- [فارسی](README.fa.md)
+- [中文](README.zh.md)
+- [Español](README.es.md)
+- [العربية](README.ar.md)
+- [हिन्दी](README.hi.md)
+- [Français](README.fr.md)
+- [Русский](README.ru.md)
+- [Português](README.pt.md)
+- [Deutsch](README.de.md)
+- [日本語](README.ja.md)
+- [한국어](README.ko.md)
+- [Türkçe](README.tr.md)
+- [Italiano](README.it.md)
+
+---
+
 ## چه فایل‌هایی می‌گیری
 
 - `PROJECT_CONTEXT.en.md` — سند قانون (این را در AI پیست کن)
 - `run.py` — ابزار (اولین بار AI به تو می‌دهد)
-- `README.md` + `README.fa.md` — همین صفحه، دو زبانه
+- `README.md` + ترجمه‌ها — همین صفحه، ۱۴ زبان
 - `LICENSE` — MIT، هر کاری خواستی بکن
 
 ---

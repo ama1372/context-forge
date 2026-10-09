@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P74 |
-| Last commit | `d8e59c3` |
-| Time | 2026-10-09 18:06 |
-| MSG-SEED | `fa7c3f04` |
+| Last patch | P75 |
+| Last commit | `8d7e630` |
+| Time | 2026-10-09 18:10 |
+| MSG-SEED | `ee3c2a59` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1738,11 +1738,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.0.1` |
-| **Last commit** | rewrite READMEs |
-| **Last work** | READMEs rewritten with marketing tone (problem-first) |
+| **Last safe tag** | `v1.0.2` |
+| **Last commit** | add 12 README translations |
+| **Last work** | 14 languages total: en, fa, zh, es, ar, hi, fr, ru, pt, de, ja, ko, tr, it |
 | **Next step** | First real test-project, end-to-end cycle with a small CLI |
-| **Current phase** | v1.0.1 — released |
+| **Current phase** | v1.0.2 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project |
