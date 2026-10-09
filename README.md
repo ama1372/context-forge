@@ -36,11 +36,12 @@ The AI's next message is built from `_work/output.txt`.
 
 ## Language
 
-The main document is English. Translations live in sibling files:
+There is **one rule document**: `PROJECT_CONTEXT.en.md` (English). It is **not** translated — replies are handled by the AI in the user's own language (see Section 33 of the document).
 
-- `PROJECT_CONTEXT.md` — English
-- `PROJECT_CONTEXT.fa.md` — Persian (in progress)
-- (more to come — see Section 33 in the main document)
+The README itself is available in:
+
+- `README.md` — English
+- `README.fa.md` — فارسی
 
 ## License
 
