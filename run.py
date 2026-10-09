@@ -92,7 +92,14 @@ def read(p):
     return p.read_text(encoding='latin-1', errors='replace')
 
 
+DRY_RUN = False
+BACKUP = False
+
+
 def write(p, t):
+    if DRY_RUN:
+        print(f"  [DRY] would write {p} ({len(t)} chars)")
+        return
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(t, encoding='utf-8')
 
@@ -400,9 +407,14 @@ def find_soft(text, a):
     return None
 
 
+FUZZY = True
+
+
 def find_anchor(text, a):
     r = find_exact(text, a)
-    return r if r else find_soft(text, a)
+    if r: return r
+    if not FUZZY: return None
+    return find_soft(text, a)
 
 
 def suggest(text, a):
@@ -574,6 +586,8 @@ def do_apply(patch_id=None):
     ops = parse(content)
     seed = msg_seed()
     out = [f"# MSG-SEED: {seed}", "[APPLY]", "", f"# PATCH_ID: {patch_id}", ""]
+    if BACKUP:
+        _do_backup()
     if rate_msg:
         out.append(rate_msg)
         out.append("Hint: batch 2-3 patches per input.txt to reduce message count.")
@@ -772,6 +786,21 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[GIT] error: {e}")
 
+    if fail == 0:
+        try:
+            next_step = extract_next(content)
+            paths = []
+            for op in ops:
+                if op['kind'] in ('file', 'create', 'delete'):
+                    paths.append(op.get('path', ''))
+                elif op['kind'] == 'move':
+                    paths.append(op.get('dst', ''))
+            _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, paths)
+            out.append("")
+            out.append("[CTX] ctx_delta saved -> _work/ctx_delta.txt")
+        except Exception as e:
+            out.append(""); out.append(f"[CTX] save failed: {e}")
+
     _rate_warn_write()
     txt = '\n'.join(out)
     write(OUTPUT, txt); print(txt)
@@ -892,6 +921,79 @@ def do_git():
             print(f"[WARN] {e}")
 
 
+def do_diff():
+    root = Path('.').resolve()
+    cache = load_cache()
+    changed = []
+    for p in walk(root):
+        rel = str(p.relative_to(root))
+        h = hash_file(p)
+        old = cache.get(rel, {}).get('hash')
+        if old != h:
+            changed.append((rel, 'new' if old is None else 'modified'))
+    if not changed:
+        print("[DIFF] no changes since last dump")
+        return
+    print(f"[DIFF] {len(changed)} file(s) changed:")
+    for rel, kind in changed:
+        print(f"  [{kind}] {rel}")
+
+
+def _do_backup():
+    ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+    tag = f"auto-backup-{ts}"
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip() == 'true':
+            subprocess.run(['git', 'add', '-A'], capture_output=True)
+            subprocess.run(['git', 'commit', '-m', f'auto-backup {ts}',
+                            '--allow-empty'], capture_output=True)
+            r2 = subprocess.run(['git', 'tag', tag],
+                                capture_output=True, text=True)
+            if r2.returncode == 0:
+                print(f"[BACKUP] git tag: {tag}")
+            else:
+                print(f"[BACKUP] tag failed: {r2.stderr.strip()[:200]}")
+            return
+    except Exception:
+        pass
+    print("[BACKUP] no git - skipped")
+
+
+def extract_next(content):
+    for line in content.split('\n'):
+        s = line.strip()
+        if not s:
+            continue
+        m = re.match(r'^#@NEXT:\s*(.+)$', s)
+        if m:
+            return m.group(1).strip()
+        if not s.startswith('#'):
+            break
+    return None
+
+
+def _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, paths):
+    tag = tag_name or f'patch-{patch_id}'
+    work = commit_msg or f'patch {patch_id}'
+    for emoji in ('✨', '🐛', '🌍', '⚡', '🎉', '🧹', '📘', '📄', '🔍', '📌'):
+        if work.startswith(emoji + ' '):
+            work = work[len(emoji) + 1:]
+            break
+    lines = [
+        '[CTX-DELTA]',
+        f'TAG: {tag}',
+        f'WORK: {work}',
+        f'NEXT: {next_step or "(unspecified)"}',
+        f'FILES: {", ".join(paths) if paths else "(none)"}',
+        '[/CTX-DELTA]',
+        '',
+    ]
+    WORK.mkdir(parents=True, exist_ok=True)
+    (WORK / 'ctx_delta.txt').write_text('\n'.join(lines), encoding='utf-8')
+
+
 def do_file(name, flags=None):
     p = Path(name)
     if not p.is_absolute():
@@ -930,7 +1032,8 @@ def do_errors():
 def do_capabilities():
     print(f"run.py v{VERSION}")
     print("FLAGS: --version --init --capabilities --status --tree --hash "
-          "--git --file --files --errors --auto-verify --force "
+          "--git --file --files --errors --diff --ctx "
+          "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP")
@@ -1104,13 +1207,21 @@ def dispatch_capture(args):
 
 
 def dispatch(args):
-    global AUTO_VERIFY, FORCE_APPLY
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP
     if not args: return None
     cmd = args[0]
 
     if cmd in ('--version', '-v'):     print(f"run.py v{VERSION}"); return 0
     if cmd == '--init':                 do_init(); return 0
     if cmd == '--capabilities':         do_capabilities(); return 0
+    if cmd == '--ctx':
+        _p = WORK / 'ctx_delta.txt'
+        if _p.exists():
+            print(_p.read_text(encoding='utf-8').rstrip())
+        else:
+            print('[INFO] no ctx_delta.txt yet')
+        return 0
+    if cmd == '--diff':                 do_diff(); return 0
     if cmd in ('--status', '-s'):       do_status(); return 0
     if cmd in ('--tree', '-t'):         do_tree(); return 0
     if cmd == '--hash':                 do_hash(); return 0
@@ -1133,6 +1244,14 @@ def dispatch(args):
         AUTO_VERIFY = True; return dispatch(args[1:]) if args[1:] else None
     if cmd == '--force':
         FORCE_APPLY = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--fuzzy':
+        FUZZY = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--no-fuzzy':
+        FUZZY = False; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--dry-run':
+        DRY_RUN = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--backup':
+        BACKUP = True; return dispatch(args[1:]) if args[1:] else None
 
     if cmd == 'dump':    do_dump(full=('--full' in args or '-f' in args)); return 0
     if cmd == 'apply':
@@ -1154,7 +1273,7 @@ def dispatch(args):
 
 
 def main():
-    global AUTO_VERIFY, FORCE_APPLY
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
         INPUT.write_text('', encoding='utf-8')
@@ -1167,6 +1286,10 @@ def main():
     if args:
         if '--auto-verify' in args: AUTO_VERIFY = True
         if '--force' in args: FORCE_APPLY = True
+        if '--fuzzy' in args: FUZZY = True
+        if '--no-fuzzy' in args: FUZZY = False
+        if '--dry-run' in args: DRY_RUN = True
+        if '--backup' in args: BACKUP = True
         return dispatch(args)
 
     if INPUT.read_text(encoding='utf-8').strip():

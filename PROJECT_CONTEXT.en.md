@@ -103,6 +103,8 @@ Never jump from step 1 straight to step 3.
 - **Section 33** — Localization Guide
 - **Section 34** — First-Time User Checklist
 - **Section 35** — Minimal `run.py`
+- **Section 36** — Rate-Limit Mitigation
+- **Section 37** — Uploading to GitHub
 
 ---
 
@@ -1713,14 +1715,14 @@ Before sending a message, check:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `en-part-5a-ok` |
-| **Last commit** | after P47 |
-| **Last work** | en: Sections 26, 28–31, 12-7 (no nested fences) |
-| **Next step** | en: Sections 32–36 + READMEs (this patch) |
-| **Current phase** | English translation — final part |
-| **Completion** | 95% EN, 100% FA |
+| **Last safe tag** | `v1.1.0` |
+| **Last commit** | after v1.1 patch |
+| **Last work** | run.py v1.1 — flags + auto-CTX-DELTA; LICENSE; Section 37 |
+| **Next step** | Sync PROJECT_CONTEXT.fa.md with the v1.1 additions |
+| **Current phase** | v1.1 — feature parity with doc |
+| **Completion** | 100% EN, 100% FA (Persian needs v1.1 sync) |
 | **Last error** | none |
-| **Open issues** | READMEs (this patch) |
+| **Open issues** | Persian v1.1 sync; bootstrap helper for newcomers |
 
 ### 13-2. Update
 
@@ -1791,6 +1793,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI can request additional file dumps via `#@NEED: file X` inside `input.txt`.
 - **Reason:** removes one full round trip per verification step.
 - **Alternatives:** user manually runs `python run.py --file X` after applying (rejected — extra step).
+
+**ADR-7: Auto-generated CTX-DELTA from `#@COMMIT:` / `#@TAG:` / `#@NEXT:`**
+
+- **Decision:** after every successful apply, `run.py` writes `_work/ctx_delta.txt` from the directives, so the next chat can bootstrap without the AI having to retype it.
+- **Reason:** the AI sometimes forgets the CTX-DELTA block (Section 10-6). Making `run.py` generate it removes the failure mode.
+- **Alternatives:** AI must remember to write CTX-DELTA manually (rejected — that's the current failure); user must copy-paste (rejected — extra step).
+
+**ADR-8: `--diff`, `--dry-run`, `--backup`, `--fuzzy`, `--no-fuzzy`**
+
+- **Decision:** implement the flags that the doc already advertises, so doc and tool stay in sync.
+- **Reason:** a documented-but-missing flag is worse than no documentation at all — the user loses trust.
+- **Alternatives:** remove them from the doc (rejected — they're useful).
 
 ## Section 14 — Starting a New Chat
 
@@ -2978,6 +2992,80 @@ For a project that will run for days:
 - After every 3–4 messages, take a break of a few minutes.
 
 **Rule of thumb:** treat every chat message as expensive. Make it count.
+
+---
+
+## Section 37 — Uploading to GitHub
+
+> **A short guide to pushing the project to GitHub for the first time and keeping it in sync.**
+
+### 37-1. First-time upload
+
+If the project is not yet on GitHub:
+
+    git init
+    git add -A
+    git commit -m "initial commit"
+    git branch -M main
+    git remote add origin https://github.com/<user>/<repo>.git
+    git push -u origin main
+
+### 37-2. Everyday push
+
+After every batch of local commits:
+
+    git push origin main
+    git push origin --tags
+
+`--tags` pushes local tags so the remote keeps the same safe-point history.
+
+### 37-3. Everyday pull
+
+Before starting a session on a machine that might be behind:
+
+    git pull --rebase
+
+If there are unstaged changes:
+
+    git stash
+    git pull --rebase
+    git stash pop
+
+### 37-4. What should NOT be pushed
+
+`.gitignore` should already exclude:
+
+- `_work/input.txt`, `_work/output.txt`
+- `_work/applied/`
+- `_work/cache.json`, `_work/.patch_id`, `_work/.last_run`
+- `__pycache__/`, `*.pyc`
+- `.venv/`, `venv/`
+- build artefacts
+
+**If any of them got committed before `.gitignore` was set up:** untrack them without deleting locally:
+
+    git rm -r --cached _work
+    git commit -m "chore: untrack _work runtime files"
+
+### 37-5. Recovery if a bad commit was pushed
+
+If the bad commit is the latest and no one has pulled it:
+
+    git reset --hard HEAD~1
+    git push --force-with-lease origin main
+
+**Never** force-push to a shared branch without `--force-with-lease`.
+
+### 37-6. Keeping remote and local in sync
+
+Check the state:
+
+    git status
+    git log --oneline -5
+    git remote -v
+    git branch -vv
+
+The `branch -vv` line shows whether local `main` is ahead or behind `origin/main`.
 
 ---
 
