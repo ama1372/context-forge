@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P75 |
-| Last commit | `8d7e630` |
-| Time | 2026-10-09 18:10 |
-| MSG-SEED | `ee3c2a59` |
+| Last patch | P76 |
+| Last commit | `2b0024a` |
+| Time | 2026-10-09 18:12 |
+| MSG-SEED | `c993a477` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1738,14 +1738,14 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.0.2` |
-| **Last commit** | add 12 README translations |
-| **Last work** | 14 languages total: en, fa, zh, es, ar, hi, fr, ru, pt, de, ja, ko, tr, it |
-| **Next step** | First real test-project, end-to-end cycle with a small CLI |
-| **Current phase** | v1.0.2 — released |
+| **Last safe tag** | `v1.0.3` |
+| **Last commit** | add 5 more READMEs + bar normalizer |
+| **Last work** | 19 languages: added id, vi, th, he, uk + auto-normalized all bars |
+| **Next step** | Add 5 more languages (pl, nl, el, sv, ro) |
+| **Current phase** | v1.0.3 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
-| **Open issues** | First real test-project |
+| **Open issues** | Next batch: pl/nl/el/sv/ro |
 
 ### 13-2. Update
 
