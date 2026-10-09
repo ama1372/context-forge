@@ -1,32 +1,21 @@
-# MSG-SEED: 6f4d2725
+# MSG-SEED: b44edee5
 [APPLY]
 
-# PATCH_ID: 46
+# PATCH_ID: 47
 
-[P46] [EDIT] run.py
+[P47] [EDIT] PROJECT_CONTEXT.en.md
   [OK]   [1/1] applied
-[P46] [EDIT] run.py
-  [OK]   [1/1] applied
-[P46] [EDIT] run.py
-  [OK]   [1/1] applied
-[P46] [EDIT] run.py
-  [OK]   [1/1] applied
-[P46] [EDIT] run.py
-  [OK]   [1/1] applied
-[P46] [EDIT] run.py
-  [OK]   [1/1] applied
-[P46] [EDIT] run.py
-  [OK]   [1/1] applied
-[P46] [EDIT] run.py
-  [OK]   [1/1] applied
-[P46] [EDIT] PROJECT_CONTEXT.en.md
+[P47] [EDIT] PROJECT_CONTEXT.en.md
+  [HASH] expected: a1b2c3d4e5f6
+  [HASH] actual:   fc1df8a29243
+  [WARN] hash mismatch - applying anyway
   [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 46  |  OK: 9  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 47  |  OK: 2  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0046-20261009-145047.txt
+[ARCH] _work\applied\P0047-20261009-145305.txt
        input.txt emptied - ready for next patch
 
-[GIT] commit: ⚡ run.py: compact autodump + #@NODUMP; 🐛 en: complete 25-3..25-7 (indented markers)
-[GIT] tag: en-part-4b-ok
+[GIT] commit: 🌍 en: sections 26, 28–31 + 12-7 (no nested fences rule)
+[GIT] tag: en-part-5a-ok

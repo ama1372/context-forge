@@ -1,93 +1,51 @@
-# 🔨 context-forge
+# PROJECT_CONTEXT
 
-> **Universal PROJECT_CONTEXT template + `run.py` for AI-assisted coding.**
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/status-active-success.svg)]()
+A single-document protocol for building software with an AI (DeepSeek, Claude, GPT, Gemini). Every AI message is a code patch + a context patch. Everything travels through `_work/input.txt` and `_work/output.txt`, applied by one tool: `run.py`.
 
 <p align="center">
   <b>English</b> ·
-  <a href="README.fa.md">فارسی</a> ·
-  <a href="README.ar.md">العربية</a>
+  <a href="README.fa.md">فارسی</a>
 </p>
 
----
+## What it solves
 
-## 🎯 مشکل
+- **Chat limits.** The context is updated in every message, so a new chat can resume with just this document + a status dump.
+- **Token burn.** Flags in `run.py` let the AI ask only for what it needs — `--status` is ~300 bytes, `--file X` is a few KB.
+- **Anchor drift.** Fuzzy matching + hash verification keep patches valid even after edits.
+- **Account blocking.** MSG-SEED + batching + time spacing keep the account safe.
 
-اگر با AI کد می‌زنی، این دردها را دیده‌ای:
+## Files
 
-- ❌ چت به لیمیت می‌خورد → از صفر توضیح بده.
-- ❌ توکن‌سوزی → هر بار کل پروژه را بفرست.
-- ❌ AI لنگر را اشتباه می‌زند → کد خراب می‌شود.
-- ❌ اکانت مسدود می‌شود → پیام‌های تکراری.
-- ❌ AI یادش می‌رود کانتکست بدهد → چت جدید گم می‌شود.
+| File | Role |
+|------|------|
+| `PROJECT_CONTEXT.md` | The constitution — rules, workflow, templates |
+| `run.py` | The only tool — dump / apply / commit / tag |
+| `_work/` | The AI communication folder |
 
-## 💡 راه‌حل
+## Quick start
 
-**context-forge** یک سند واحد + یک ابزار است:
+    python run.py --init
 
-- ✅ **PROJECT_CONTEXT.md** — قانون اساسی (۳۷+ بخش، همه‌چیز این‌جاست).
-- ✅ **run.py** — ابزار فلگ‌محور با ۱۵+ فلگ.
-- ✅ **Pull نه Push** — AI فقط چیزی را می‌خواهد که لازم دارد.
-- ✅ **MSG-SEED** — ضد مسدود شدن اکانت.
-- ✅ **CTX-DELTA** — ضد فراموشی کانتکست.
+Then place `PROJECT_CONTEXT.md` in the project root, open a chat with the AI, and paste the document.
 
-## 🚀 شروع سریع
+The AI writes a patch. You drop it into `_work/input.txt` and run:
 
-    git clone https://github.com/ama1372/context-forge.git my-project
-    cd my-project
-    mkdir _work
-    python run.py --version
-    python run.py --status
+    python run.py
 
-## 📂 ساختار (حداقلی)
+The AI's next message is built from `_work/output.txt`.
 
-    my-project/
-    ├── PROJECT_CONTEXT.md   ← همه‌چیز این‌جاست
-    ├── run.py               ← ابزار
-    ├── README.md            ← همین فایل
-    ├── LICENSE              ← MIT
-    ├── .gitignore
-    └── _work/               ← ارتباط با AI
+## Language
 
-## 🔄 گردش کار روزمره
+The main document is English. Translations live in sibling files:
 
-    1. AI یک پچ می‌دهد.
-    2. آن را در _work/input.txt می‌ریزی.
-    3. python run.py
-    4. _work/output.txt را به AI می‌دهی.
-    5. AI وضعیت را می‌بیند و پچ بعدی را می‌دهد.
+- `PROJECT_CONTEXT.md` — English
+- `PROJECT_CONTEXT.fa.md` — Persian (in progress)
+- (more to come — see Section 33 in the main document)
 
-## 📚 مستندات کامل
+## License
 
-همه‌چیز در **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)**:
-
-- قوانین طلایی AI و قالب پاسخ اجباری
-- گردش کار `run.py`، فلگ‌ها، مشخصات پارسر
-- Hash verification و fuzzy matching
-- MSG-SEED (ضد مسدود شدن اکانت)
-- CTX-DELTA (ضد فراموشی کانتکست)
-- خط قرمزها، git workflow، تست، رفع باگ، افزودن قابلیت
-- Anti-patterns و Definition of Done
-- Troubleshooting و نمونه‌های کامل
-
-## 🎁 چرا متفاوت است؟
-
-- **عمومی** — بدون محتوای اختصاصی.
-- **بی‌هویت** — بدون اشاره به نویسنده یا پروژه‌ی مبدأ.
-- **یک سند، یک ابزار** — بدون شلوغی فایل‌ها.
-- **چندزبانه (در آینده)** — فارسی، انگلیسی، عربی.
-
-## 📜 لایسنس
-
-MIT — استفاده‌ی آزاد برای همه.
-
-## 🤝 مشارکت
-
-اول [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) را بخوان.
+See `LICENSE`.
 
 ---
 
-⭐ اگر این پروژه کمکت کرد، یک ستاره بده.
+*This README is a pointer. Everything lives in `PROJECT_CONTEXT.md`.*

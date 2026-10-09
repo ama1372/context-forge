@@ -1713,14 +1713,14 @@ Before sending a message, check:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `<tag>` |
-| **Last commit** | `<after P N>` |
-| **Last work** | `<one-line description>` |
-| **Next step** | `<one-line description>` |
-| **Current phase** | `<phase name>` |
-| **Completion** | `<percent>` |
-| **Last error** | `<none or text>` |
-| **Open issues** | `<list>` |
+| **Last safe tag** | `en-part-5a-ok` |
+| **Last commit** | after P47 |
+| **Last work** | en: Sections 26, 28–31, 12-7 (no nested fences) |
+| **Next step** | en: Sections 32–36 + READMEs (this patch) |
+| **Current phase** | English translation — final part |
+| **Completion** | 95% EN, 100% FA |
+| **Last error** | none |
+| **Open issues** | READMEs (this patch) |
 
 ### 13-2. Update
 
@@ -2683,4 +2683,302 @@ After success: `git stash drop`. After failure: `git stash pop`.
 - Gradual rewrite.
 - User approval at each step.
 
-<!-- CONTINUE: 32 -->
+## Section 32 — Quick Start Walkthrough (zero to first patch)
+
+### 32-1. Prerequisites
+
+- Python 3.8 or newer
+- An empty folder (new project) or an existing project
+- An AI (DeepSeek is recommended — it executes anchor/replace most precisely)
+
+### 32-2. Steps
+
+**Step 1 — Create the base structure**
+
+In the project root:
+
+    python run.py --init
+
+That creates `_work/`, `_work/applied/`, an empty `.gitignore`, and empty `input.txt` / `output.txt`.
+
+**Step 2 — Place this document**
+
+`PROJECT_CONTEXT.md` (this file) goes in the project root.
+
+**Step 3 — Ensure `run.py` exists**
+
+The full `run.py` reference is in the project root. If you don't have it yet, copy it from the project you obtained this document from — or ask the AI to help you bootstrap it from Section 35.
+
+**Step 4 — Smoke test**
+
+    python run.py --version
+    python run.py --status
+
+If both run without errors, you're ready.
+
+**Step 5 — First chat with the AI**
+
+Paste this document into the chat and send:
+
+    New project. This document is the rulebook.
+    run.py is installed.
+    Goal: <one-line description>
+    First feature: <one-line description>
+
+**Step 6 — Receive a patch**
+
+The AI returns a block starting with `#@COMMIT:` and `#@TAG:`. Drop the whole block into `_work/input.txt`.
+
+**Step 7 — Apply**
+
+    python run.py
+
+On success, the run commits and tags automatically.
+
+**Step 8 — Send status back to the AI**
+
+    python run.py --status
+
+Paste the output into the chat.
+
+**Step 9 — Repeat**
+
+Back to Step 6. Every AI message = one patch. Every patch = one commit + tag.
+
+### 32-3. Success indicators
+
+- Every patch applies without FAIL.
+- `output.txt` starts with `# MSG-SEED:`.
+- The AI's reply ends with `[CTX-DELTA]`.
+- git tags accumulate in order.
+
+### 32-4. Quick debugging
+
+| Problem | Fix |
+|---------|-----|
+| `python` not recognized | Is Python installed? Is it on PATH? |
+| `anchor not found` | Run `python run.py --file X` and copy the anchor from the real file |
+| `input.txt` not applied | Save the file as UTF-8 |
+| AI doesn't give a patch | Did you paste this document? |
+| Chat hit the limit | Open a new chat, send document + `--status` |
+| `_work` not found | Run `python run.py --init` |
+
+### 32-5. Golden rule
+
+> **No test, no commit. No commit, no next patch.**
+
+---
+
+## Section 33 — Localization Guide (how to translate)
+
+### 33-1. Why localize
+
+`PROJECT_CONTEXT.md` is a global document. Translating it opens it to more users.
+
+### 33-2. Which files to translate
+
+| File | Translate? | Note |
+|------|------------|------|
+| README.md | ✅ Recommended | For the GitHub landing page |
+| PROJECT_CONTEXT.md | ⚠️ Optional | Only for major languages |
+| run.py | ❌ No | Code — its docstring is enough |
+| LICENSE | ❌ No | Legal text must be English |
+
+### 33-3. Naming pattern
+
+    README.md              ← primary language (English)
+    README.fa.md           ← Persian
+    README.ar.md           ← Arabic
+    README.zh.md           ← Chinese
+
+    PROJECT_CONTEXT.md     ← English
+    PROJECT_CONTEXT.fa.md  ← Persian
+
+### 33-4. Translating README — practical pattern
+
+**Step 1:** Keep the primary language.
+
+**Step 2:** At the top of the README, list the languages:
+
+    <p align="center">
+      <b>English</b> ·
+      <a href="README.fa.md">فارسی</a> ·
+      <a href="README.ar.md">العربية</a>
+    </p>
+
+**Step 3:** Create the new file: `README.fa.md`.
+
+**Step 4:** Translate the English content, but:
+- Leave file names unchanged (`run.py`, `PROJECT_CONTEXT.md`).
+- Leave commands unchanged (`git clone ...`, `python run.py --status`).
+- Leave tag names unchanged (`v1.1.0`).
+
+### 33-5. Translating PROJECT_CONTEXT.md
+
+**Important:** this document contains parser markers:
+
+- `===== FILE =====`
+- `<<<FIND>>>`, `<<<REPLACE>>>`, `<<<END>>>`
+- `# MSG-SEED`
+
+**Never translate these.** Only translate the surrounding prose.
+
+### 33-6. Translation notes
+
+1. **Technical terms:** use the standard equivalent if one exists. Otherwise keep the English original.
+2. **Section numbers:** do not renumber. `Section 5` stays `Section 5` in every language.
+3. **Internal links:** if an anchor exists (`#section-5`), translate it or keep it — depending on GitHub support.
+4. **RTL/LTR:** in right-to-left text, wrap code and commands in `LTR` or `bdi`.
+
+### 33-7. Code pattern in translation
+
+In the Persian document:
+
+    To install:
+    git clone https://github.com/...
+
+Keep commands in their own code blocks.
+
+### 33-8. If the translation is incomplete
+
+That's fine. A half-translated file still has value. Add at the top:
+
+    > ⚠️ This translation is incomplete. Contributions welcome.
+
+### 33-9. Contributing a translation
+
+- Create a new file.
+- Link it from the main README.
+- Send a PR.
+
+---
+
+## Section 34 — First-Time User Checklist
+
+### 34-1. If you're new
+
+Before doing anything, walk through this checklist:
+
+- [ ] I opened `PROJECT_CONTEXT.md` and read Section 1.
+- [ ] I placed `run.py` in the root.
+- [ ] I ran `python run.py --init`.
+- [ ] `.gitignore` exists (or I used the template).
+- [ ] I ran `git init` and made the first commit.
+- [ ] `python run.py --version` works.
+- [ ] `python run.py --status` works.
+- [ ] I filled Section 2 (Identity).
+- [ ] I filled Section 2-4 (red lines).
+- [ ] I filled Section 13 (Session Tracker).
+- [ ] I opened the first chat with the AI and sent document + goal.
+
+### 34-2. Success indicators
+
+When everything is right:
+
+- Every AI patch applies without FAIL.
+- `output.txt` starts with `# MSG-SEED`.
+- Every AI reply ends with `[CTX-DELTA]`.
+- Every change gets an automatic commit.
+- git tags accumulate in order.
+
+### 34-3. If something doesn't work
+
+In order:
+
+1. `python run.py --errors` — see which patch failed.
+2. `python run.py --file <failing file>` — see the real anchor.
+3. `git log --oneline -10` — find the last healthy commit.
+4. `git reset --hard <last-safe-tag>` — roll back.
+
+**If none of these work:** open a new chat, send document + `--status` + the error text.
+
+### 34-4. Golden tips
+
+1. **Always pull, not push.** `--status` first, `--file X` second, `dump --full` last.
+2. **Every AI message must have `[CTX-DELTA]`.** If not, remind it.
+3. **Keep the MSG-SEED.** It's your anti-block shield.
+4. **Space out messages.** At least 30 seconds between sends.
+5. **No commit without a test.**
+6. **No next patch without a commit.**
+
+### 34-5. Wrap-up
+
+If all checklists pass, **your project is ready.**
+
+Follow the rules in this document, and the AI always knows where it is, what it needs, and how to help.
+
+**Good luck.**
+
+---
+
+## Section 35 — Minimal `run.py`
+
+The full reference `run.py` ships in the project root and supports every flag in Section 6, every patch type in Section 7, and every directive in Section 5-0-4.
+
+**Do not copy-paste `run.py` from this document.** Copy the file directly from the project root — that avoids fence-nesting problems entirely (Section 12-7) and keeps the version consistent.
+
+If you don't have `run.py` yet, the fastest path is:
+
+1. Ask the AI: "Bootstrap a minimal run.py for this project. It should support `--init`, `--status`, `--file X`, and the `FILE` / `CREATE` / `DELETE` patch types."
+2. Drop the AI's patch into `_work/input.txt` and run `python run.py`.
+3. Then ask the AI to upgrade it step by step toward the full reference.
+
+---
+
+## Section 36 — Rate-Limit Mitigation
+
+> **🔴 How to work fast without getting blocked by the chat provider.**
+
+### 36-1. The problem
+
+DeepSeek, Claude, OpenAI, and others throttle messages that arrive too fast, or that look too similar to each other. Local tools (`run.py`) don't have any such limit — only the **chat service** does.
+
+Symptoms:
+
+- `Messages too frequent. Try again later.`
+- `Rate limit exceeded.`
+- `Account warning` (temporary).
+
+### 36-2. Six mitigations (ranked by impact)
+
+1. **Batch.** One big `input.txt` with 2–4 patches beats 4 small ones. Same for questions: one message with 2 questions beats 2 messages with 1. See Section 4-16.
+
+2. **MSG-SEED.** `run.py` writes a fresh `# MSG-SEED:` line at the top of every output. Paste the output including that line — each message looks unique.
+
+3. **Time spacing.** Wait at least 30 seconds between sends. `run.py` prints a `RATE WARN:` line if you ran it under 25 seconds ago — respect it.
+
+4. **Structural variety.** Don't send the exact same shape every time. Sometimes start with `--status`, sometimes with `--file X`, sometimes with a one-line prose summary before the block.
+
+5. **Batch questions.** If you have 3 things to ask, put them in one message. The chat provider counts *messages*, not *tokens*.
+
+6. **Switch models occasionally.** If you hit a hard limit on one provider, switch to another for an hour. The limit is per-account.
+
+### 36-3. What does NOT help
+
+- Sending the same message again immediately — makes it worse.
+- Removing the MSG-SEED — makes the messages look identical.
+- Splitting a patch into more, smaller messages — multiplies the rate.
+- Using `clear` to hide the log — no effect on the chat provider.
+
+### 36-4. Emergency plan
+
+If you get `Messages too frequent`:
+
+1. **Stop sending.** Don't retry.
+2. **Wait 5–15 minutes.** The local run already worked — you have the `output.txt` ready.
+3. **Come back with one batched message.** The MSG-SEED alone makes it unique.
+4. **If the block persists:** wait 30 minutes, then try a different model in the same provider, or a different provider.
+
+### 36-5. Long-term pattern
+
+For a project that will run for days:
+
+- Batch aggressively — one message every 5–10 minutes, not every 30 seconds.
+- Keep a local note of what each patch did — the `output.txt` archive in `_work/applied/` is already that.
+- After every 3–4 messages, take a break of a few minutes.
+
+**Rule of thumb:** treat every chat message as expensive. Make it count.
+
+---
+
+*End of PROJECT_CONTEXT.en.md — 2026 edition.*
