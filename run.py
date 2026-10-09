@@ -31,7 +31,7 @@ Directives (in _work/input.txt, first lines):
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.md section 2.
 """
 
-import difflib, hashlib, json, os, re, secrets, shutil, subprocess, sys
+import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
@@ -204,9 +204,15 @@ def read_directives(text):
         m = re.match(r'^#@ID:\s*(\d+)', s)
         if m: patch_id = int(m.group(1)); idx += 1; continue
         m = re.match(r'^#@CMD:\s*(.+)$', s)
-        if m: cmd_args = m.group(1).strip().split(); idx += 1; continue
+        if m:
+            try: cmd_args = shlex.split(m.group(1).strip())
+            except ValueError: cmd_args = m.group(1).strip().split()
+            idx += 1; continue
         m = re.match(r'^#@POST:\s*(.+)$', s)
-        if m: post_cmds.append(m.group(1).strip().split()); idx += 1; continue
+        if m:
+            try: post_cmds.append(shlex.split(m.group(1).strip()))
+            except ValueError: post_cmds.append(m.group(1).strip().split())
+            idx += 1; continue
         break
     return patch_id, cmd_args, post_cmds, '\n'.join(lines[idx:])
 
@@ -998,9 +1004,18 @@ def do_init():
 
 def dispatch_capture(args):
     import io, contextlib
+    backup = None
+    if OUTPUT.exists():
+        try: backup = OUTPUT.read_text(encoding='utf-8')
+        except Exception: backup = None
     buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        dispatch(args)
+    try:
+        with contextlib.redirect_stdout(buf):
+            dispatch(args)
+    finally:
+        if backup is not None:
+            try: OUTPUT.write_text(backup, encoding='utf-8')
+            except Exception: pass
     return buf.getvalue().rstrip()
 
 
