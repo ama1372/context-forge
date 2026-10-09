@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P78 |
-| Last commit | `40fda3a` |
-| Time | 2026-10-09 18:16 |
-| MSG-SEED | `1940377b` |
+| Last patch | P79 |
+| Last commit | `ca90572` |
+| Time | 2026-10-09 18:19 |
+| MSG-SEED | `e71ce2b3` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -248,7 +248,13 @@ If the user said:
 > "Okay. First copy `run.py` from Section 35 of this document into a file called `run.py` in your project folder."
 
 **Step 3 — If they don't have Python:**
-> "First install Python: python.org/downloads — then we continue."
+
+> "Python runs the reference tool. Two options:
+>
+> (a) Install Python from python.org/downloads — then we continue.
+> (b) Tell me which language your project is in, and I'll rewrite the tool in that language instead."
+
+Wait for the user's answer. See Section 0-C-13 for the rewrite contract.
 
 **Step 4 — Confirm after each step:**
 > "Done? Run `python run.py --version` and send the output."
@@ -637,6 +643,88 @@ The document's language ≠ the reply's language. That is the entire point of th
 
 ---
 
+## Section 0-C-13 — The tool is a reference, not a requirement
+
+> **🔴 `run.py` is the Python *reference implementation*. The protocol is language-neutral.**
+
+### 0-C-13-1. What is fixed and what is not
+
+**Fixed (the protocol):**
+
+- The files `_work/input.txt` and `_work/output.txt`.
+- The patch syntax: block headers, `<<<FIND>>>`, `<<<REPLACE>>>`, `<<<CONTENT>>>`, `<<<END>>>`, `<<<RUN>>>`, `<<<EXPECTED_HASH>>>`.
+- The block types: FILE, CREATE, DELETE, MOVE, MKDIR, CMD, DUMP.
+- The directives: `#@ID`, `#@CMD`, `#@POST`, `#@NEED`, `#@COMMIT`, `#@TAG`, `#@NEXT`, `#@ROADMAP`, `#@PUSH`, `#@NODUMP`, `#@DUMP`.
+- The flags: `--status`, `--file X`, `--files ...`, `--errors`, `--diff`, `--ctx`, `--check-md`, `--check-sections`, `--init`, `--capabilities`, `--version`, `dump`, `apply`, `check`, `verify`, `clean`.
+- The output contract: MSG-SEED header, APPLY report, AUTODUMP on failure, auto-commit on `FAIL: 0`, ctx_delta save.
+
+**Not fixed (the implementation):**
+
+- The **language** the tool is written in.
+- The **runtime** the tool depends on.
+
+`run.py` is the Python reference. **The AI may rewrite it in the language the user's project uses** — Rust, Go, Node, C#, Java, Ruby, whatever — as long as it behaves identically.
+
+### 0-C-13-2. When to keep Python
+
+Keep `run.py` as-is when:
+
+- Python 3.8+ is available on the user's machine.
+- The user's project is Python, or the project is language-agnostic.
+- The user has no preference.
+
+**Advantage:** zero rewrite cost. The reference tool is battle-tested.
+
+### 0-C-13-3. When to rewrite in the project language
+
+The AI **should offer** to rewrite the tool when:
+
+- The user's project is in Rust/Go/Node/C#/etc. and the user's environment has no Python.
+- The user explicitly asks: *"I don't want to install Python. Rewrite the tool in <language>."*
+- The user's CI only has the project's native toolchain.
+
+The rewritten tool lives at the same path: `run.<ext>` (e.g. `run.rs`, `run.go`, `run.js`, `run.ts`, `run.cs`). Or keep `run.py` if Python is available — the choice is the user's.
+
+### 0-C-13-4. Contract for a rewritten tool
+
+A rewritten tool **must** implement the same observable behaviour:
+
+1. Read `_work/input.txt` (UTF-8).
+2. Parse the same directives (`#@...`).
+3. Parse the same patch blocks (FILE/CREATE/DELETE/MOVE/MKDIR/CMD/DUMP).
+4. Apply patches with the same fuzzy-match levels (exact, then rstrip, then strip, then nearest).
+5. Write `_work/output.txt` with the same sections: MSG-SEED, `[APPLY]`, per-op status, `[ARCH]`, summary, POST, NEED, auto-commit lines.
+6. Support the same flags with the same semantics.
+7. Archive the applied patch to `_work/applied/P<id>-<ts>.txt`.
+8. Auto-commit + auto-tag on `FAIL: 0` when git is available.
+9. Save `_work/ctx_delta.txt` from the directives.
+10. Print the same `[GIT]` and `[CTX]` lines.
+
+**If a rewritten tool skips any of these, the protocol breaks.** The AI must not "simplify".
+
+### 0-C-13-5. How the AI decides
+
+Ask the user:
+
+> "Your project is in <language>. Do you want me to keep `run.py` (Python — simplest, works with any project), or rewrite the tool in <language>?"
+
+Default: **keep `run.py`**. Rewrite only on request or when Python is unavailable.
+
+### 0-C-13-6. What the AI must never do
+
+- Never assume the user has Python.
+- Never assume the user's project is Python.
+- Never rewrite the tool silently without telling the user.
+- Never rewrite the tool with fewer features.
+- Never rename `_work/input.txt` or `_work/output.txt` in the rewrite.
+- Never change the patch syntax in the rewrite.
+
+### 0-C-13-7. The document's own examples
+
+All examples in this document use `python run.py` as the command. **Substitute** the equivalent (`cargo run --bin run`, `node run.js`, `go run run.go`, etc.) when the tool has been rewritten. The examples are for the reference; the protocol is the same.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -736,8 +824,9 @@ Please explain this code line by line, so a beginner understands.
 |-------|-------|
 | **Project name** | `<name>` |
 | **Current version** | `<e.g. 1.0.0>` |
-| **Programming language** | `<e.g. Python 3.11>` |
+| **Programming language** | `<e.g. Python 3.11, Rust 1.75, Node 20, Go 1.22>` |
 | **Framework / main libraries** | `<e.g. PyQt5, requests>` |
+| **Tool language** | `<python (default) | same as project | other — see Section 0-C-13>` |
 | **Target OS** | `<e.g. Windows 10/11>` |
 | **Dev environment** | `<e.g. VS Code + venv>` |
 | **Project path** | `<full path>` |
@@ -752,7 +841,8 @@ Please explain this code line by line, so a beginner understands.
 ```
 <project-name>/
 ├── PROJECT_CONTEXT.md      ← this document
-├── run.py                  ← dump/apply tool
+├── run.py                  ← reference tool (Python)
+│                              or run.<ext> if rewritten in the project language
 ├── _work/
 │   ├── input.txt           ← AI patches (user → project)
 │   ├── output.txt          ← dump (project → AI)
@@ -1188,7 +1278,8 @@ The user runs `python run.py` (no flags). Everything else is automatic.
    ├── output.txt     (empty)
    ├── applied/       (empty)
    └── cache.json     (optional — created automatically)
-3. Build run.py from the template in Section 35
+3. Put run.py in the project root (Section 35), or ask the AI to
+   rewrite it in the project's language (Section 0-C-13).
 4. Configure .gitignore:
    _work/input.txt
    _work/output.txt
@@ -1738,11 +1829,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.0.5` |
-| **Last commit** | final 5 READMEs + banner SVG |
-| **Last work** | v1.0.5: 24 languages total (added pl, nl, el, sv, ro); banner SVG in README.md |
+| **Last safe tag** | `v1.0.6` |
+| **Last commit** | declare run.py as reference; protocol is language-agnostic |
+| **Last work** | v1.0.6: Section 0-C-13 (tool rewrite contract); updated 0-C-4-B, 2-1, 2-3, 5-1, 26-1, 32-1, 35; ADR-16 |
 | **Next step** | Share on communities (Reddit, HN, awesome-lists) |
-| **Current phase** | v1.0.5 — released |
+| **Current phase** | v1.0.6 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | Distribution: share on communities; first real test-project |
@@ -1999,6 +2090,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** `PROJECT_CONTEXT.en.md` is the only rule document. Translated rule documents (e.g. `PROJECT_CONTEXT.fa.md`) are **not maintained**. Only READMEs may be translated.
 - **Reason:** a translated rule document drifts out of sync within two patches; the reply-language is already handled by Section 0-C-9. Maintaining two rule documents duplicates effort for no benefit.
 - **Alternatives:** maintain a Persian rule document in parallel (rejected - proven drift in this project); auto-generate translations on every patch (rejected - token-heavy, fragile).
+
+**ADR-16: The tool is a reference, not a requirement (Section 0-C-13)**
+
+- **Decision:** `run.py` (Python) is the **reference implementation** of the tool. The protocol it implements is language-neutral. The AI may rewrite the tool in the user's project language (Rust, Go, Node, C#, etc.) provided it behaves identically (same flags, same directives, same patch syntax, same output sections).
+- **Reason:** the protocol is about discipline (files, patches, directives, MSG-SEED, auto-commit), not about Python. Forcing Python on a Rust project's user is a needless barrier. Documenting the rewrite contract keeps the protocol universal.
+- **Alternatives:** mandate Python everywhere (rejected — excludes projects without a Python runtime); ship separate tools per language (rejected — maintenance burden, N× drift risk).
 
 ## Section 14 — Starting a New Chat
 
@@ -2504,6 +2601,8 @@ When a patch fails, `run.py` appends an AUTODUMP block with the failed file's co
 
 ### 26-1. `run.py` reference
 
+> **Note:** `run.py` is the **Python reference implementation**. The protocol it implements is language-neutral — the AI may rewrite the tool in the user's project language (Section 0-C-13).
+
 The full reference implementation of `run.py` lives in this project's root as `run.py`. It supports:
 
 - All flags in Section 6.
@@ -2902,9 +3001,11 @@ After success: `git stash drop`. After failure: `git stash pop`.
 
 ### 32-1. Prerequisites
 
-- Python 3.8 or newer
 - An empty folder (new project) or an existing project
 - An AI (DeepSeek is recommended — it executes anchor/replace most precisely)
+- A runner for the tool:
+  - **Python 3.8 or newer** (default — the reference tool is `run.py`), **or**
+  - **The project's own language toolchain** (Rust, Node, Go, etc.) — if the AI rewrites the tool (Section 0-C-13)
 
 ### 32-2. Steps
 
@@ -3124,7 +3225,7 @@ Follow the rules in this document, and the AI always knows where it is, what it 
 
 ---
 
-## Section 35 - Full `run.py` source (bootstrap)
+## Section 35 - Full `run.py` source (Python reference)
 
 > **One-file distribution.** This section contains the entire `run.py`. A newcomer who only has this document can be bootstrapped by an AI that emits the block below as a CREATE patch inside `input.txt`.
 
