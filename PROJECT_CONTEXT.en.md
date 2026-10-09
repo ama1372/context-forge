@@ -1665,6 +1665,31 @@ Before sending a message, check:
 
 ---
 
+### 12-7. Never nest fences in the English document
+
+> **New red line for `PROJECT_CONTEXT.en.md` itself.**
+
+**Forbidden:** any triple-backtick or multi-backtick fence nested inside another fence in this document.
+
+**Reason:** markdown collapses nested fences — the outer fence closes at the first inner fence whose length is ≥ the outer length. The remaining content is then parsed as normal markdown, and backslashes, `$`, and asterisks get eaten.
+
+**Rule:** every embedded example inside this document uses **4-space indentation only** — never a fence inside a fence.
+
+**Safe:**
+
+    ===== FILE: src/main.py =====
+    <<<FIND>>>
+    def f():
+        pass
+    <<<REPLACE>>>
+    def f():
+        return 1
+    <<<END>>>
+
+**Unsafe (do NOT do this in the document):** wrapping the above example in ` ``` ` inside another ` ``` `.
+
+**If you must show a markdown fence as content:** show it as a line of backticks with 4-space indent — not as a real fence.
+
 ### 12-6. Golden rule for the AI: `input.txt` output format
 
 **Every time the AI wants to give a patch, it must give the entire `input.txt` in a single code block** — not piecemeal, not with prose in between.
@@ -2260,4 +2285,402 @@ When a patch fails, `run.py` appends an AUTODUMP block with the failed file's co
 
 **Rule of thumb:** for small projects (<500 lines per file), `compact` is fine. For big files, add `#@NODUMP:` and re-anchor manually with `python run.py --file X`.
 
-<!-- CONTINUE: 26 -->
+## Section 26 — Appendix: Full Examples
+
+### 26-1. `run.py` reference
+
+The full reference implementation of `run.py` lives in this project's root as `run.py`. It supports:
+
+- All flags in Section 6.
+- All patch types in Section 7.
+- All directives in Section 5-0-4 (`#@ID`, `#@CMD`, `#@POST`, `#@NEED`, `#@COMMIT`, `#@TAG`, `#@NODUMP`, `#@DUMP`).
+- MSG-SEED on every output.
+- Rate warnings between fast runs.
+- Compact autodump of failed files (first 25 + last 25 lines).
+- Auto-commit + auto-tag on `FAIL: 0`.
+
+If you're starting from scratch, copy the minimal version from Section 35 and let the AI upgrade it step by step.
+
+### 26-2. A complete patch example
+
+    ===== FILE: src/main.py =====
+    <<<EXPECTED_HASH>>>a1b2c3d4e5f6<<<END>>>
+    <<<FIND>>>
+    def validate_phone(phone):
+        pattern = r'^\+?[0-9]{10,15}$'
+        return re.match(pattern, phone) is not None
+    <<<REPLACE>>>
+    def validate_phone(phone):
+        pattern = r'^\+?[0-9]{10,15}$'
+        return re.match(pattern, phone) is not None
+
+
+    def validate_email(email):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
+    <<<END>>>
+
+### 26-3. A new-chat message
+
+    Continuing the project. Here is the document and current state:
+
+    [paste document]
+
+    [paste python run.py --status output]
+
+    Goal of this chat: continue adding tests.
+
+### 26-4. A complete AI message with directives
+
+See Section 5-0-4 for the directive list and Section 25-6 for the message shape.
+
+A minimal real example (indent = 4 spaces, no nested fences):
+
+    # INPUT: add validate_email
+    #@COMMIT: ✨ step-15: add validate_email
+    #@TAG: step-15-ok
+    #@POST: verify
+    #@NEED: file src/utils.py
+
+    ===== FILE: src/main.py =====
+    <<<FIND>>>
+    def validate_phone(phone):
+        pattern = r'^\+?[0-9]{10,15}$'
+        return re.match(pattern, phone) is not None
+    <<<REPLACE>>>
+    def validate_phone(phone):
+        pattern = r'^\+?[0-9]{10,15}$'
+        return re.match(pattern, phone) is not None
+
+
+    def validate_email(email):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
+    <<<END>>>
+
+    [CTX-DELTA]
+    TAG: step-15-ok
+    WORK: add validate_email
+    NEXT: add validate_url
+    FILES: src/main.py
+    [/CTX-DELTA]
+
+    ---
+    If there was an error: run `python run.py` and send `_work/output.txt`.
+
+---
+
+## Section 28 — Anti-Patterns
+
+### 28-1. Anti-patterns for the AI
+
+| Anti-pattern | Why bad | Alternative |
+|--------------|---------|-------------|
+| Rewriting the whole file | Loses the user's code | FIND/REPLACE only |
+| Anchor from memory | Mismatch errors | Anchor from the real file |
+| Adding an unapproved feature | Out of scope | Ask, then patch |
+| Long explanation | Token waste | One line is enough |
+| Parser marker in content | File corruption | 4-space indent |
+| Unsolicited suggestions | Annoyance | Only when asked |
+| "Maybe" and "it seems" | Uncertainty | Definite and precise |
+| Guessing a library API | Runtime error | Ask for docs |
+| Forgetting the context | Hit the limit | CTX-DELTA in every message |
+| Forgetting the commit | Lost changes | `#@COMMIT:` in every patch |
+| Many tiny `input.txt` files | Account-block risk | Batch 2–4 patches per file |
+| Test/commit in chat | Extra manual step | Use `#@COMMIT:` / `#@TAG:` |
+| Full autodump of huge files | Token waste on errors | `#@NODUMP:` or compact mode |
+| Nested markdown fences in docs | Renders as garbage | 4-space indent only |
+
+### 28-2. Anti-patterns for the user
+
+| Anti-pattern | Why bad | Alternative |
+|--------------|---------|-------------|
+| Applying code without understanding | Future bugs | Ask the AI to explain |
+| Applying code without testing | Breaks the healthy version | Always test |
+| Applying code without committing | Hard to roll back | tag + commit |
+| Sending similar messages | Account blocking | MSG-SEED + batching |
+| Ignoring dump errors | Problem persists | Look with `--errors` |
+| Running unknown commands | Security risk | Ask for explanation first |
+| Ignoring red lines | Project damage | Read Section 15 |
+| Forgetting backups | Data loss | tag + cp -r |
+
+### 28-3. Anti-patterns for the project
+
+| Anti-pattern | Why bad | Alternative |
+|--------------|---------|-------------|
+| Duplicate code | Tech debt | Shared function |
+| Hard-coded paths | Portability | pathlib |
+| Hard-coded language | No i18n | Translation file |
+| No try/except | Crashes | Error handling |
+| No logging | Hard to debug | logger |
+| No tests | Regressions | Unit tests |
+| 5000-line file | Hard to read | Modular |
+| 200-line function | Hard to test | Split into smaller |
+| No docs | The next dev is lost | docstring |
+
+---
+
+## Section 29 — Definition of Done
+
+### 29-1. When is a task done?
+
+A task is considered done only when:
+
+1. Code is written.
+2. Compiles/runs without errors.
+3. Test performed.
+4. Exact anchor saved (in `applied/`).
+5. Context updated (CTX-DELTA + sections).
+6. Committed with a proper message.
+7. Tagged (`step-XX-ok`).
+8. User confirmed — not just the AI.
+9. In-code docs updated (docstring, comments).
+10. Registered in CHANGELOG (if the project is large).
+
+### 29-2. When is a phase done?
+
+1. All tasks pass Definition of Done.
+2. Regression tests run — nothing broke.
+3. User confirmed.
+4. Phase tag created (`phase-N-done`).
+5. Phase context recorded.
+
+### 29-3. When is a version ready?
+
+1. All phases done.
+2. Full tests done.
+3. Docs complete.
+4. CHANGELOG up to date.
+5. README up to date.
+6. No open errors.
+7. No unmotivated TODOs.
+8. No dead code.
+9. Rollback-able (`git tag vX.Y.Z`).
+10. User final approval.
+
+### 29-4. What violates Definition of Done?
+
+- "I'll comment later."
+- "Test later."
+- "I'll leave this file temporarily."
+- "Commit later."
+- "Context later."
+- "Docs later."
+
+**Rule:** every "later" is tech debt. If a task is done, all the "later"s must be done too.
+
+### 29-5. Exception tasks
+
+Some tasks have a simpler Definition of Done:
+
+- Research task: just a short report + findings.
+- Documentation task: just the updated file + confirmation.
+- Design task: just an ADR or document.
+
+**Rule:** even exception tasks must be committed.
+
+---
+
+## Section 30 — Troubleshooting
+
+### 30-1. Common `run.py` errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `anchor not found` | FIND text doesn't match file | Run `python run.py --file X` and copy the anchor from reality |
+| `hash mismatch` | File changed after the patch | `--force` or `--auto-verify` |
+| `file not found` | Wrong path | Check the path in the header |
+| `SyntaxError` in output | Parser misinterpreted | Check markers aren't at column zero |
+| `empty anchor` | Empty FIND | Copy FIND from the real file |
+| `already applied` | Patch is being reapplied | Fine — it's skipped |
+| `timeout 900s` | CMD ran too long | Shorten the CMD or run manually |
+| `NameError` in run.py | Module not imported | Check imports |
+| `PermissionError` | File locked | Close the program holding it |
+| `UnicodeDecodeError` | Wrong encoding | Save the file as UTF-8 |
+| `output.txt` too long | Autodump dumped a huge file | Use `#@NODUMP:` or `#@DUMP: compact` |
+
+### 30-2. Step-by-step debugging
+
+If `python run.py` errored:
+
+1. `python run.py --file _work/output.txt` → see the full error.
+2. `python run.py --file <failing file>` → see the real anchor.
+3. If needed: `python run.py --status` → overview.
+4. If all else fails: `git log --oneline -5` → last healthy commit.
+
+### 30-3. Emergency recovery
+
+If the project crashes or files are corrupted:
+
+1. `git status` → see what changed.
+2. `git log --oneline -10` → last healthy commits.
+3. `git reset --hard <last-safe-tag>` → full rollback.
+4. If uncommitted files mattered: `git stash` first, then reset, then `git stash pop`.
+
+### 30-4. If the AI broke once
+
+1. **Don't wait.** Roll back immediately.
+2. **Ask why.** Why was the anchor wrong?
+3. **Retry.** This time with the correct anchor.
+
+**Golden rule:** every failure is a lesson. Don't make the same mistake twice.
+
+---
+
+## Section 31 — Setup & Project Management
+
+### 31-1. Small/Medium/Large modes
+
+**If your project is small (< 500 lines):**
+- Read only these sections: 0, 1, 2, 4, 5, 7, 10, 13, 14, 15, 16, 23, 24
+- Ignore: hash, fuzzy, CTX-DELTA, CHANGELOG, ADR
+- Enough: simple `run.py` + anchor/replace
+
+**If medium (500–5000 lines):**
+- All sections except CHANGELOG/ADR
+- Use flags
+- Take MSG-SEED seriously
+
+**If large (> 5000 lines):**
+- All sections
+- Hash verification
+- CTX-DELTA in every message
+- Pull, not Push, always
+
+### 31-2. First-time setup
+
+**Fast method (recommended):**
+
+If you have `run.py` in the root:
+
+    python run.py --init
+
+This creates:
+- `_work/` and `_work/applied/`
+- `.gitignore` (if missing)
+- Empty `input.txt` and `output.txt`
+
+**AI-mediated method (for newcomers):**
+
+The user gives only `PROJECT_CONTEXT.md` to the AI. The AI guides step by step:
+
+1. AI asks: "What files do you have?"
+2. If `run.py` missing: copy from Section 35.
+3. If Python missing: install-Python guide.
+4. `python run.py --init`.
+5. Fill Sections 2 and 13.
+
+**Rule:** the user never runs a command manually — unless the AI said so.
+
+**Manual method (if all else fails):**
+
+**Step 1:** Put this document in the project root: `PROJECT_CONTEXT.md`.
+
+**Step 2:** Create `_work/`:
+
+    _work/
+    ├── input.txt      (empty)
+    ├── output.txt     (empty)
+    ├── applied/       (empty)
+    └── cache.json     (optional)
+
+**Step 3:** Take `run.py` from Section 35 and put it in the root.
+
+**Step 4:** Create `.gitignore`:
+
+    _work/input.txt
+    _work/output.txt
+    _work/applied/
+    _work/cache.json
+
+**Step 5:** Fill Section 2 (Identity) of this document.
+
+**Step 6:** Fill Section 2-4 (project-specific red lines).
+
+**Step 7:** Fill Section 13 (Session Tracker).
+
+**Step 8:** Create `CHANGELOG.md` and `ADR.md` (if the project is large).
+
+**Step 9:** git init + first commit + first tag:
+
+    git init
+    git add -A
+    git commit -m "initial commit"
+    git tag v0.1.0
+
+**Step 10:** Ready. Take your first patch from the AI.
+
+### 31-3. Backup protocol
+
+Before any big change:
+
+    git tag safe-before-XX
+    cp -r <important folder> <important folder>-backup-XX
+
+If the project is large, use `git stash`:
+
+    git stash push -m "before big change"
+
+After success: `git stash drop`. After failure: `git stash pop`.
+
+**Rule:** before a big change, always have a rollback point. A `git tag` is enough for code, but if non-code files change too, `cp -r` is needed.
+
+### 31-4. Doc integrity — how to tell the document hasn't broken
+
+`PROJECT_CONTEXT.md` has two kinds of sections:
+
+**Stable sections (must not change without approval):**
+- Section 3 (philosophy)
+- Section 4 (golden rules)
+- Section 5 (workflow)
+- Section 6 (flags)
+- Section 6-B (parser)
+- Section 7 (patch template)
+- Section 8 (hash)
+- Section 9 (matching)
+- Section 10 (context)
+- Section 12 (escape)
+- Section 15 (red lines)
+- Section 23 (decision tree)
+- Section 24 (checklist)
+- Section 25 (patterns)
+
+**Variable sections (may change):**
+- Section 2 (Identity)
+- Section 13 (Session Tracker)
+- Section 16 (Git)
+- `CHANGELOG.md`
+- `ADR.md`
+
+**Rule:** changes are only allowed in variable sections. If the AI wants to change a stable section, user approval is required.
+
+### 31-5. Common document bugs and fixes
+
+| Bug | Cause | Fix |
+|-----|-------|-----|
+| ToC out of order | markdown escape | Manual check |
+| Duplicate section | Patch reapplied | `git diff` |
+| Parser marker inside content | The AI erred | `git reset --hard safe-before-XX` |
+| Anchor not found | File text changed | `python run.py --file PROJECT_CONTEXT.md` |
+| Document grew huge | History accumulated | Move to `CHANGELOG.md` |
+| Content eaten by markdown | Nested fences | Use 4-space indent only |
+
+### 31-6. When to rewrite the document?
+
+**Rule of 3 patches:** if more than 3 patches have been applied to a section, that section should be **rewritten from scratch**.
+**Reason:** accumulated patches create contradictions.
+
+**Never on your own.** Only if:
+
+1. Document > 5000 lines.
+2. Main structure broke.
+3. Library or language changed.
+4. User explicitly asked.
+
+**Before rewriting:**
+- `git tag safe-before-rewrite-context`
+- Print the current document.
+- Gradual rewrite.
+- User approval at each step.
+
+<!-- CONTINUE: 32 -->
