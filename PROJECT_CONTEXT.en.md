@@ -1761,6 +1761,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Reason:** this bug silently corrupts documents and cost this project several patches. Detection must be one command, not a manual read.
 - **Alternatives:** rely on review (rejected — the bug is invisible until the file is sent); use a third-party linter (rejected — adds a dependency).
 
+**ADR-15: Single-document policy - no translated rule documents (Section 33)**
+
+- **Decision:** `PROJECT_CONTEXT.en.md` is the only rule document. Translated rule documents (e.g. `PROJECT_CONTEXT.fa.md`) are **not maintained**. Only READMEs may be translated.
+- **Reason:** a translated rule document drifts out of sync within two patches; the reply-language is already handled by Section 0-C-9. Maintaining two rule documents duplicates effort for no benefit.
+- **Alternatives:** maintain a Persian rule document in parallel (rejected - proven drift in this project); auto-generate translations on every patch (rejected - token-heavy, fragile).
+
 ## Section 14 — Starting a New Chat
 
 ### 14-1. What to send
