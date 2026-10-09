@@ -1,5 +1,11 @@
 # 🚀 context-forge
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#)
+[![GitHub stars](https://img.shields.io/github/stars/ama1372/context-forge?style=social)](https://github.com/ama1372/context-forge/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/ama1372/context-forge?style=social)](https://github.com/ama1372/context-forge/network/members)
+
 **You vs. the AI chat that forgets everything.**
 
 <p align="center">
@@ -16,7 +22,12 @@
   <a href="README.ja.md">日本語</a> ·
   <a href="README.ko.md">한국어</a> ·
   <a href="README.tr.md">Türkçe</a> ·
-  <a href="README.it.md">Italiano</a>
+  <a href="README.it.md">Italiano</a> ·
+  <a href="README.id.md">Bahasa Indonesia</a> ·
+  <a href="README.vi.md">Tiếng Việt</a> ·
+  <a href="README.th.md">ไทย</a> ·
+  <a href="README.he.md">עברית</a> ·
+  <a href="README.uk.md">Українська</a>
 </p>
 
 ---

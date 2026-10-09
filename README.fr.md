@@ -16,7 +16,12 @@
   <a href="README.ja.md">日本語</a> ·
   <a href="README.ko.md">한국어</a> ·
   <a href="README.tr.md">Türkçe</a> ·
-  <a href="README.it.md">Italiano</a>
+  <a href="README.it.md">Italiano</a> ·
+  <a href="README.id.md">Bahasa Indonesia</a> ·
+  <a href="README.vi.md">Tiếng Việt</a> ·
+  <a href="README.th.md">ไทย</a> ·
+  <a href="README.he.md">עברית</a> ·
+  <a href="README.uk.md">Українська</a>
 </p>
 
 ---
