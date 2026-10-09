@@ -33,6 +33,8 @@ Directives (in _work/input.txt, first lines):
                         "verify", "find-dup")
   #@COMMIT: <message>  custom git commit message (default: "patch N: <ts>")
   #@TAG: <name>        git tag created after a successful commit
+  #@NODUMP:            suppress AUTODUMP of failed files on the next run
+  #@DUMP: <mode>       set AUTODUMP mode: compact (default), full, off
 
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.md section 2.
 """
@@ -205,6 +207,8 @@ def read_directives(text):
     needs = []
     commit_msg = None
     tag_name = None
+    nodump = False
+    dump_mode = None
     idx = 0
     while idx < len(lines):
         s = lines[idx].strip()
@@ -235,9 +239,14 @@ def read_directives(text):
         if m: commit_msg = m.group(1).strip(); idx += 1; continue
         m = re.match(r'^#@TAG:\s*(\S+)', s)
         if m: tag_name = m.group(1); idx += 1; continue
+        if s in ('#@NODUMP:', '#@NODUMP'):
+            nodump = True; idx += 1; continue
+        m = re.match(r'^#@DUMP:\s*(\S+)', s)
+        if m: dump_mode = m.group(1).lower(); idx += 1; continue
         break
     return (patch_id, cmd_args, post_cmds, needs,
-            commit_msg, tag_name, '\n'.join(lines[idx:]))
+            commit_msg, tag_name, nodump, dump_mode,
+            '\n'.join(lines[idx:]))
 
 
 NEED_COMMANDS = {
@@ -263,7 +272,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -458,12 +467,13 @@ def apply_patch(path, patches, out, fail_files=None):
     return ok, fail, skip
 
 
-def _autodump_block(fail_files):
-    if not fail_files: return []
+def _autodump_block(fail_files, mode='compact'):
+    if not fail_files or mode == 'off':
+        return []
     L = ["", "=" * 60,
          "AUTODUMP (failed files - content for re-anchoring)",
          "=" * 60]
-    MAX_FILES, MAX_SZ = 3, 100 * 1024
+    MAX_FILES, HEAD, TAIL = 3, 25, 25
     for path in list(fail_files)[:MAX_FILES]:
         p = Path(path)
         if not p.exists():
@@ -473,12 +483,18 @@ def _autodump_block(fail_files):
         L.append(f"FILE: {path}  (size: {p.stat().st_size} bytes)")
         L.append("-" * 60)
         raw = read(p)
-        if p.stat().st_size > MAX_SZ:
-            lines = raw.splitlines()[:200]
-            L.append(f"[truncated: showing first 200 of {len(raw.splitlines())} lines]")
-            L.append('\n'.join(lines))
-        else:
+        all_lines = raw.splitlines()
+        total = len(all_lines)
+        if mode == 'full' or total <= HEAD + TAIL:
             L.append(raw.rstrip())
+        else:
+            L.append(f"[total {total} lines; showing first {HEAD} + last {TAIL}]")
+            L.append("")
+            L.append(f"--- HEAD (first {HEAD} lines) ---")
+            L.append('\n'.join(all_lines[:HEAD]))
+            L.append("")
+            L.append(f"--- TAIL (last {TAIL} lines) ---")
+            L.append('\n'.join(all_lines[-TAIL:]))
     if len(fail_files) > MAX_FILES:
         L.append(""); L.append(f"... +{len(fail_files) - MAX_FILES} more failed files")
     return L
@@ -541,7 +557,7 @@ def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
     rate_msg = _rate_warn_line()
     (did, _, post_cmds, needs,
-     commit_msg, tag_name, remaining) = read_directives(content)
+     commit_msg, tag_name, nodump, dump_mode, remaining) = read_directives(content)
     if did is not None: patch_id = did
     content = remaining
 
@@ -672,7 +688,13 @@ def do_apply(patch_id=None):
             out.append(filtered.rstrip())
 
     if fail_files:
-        out.extend(_autodump_block(fail_files))
+        if nodump:
+            ad_mode = 'off'
+        elif dump_mode in ('full', 'compact', 'off'):
+            ad_mode = dump_mode
+        else:
+            ad_mode = 'compact'
+        out.extend(_autodump_block(fail_files, ad_mode))
 
     out.append(""); out.append("=" * 60)
     out.append(f"PATCH_ID: {patch_id}  |  OK: {ok}  |  SKIP: {skip}  |  FAIL: {fail}")
@@ -911,7 +933,7 @@ def do_capabilities():
           "--git --file --files --errors --auto-verify --force "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
-    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG")
+    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP")
     print("FEATURES: MSG-SEED RATE-WARN AUTO-BLOCK AUTODUMP "
           "FUZZY-MATCH SUGGEST HASH-VERIFY GIT-AUTO-COMMIT")
 

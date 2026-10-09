@@ -2200,12 +2200,64 @@ git tag step-XX-ok
 
 ### 25-3. Full rewrite
 
-```
-## 📄 Full rewrite of `<filename>`
+    ## 📄 Full rewrite of `<filename>`
 
-**Reason:** <one line>
+    **Reason:** <one line>
 
-===== CREATE: <path> =====
-<<<CONTENT>>>
-<full new content>
-```
+    ===== CREATE: <path> =====
+    <<<CONTENT>>>
+    <full new content>
+    <<<END>>>
+
+### 25-4. Fixing an error
+
+    ## 🐛 Fix — <error name>
+
+    **Cause:** <one line>
+
+    🔍 Anchor (Ctrl+F):
+    <text>
+
+    ✂️ Replacement:
+    <new text>
+
+### 25-5. DeepSeek special pattern
+
+    📌 Summary: <one line>
+
+    🔍 Anchor (Ctrl+F):
+    <text>
+
+    ✂️ Replacement:
+    <new text>
+
+    📌 Test: <how to test>
+
+    💾 Commit: <command>
+
+    ---
+    If there was an error: run `python run.py` and send `_work/output.txt`.
+
+### 25-6. The standard AI message (with directives)
+
+Since run.py v1.0+ (Sections 4-15 and 5-0-4), the canonical AI message contains **only**:
+
+1. **📌 One-line summary.**
+2. **A single code block with the whole `input.txt`** — starting with `#@COMMIT:` and `#@TAG:`, then the patch blocks.
+3. **`[CTX-DELTA]` block.**
+4. **The end-of-message reminder.**
+
+Nothing else. No separate test command, no separate commit command. All of it lives inside `input.txt`.
+
+### 25-7. AUTODUMP control (`#@NODUMP:` and `#@DUMP:`)
+
+When a patch fails, `run.py` appends an AUTODUMP block with the failed file's content — to help the AI re-anchor. For large files this can be very long.
+
+- `#@NODUMP:` — suppress AUTODUMP entirely for this run.
+- `#@DUMP: compact` — show first 25 + last 25 lines of each failed file (default).
+- `#@DUMP: full` — show the whole file (like the old behaviour).
+- `#@DUMP: off` — same as `#@NODUMP:`.
+
+**Rule of thumb:** for small projects (<500 lines per file), `compact` is fine. For big files, add `#@NODUMP:` and re-anchor manually with `python run.py --file X`.
+
+<!-- CONTINUE: 26 -->
