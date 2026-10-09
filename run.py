@@ -37,6 +37,7 @@ Directives (in _work/input.txt, first lines):
   #@DUMP: <mode>       set AUTODUMP mode: compact (default), full, off
   #@NEXT: <line>       one-line "what's next" for _work/ctx_delta.txt
   #@ROADMAP: a | b | c pipe-separated roadmap for _work/ctx_delta.txt
+  #@PUSH:              after a successful commit + tag, push to origin
 
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.md section 2.
 """
@@ -45,7 +46,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.1.3"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -218,6 +219,7 @@ def read_directives(text):
     tag_name = None
     nodump = False
     dump_mode = None
+    push = False
     idx = 0
     while idx < len(lines):
         s = lines[idx].strip()
@@ -252,9 +254,11 @@ def read_directives(text):
             nodump = True; idx += 1; continue
         m = re.match(r'^#@DUMP:\s*(\S+)', s)
         if m: dump_mode = m.group(1).lower(); idx += 1; continue
+        if s in ('#@PUSH:', '#@PUSH'):
+            push = True; idx += 1; continue
         break
     return (patch_id, cmd_args, post_cmds, needs,
-            commit_msg, tag_name, nodump, dump_mode,
+            commit_msg, tag_name, nodump, dump_mode, push,
             '\n'.join(lines[idx:]))
 
 
@@ -281,7 +285,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -571,7 +575,8 @@ def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
     rate_msg = _rate_warn_line()
     (did, _, post_cmds, needs,
-     commit_msg, tag_name, nodump, dump_mode, remaining) = read_directives(content)
+     commit_msg, tag_name, nodump, dump_mode, push,
+     remaining) = read_directives(content)
     if did is not None: patch_id = did
     content = remaining
 
@@ -787,6 +792,28 @@ def do_apply(patch_id=None):
             out.append(""); out.append("[GIT] git not installed")
         except Exception as e:
             out.append(""); out.append(f"[GIT] error: {e}")
+
+    if push and fail == 0:
+        try:
+            r_b = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                  capture_output=True, text=True, timeout=5)
+            branch = (r_b.stdout or '').strip() or 'main'
+            r_p = subprocess.run(['git', 'push', '--quiet', 'origin', branch],
+                                  capture_output=True, text=True, timeout=120)
+            out.append("")
+            if r_p.returncode == 0:
+                out.append(f"[GIT] pushed: origin {branch}")
+            else:
+                out.append(f"[GIT] push failed: {(r_p.stderr or '').strip()[:200]}")
+            if tag_name:
+                r_pt = subprocess.run(['git', 'push', '--quiet', 'origin', tag_name],
+                                       capture_output=True, text=True, timeout=120)
+                if r_pt.returncode == 0:
+                    out.append(f"[GIT] pushed tag: {tag_name}")
+                else:
+                    out.append(f"[GIT] push tag failed: {(r_pt.stderr or '').strip()[:200]}")
+        except Exception as e:
+            out.append(""); out.append(f"[GIT] push error: {e}")
 
     if fail == 0:
         try:
@@ -1049,14 +1076,101 @@ def do_errors():
         print("[INFO] no errors in last output.txt")
 
 
+def do_check_md(files):
+    if not files:
+        files = [str(p) for p in walk(Path('.')) if p.suffix.lower() == '.md']
+    if not files:
+        print("[INFO] no markdown files found"); return 0
+    issues = 0
+    for path in files:
+        p = Path(path)
+        if not p.exists():
+            print(f"[FAIL] not found: {path}"); issues += 1; continue
+        text = read(p)
+        lines = text.splitlines()
+        stack = []
+        for i, line in enumerate(lines, 1):
+            m = re.match(r'^(\s*)(`{3,}|~{3,})', line)
+            if not m: continue
+            indent = len(m.group(1))
+            if indent > 3: continue
+            fence = m.group(2)
+            kind = fence[0]
+            count = len(fence)
+            if not stack:
+                stack.append((i, kind, count))
+            else:
+                top_line, top_kind, top_count = stack[-1]
+                if kind == top_kind and count >= top_count:
+                    stack.pop()
+                else:
+                    print(f"[WARN] {path}:{i}: nested fence inside "
+                          f"{top_kind * top_count} opened at line {top_line}")
+                    issues += 1
+                    stack.append((i, kind, count))
+        for line_no, kind, count in stack:
+            print(f"[WARN] {path}:{line_no}: unclosed fence {kind * count}")
+            issues += 1
+    if issues == 0:
+        print(f"[OK] no nested or unclosed fences in {len(files)} file(s)")
+    return 0 if issues == 0 else 2
+
+
+PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
+ARABIC_DIGITS  = '٠١٢٣٤٥٦٧٨٩'
+
+
+def _norm_num(s):
+    for i, c in enumerate(PERSIAN_DIGITS):
+        s = s.replace(c, str(i))
+    for i, c in enumerate(ARABIC_DIGITS):
+        s = s.replace(c, str(i))
+    return s
+
+
+def _sections_of(p):
+    text = read(p)
+    out = []
+    for line in text.splitlines():
+        m = re.match(r'^##\s+(?:Section\s+)?([0-9][0-9A-Za-z\-\.]*)',
+                     _norm_num(line.strip()))
+        if m:
+            out.append(m.group(1))
+    return out
+
+
+def do_check_sections(path_a, path_b):
+    pa, pb = Path(path_a), Path(path_b)
+    if not pa.exists():
+        print(f"[FAIL] not found: {path_a}"); return 1
+    if not pb.exists():
+        print(f"[FAIL] not found: {path_b}"); return 1
+    sa, sb = _sections_of(pa), _sections_of(pb)
+    set_a, set_b = set(sa), set(sb)
+    print(f"[A] {path_a}: {len(sa)} sections")
+    print(f"[B] {path_b}: {len(sb)} sections")
+    only_a = sorted(set_a - set_b)
+    only_b = sorted(set_b - set_a)
+    if only_a:
+        print(f"\nOnly in A ({len(only_a)}):")
+        for s in only_a: print(f"  Section {s}")
+    if only_b:
+        print(f"\nOnly in B ({len(only_b)}):")
+        for s in only_b: print(f"  Section {s}")
+    if not only_a and not only_b:
+        print("[OK] section sets match")
+    return 0 if not (only_a or only_b) else 1
+
+
 def do_capabilities():
     print(f"run.py v{VERSION}")
     print("FLAGS: --version --init --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
+          "--check-md --check-sections "
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
-    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP #@NEXT #@ROADMAP")
+    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP #@NEXT #@ROADMAP #@PUSH")
     print("FEATURES: MSG-SEED RATE-WARN AUTO-BLOCK AUTODUMP "
           "FUZZY-MATCH SUGGEST HASH-VERIFY GIT-AUTO-COMMIT")
 
@@ -1247,6 +1361,16 @@ def dispatch(args):
     if cmd == '--hash':                 do_hash(); return 0
     if cmd in ('--git', '-g'):          do_git(); return 0
     if cmd == '--errors':               do_errors(); return 0
+    if cmd == '--check-md':
+        i = args.index('--check-md')
+        return do_check_md(args[i+1:])
+    if cmd == '--check-sections':
+        i = args.index('--check-sections')
+        rest = [a for a in args[i+1:] if not a.startswith('--')]
+        if len(rest) >= 2:
+            return do_check_sections(rest[0], rest[1])
+        print("[FAIL] --check-sections needs two paths")
+        return 1
 
     if cmd == '--file':
         i = args.index('--file')

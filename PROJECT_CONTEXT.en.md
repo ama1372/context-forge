@@ -1113,6 +1113,10 @@ Do not lecture. One sentence is enough. If the user asks again, add:
 | `--file X` | one file's content + hash | 1–5 KB |
 | `--files X Y Z` | several files | variable |
 | `--errors` | last-run errors only | ~500 bytes |
+| `--diff` | files changed since last dump | variable |
+| `--ctx` | show the last `_work/ctx_delta.txt` block | small |
+| `--check-md [files...]` | scan markdown files for nested or unclosed fences (default: all `.md`) | small |
+| `--check-sections A B` | compare section headers between two documents | small |
 | `--auto-verify` | hash mismatch → auto reject | — |
 | `--force` | hash mismatch → apply without warning | — |
 | `dump [--full]` | full or incremental dump | large |
@@ -1156,6 +1160,7 @@ Directives are lines starting with `#@` at the top of `input.txt`, before the fi
 | `#@TAG: <name>` | Git tag created after a successful commit |
 | `#@NEXT: <line>` | One-line "what's next" for the auto-generated `_work/ctx_delta.txt` |
 | `#@ROADMAP: a \| b \| c` | Pipe-separated roadmap for `_work/ctx_delta.txt` (at least 2 items) |
+| `#@PUSH:` | After a successful commit + tag, push both to `origin` (current branch) |
 
 **Order of execution:** apply → POST → NEED → auto-context update → git commit → git tag.
 
@@ -1845,6 +1850,25 @@ Before sending a message, check:
 
 **If you must show a markdown fence as content:** show it as a line of backticks with 4-space indent — not as a real fence.
 
+### 12-8. Never nest fences — and how `--check-md` catches it
+
+> **The single most painful bug in this project's history came from nested fences.**
+
+When you embed a ` ``` ` fence inside another ` ``` ` fence, markdown closes the outer fence at the first inner one (if the inner fence is at least as long as the outer). Everything after that is parsed as plain markdown — backslashes get eaten, `$` starts math mode, `*` starts emphasis. The content silently corrupts.
+
+**Prevention:**
+
+- In this document: **never** use fences inside fences (Section 12-7). Use 4-space indentation.
+- In `input.txt` patches: the outer fence should be 4 or 5 backticks and the content **must not** contain a fence of equal or greater length at column zero. Indent embedded fences by 4 spaces.
+
+**Detection:**
+
+    python run.py --check-md
+
+Scans every `.md` file in the project. Reports any nested or unclosed fence with file:line. Zero output beyond `[OK]` means the document is clean.
+
+**Use it before committing any change to a `.md` file.** If you're the AI, add `#@POST: check-md` to the `input.txt` when you patch markdown.
+
 ### 12-6. Golden rule for the AI: `input.txt` output format
 
 **Every time the AI wants to give a patch, it must give the entire `input.txt` in a single code block** — not piecemeal, not with prose in between.
@@ -1868,14 +1892,14 @@ Before sending a message, check:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.1.1-en` |
-| **Last commit** | after v1.1.1 patch |
-| **Last work** | v1.1.1: absolute I/O discipline (0-C-10) + newcomer onboarding (0-C-11) + language policy (0-C-12) + CTX-DELTA ROADMAP (10-6) |
-| **Next step** | Sync `PROJECT_CONTEXT.fa.md` with all v1.1 / v1.1.1 additions |
-| **Current phase** | v1.1.1 — I/O discipline locked down |
+| **Last safe tag** | `v1.1.2-en` |
+| **Last commit** | after v1.1.2 patch |
+| **Last work** | v1.1.2: `#@PUSH:` directive + `--check-md` + `--check-sections` |
+| **Next step** | Sync `PROJECT_CONTEXT.fa.md` with all v1.1 / v1.1.1 / v1.1.2 additions |
+| **Current phase** | v1.1.2 — quality tooling complete |
 | **Completion** | 100% EN, 100% FA (Persian needs v1.1+ sync) |
 | **Last error** | none |
-| **Open issues** | Persian v1.1 sync; bootstrap helper for newcomers; `--check-md` (nested fence detector) |
+| **Open issues** | Persian v1.1+ sync; bootstrap helper for newcomers |
 
 ### 13-2. Update
 
@@ -1970,6 +1994,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** every `[CTX-DELTA]` block must have NEXT **and** a 2+ item ROADMAP.
 - **Reason:** a single NEXT field only survives one message. A ROADMAP survives three or more, letting consecutive chats bootstrap without ever asking the user "where were we?".
 - **Alternatives:** NEXT-only (rejected — the failure mode is exactly what happened in this project); a long-form history log (rejected — token-heavy).
+
+**ADR-11: `#@PUSH:` directive instead of manual `git push`**
+
+- **Decision:** pushing to `origin` is a directive inside `input.txt` — not a manual shell command.
+- **Reason:** Section 0-C-10 forbids the AI from giving commands outside `input.txt`. Pushing is a normal step; it belongs in the protocol.
+- **Alternatives:** manual `git push` in chat (rejected — violates the discipline); auto-push on every commit (rejected — pushes should be opt-in).
+
+**ADR-12: `--check-md` for nested fences (Section 12-8)**
+
+- **Decision:** a local linting command scans every `.md` file for nested or unclosed fences.
+- **Reason:** this bug silently corrupts documents and cost this project several patches. Detection must be one command, not a manual read.
+- **Alternatives:** rely on review (rejected — the bug is invisible until the file is sent); use a third-party linter (rejected — adds a dependency).
 
 ## Section 14 — Starting a New Chat
 
