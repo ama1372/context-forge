@@ -1,0 +1,29 @@
+#@ID: 110
+===== CMD: finalize project v2.0.0 =====
+<<<RUN>>>
+Write-Host "===== FINAL AUDIT ====="
+Write-Host "File size:"
+(Get-Item PROJECT_CONTEXT.md).Length
+Write-Host ""
+Write-Host "Line count:"
+(Get-Content PROJECT_CONTEXT.md | Measure-Object -Line).Lines
+Write-Host ""
+Write-Host "Section count (## ):"
+(Select-String -Path PROJECT_CONTEXT.md -Pattern "^## ").Count
+Write-Host ""
+Write-Host "Subsection count (### ):"
+(Select-String -Path PROJECT_CONTEXT.md -Pattern "^### ").Count
+Write-Host ""
+Write-Host "===== TAGGING v2.0.0 ====="
+git add -A
+git commit -m "v2.0.0: PROJECT_CONTEXT.md complete, run.py v1.0.0 stable" 2>&1
+git tag v2.0.0
+git push origin main
+git push origin v2.0.0
+Write-Host ""
+Write-Host "===== FINAL STATE ====="
+git log --oneline -5
+Write-Host ""
+Write-Host "Tags:"
+git tag --list | Select-Object -Last 5
+<<<END>>>
