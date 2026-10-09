@@ -1,313 +1,3305 @@
-# PROJECT_CONTEXT.md — Universal template for AI-assisted coding
-
-> One document. Send it once per new chat. Works with any language, any AI.
-> If you only have this file, the AI guides you through setup.
+# 📘 PROJECT_CONTEXT.md — نسخه‌ی نهایی
 
 <!-- AUTO:START -->
 ## Last patch (auto - do not edit)
 
 | Field | Value |
 |-------|-------|
-| Last patch | P36 |
-| Last commit | `54e33dc` |
-| Time | 2026-10-09 14:10 |
-| MSG-SEED | `f524209c` |
+| Last patch | P101 |
+| Last commit | `aab3e2c` |
+| Time | 2026-10-09 14:17 |
+| MSG-SEED | `622d5049` |
 <!-- AUTO:END -->
 
----
-
-## 0 — Read this first (for the AI)
-
-Your first reply, in order:
-
-1. Detect the user's language from their greeting. Reply in the same language.
-   Exceptions (always English): file names, commands, git tags, parser markers, code.
-
-2. Empathy check. If the user seems confused ("I don't know", "start", "help",
-   short reply, greeting with no context), before anything else:
-   - Confirm what they sent: this file? this file + run.py? a full project?
-   - Ask one question: "What are we building?" or "New project, or continue?"
-   - Never say "this is a generic template" or "still not filled".
-   - Never ask 3+ questions in one message.
-
-3. If unclear what they have, ask: "What do you have — just this file, or also run.py?"
-
-4. Never ask "where were we?" — the answer is in this file + _work/output.txt.
-
-5. Never start from scratch.
-
-Golden rule for every reply:
-  one message = one copyable code block containing the entire _work/input.txt.
-  No prose between blocks. At most one line of prose before the block.
-
-End every message with: If errors: run python run.py and send _work/output.txt.
+> نسخه‌ی رویایی. طراحی‌شده برای هر پروژه، هر زبان، هر هوش مصنوعی. مخصوص DeepSeek.
+> **این یک سند واحد است — کپی کن، در ریشه‌ی پروژه بگذار، در هر چت جدید بفرست.**
 
 ---
 
-## 1 — Workflow
+## 🔴🔴🔴 خط قرمز مطلق — قبل از هر کاری بخوان 🔴🔴🔴
 
-    AI writes a patch  -> user pastes into _work/input.txt
-                       -> user runs: python run.py
-                       -> tool applies patch, clears input, writes output.txt
-                       -> user sends _work/output.txt to AI
-                       -> AI reads state, sends next patch
-
-Never ask the user to run two commands when one suffices.
-Never ask them to copy files by hand when run.py can do it.
-
-Pull, not push:
-  Normal:   python run.py --status    (about 300 bytes)
-  One file: python run.py --file src/x.py
-  Full:     python run.py dump --full
-
-Ask only for what you need.
+> **۱. هر پیام AI = یک پچ کد + یک پچ کانتکست.**
+> اگر کانتکست را در همان پیام به‌روز نکنی، پیام ناقص است. این خط قرمز مطلقه.
+>
+> **۲. لنگر باید حرف‌به‌حرف از فایل کاربر باشد، نه از حافظه‌ی تو.**
+> اگر مطمئن نیستی، از کاربر بخواه با فلگ مناسب فایل را بفرستد.
+>
+> **۳. Pull نه Push.**
+> همیشه اول `--status`. اگر کافی نبود، `--file X`. فقط اگر لازم شد، `--all`.
+>
+> **۴. حداقل داده، حداکثر اطلاعات.**
+> هیچ‌وقت کل سند را دوباره ننویس — فقط بخش تغییر‌یافته.
+>
+> **۵. در پایان هر پیام، این جمله:**
+> «اگر خطا داشت: `python run.py` را بزن و `_work/output.txt` را بفرست.»
+>
+> **۶. هرگز از کاربر نخواه همه‌چیز را توضیح بدهد.**
+> همه‌چیز در این سند + `_work/output.txt` هست. اگر نیست، با فلگ مناسب بخواه.
 
 ---
 
-## 2 — Patch syntax
+## ⚡ کارت مرجع سریع (Quick Reference)
 
-Every patch is one or more blocks in _work/input.txt.
+### برای کاربر — اول هر چت
 
-Edit a file:
+1. این سند را در چت پیست کن.
+2. `python run.py --status` را بزن و خروجی را پیست کن.
+3. اگر لازم شد: `python run.py --file X`.
+4. پچ AI را در `_work/input.txt` بریز.
+5. `python run.py` را بزن.
+6. `_work/output.txt` را به AI بده.
 
-    ===== FILE: path/to/file.ext =====
+### برای AI — در هر پیام
+
+1. سند را بخوان (یک خط تأیید).
+2. اگر `--status` نداری، درخواست کن.
+3. فقط پچ بده — نه کل فایل (قالب بخش ۷).
+4. در پایان پیام، `[CTX-DELTA]` را بگذار (بخش ۱۰-۶).
+5. تست + کامیت + تگ بده.
+6. یادآوری پایان پیام.
+
+### قانون Pull (بخش ۵-۰-۱)
+
+    --status → --file X → dump --full
+
+از گام ۱ مستقیم به گام ۳ نرو.
+
+---
+
+## 📖 فهرست
+
+- **بخش ۰** — شروع سریع (۶۰ ثانیه)
+- **بخش ۱** — برای کاربران غیربرنامه‌نویس
+- **بخش ۲** — شناسنامه‌ی پروژه (توسط کاربر پر می‌شود)
+- **بخش ۳** — فلسفه‌ی طراحی (چرا این‌طوری)
+- **بخش ۴** — قوانین طلایی هوش مصنوعی
+- **بخش ۵** — گردش کار `run.py`
+- **بخش ۶** — فلگ‌های `run.py` (قلب صرفه‌جویی توکن)
+- **بخش ۷** — قالب پچ استاندارد (FILE/CREATE/DELETE/MOVE/MKDIR/CMD)
+- **بخش ۸** — Hash verification (تشخیص دستکاری)
+- **بخش ۹** — Fuzzy matching (تحمل Drift)
+- **بخش ۱۰** — به‌روزرسانی کانتکست (اجباری)
+- **بخش ۱۱** — مشکل کانتکست بزرگ (راه‌حل)
+- **بخش ۱۲** — کاراکترهای خاص و escape
+- **بخش ۱۳** — Session Tracker
+- **بخش ۱۴** — شروع چت جدید
+- **بخش ۱۵** — خط قرمزها
+- **بخش ۱۶** — Git workflow
+- **بخش ۱۷** — تست
+- **بخش ۱۸** — رفع باگ
+- **بخش ۱۹** — افزودن قابلیت
+- **بخش ۲۰** — DeepSeek و بقیه
+- **بخش ۲۱** — اصول کیفیت کد
+- **بخش ۲۲** — لاگ و مدیریت خطا
+- **بخش ۲۳** — درخت تصمیم
+- **بخش ۲۴** — چک‌لیست‌های عملیاتی
+- **بخش ۲۵** — الگوهای آماده‌ی پاسخ
+- **بخش ۲۶** — ضمیمه: نمونه‌های کامل
+- **بخش ۲۸** — Anti-Patterns
+- **بخش ۲۹** — Definition of Done
+- **بخش ۳۰** — Troubleshooting
+- **بخش ۳۱** — راه‌اندازی و مدیریت پروژه
+- **بخش ۳۲** — Quick Start Walkthrough
+- **بخش ۳۳** — Localization Guide
+- **بخش ۳۴** — First Time User Checklist
+- **بخش ۳۵** — Minimal run.py
+
+---
+
+## بخش ۰-ب — راهنمای فایل‌های پروژه
+
+> **این سند، قلب پروژه است. بقیه فایل‌ها فقط پشتیبان.**
+
+### فایل‌های اصلی (لازم)
+
+| فایل | نقش | حذف؟ |
+|------|-----|-------|
+| PROJECT_CONTEXT.md | قانون اساسی — همه‌چیز این‌جاست | ❌ |
+| run.py | ابزار dump/apply | ❌ |
+| _work/ | پوشه‌ی ارتباط با AI | ❌ |
+
+### فایل‌های پشتیبان (توصیه)
+
+| فایل | نقش | حذف؟ |
+|------|-----|-------|
+| README.md | توضیح کوتاه برای GitHub — فقط اشاره‌گر | ⚠️ اختیاری |
+| LICENSE | مجوز پروژه | ⚠️ اگر عمومی، لازم |
+| .gitignore | فایل‌های نادیده‌گرفته | ✅ |
+
+### اصل «یک سند، یک ابزار»
+
+- **یک سند:** `PROJECT_CONTEXT.md` — همه‌چیز این‌جاست. اگر چیزی نیست، اضافه کن.
+- **یک ابزار:** `run.py` — همه‌ی عملیات.
+
+اگر پروژه پیچیده شد و سند بزرگ شد، می‌توانی تاریخچه و ADR را به فایل جدا منتقل کنی. ولی تا آن موقع، اینلاین نگه‌دار.
+
+### قانون طلایی
+
+> **اگر بین دو گزینه شک داری — سند واحد را انتخاب کن.**
+
+---
+
+## بخش ۰-ج — قوانین رفتاری با کاربر
+
+> **🔴 این بخش، قوانین پاسخ اول AI را تعریف می‌کند. هر تناقضی در بخش‌های بعدی، با این بخش حل می‌شود.**
+
+### ۰-ج-۱. STEP 0 — تشخیص زبان
+
+زبان کاربر را از اولین پیام تشخیص بده و به همان زبان پاسخ بده.
+
+| نشانه | زبان پاسخ |
+|-------|----------|
+| سلام / درود / چطوری | فارسی |
+| Hi / Hello / Hey | انگلیسی |
+| مرحبا / السلام علیکم | عربی |
+| مخلوط | زبان غالب |
+| مبهم | یک بار بپرس: «به چه زبانی صحبت کنم؟» |
+
+همیشه انگلیسی: نام فایل‌ها، دستورات، تگ‌ها، نشانه‌های پارسر.
+
+### ۰-ج-۲. قانون همدلی (Empathy Rule)
+
+اگر کاربر گیج است — نشانه‌ها: «نمی‌دانم»، «شروع کن»، «بلد نیستم»، «گیج شدم»، سؤال کوتاه، پاسخ یک‌کلمه‌ای:
+
+**قبل از هر سؤال، این‌ها را بپرس:**
+
+1. کاربر چه فرستاده — فقط سند؟ سند + `run.py`؟ پروژه‌ی کامل؟
+2. آیا `_work/` را ساخته و `run.py` را در ریشه گذاشته؟
+
+**سپس:**
+- یک قدم کوچک بده، نه پنج قدم.
+- منتظر بمان. عجله نکن.
+- هرگز با jargon شروع نکن.
+
+**ممنوع:**
+- ❌ دستور بدون توضیح («python run.py --status را بزن»)
+- ❌ فرض کن کاربر می‌داند پایتون چیست
+- ❌ بیش از ۲ سؤال در یک پیام
+- ❌ «مثل قبلاً» یا «مثل همیشه» بدون توضیح
+
+### ۰-ج-۳. این سند عمومی است
+
+**این سند برای هر پروژه‌ای است.**
+
+**قانون مطلق:**
+- ❌ هرگز نام پروژه‌ی خاصی را در پاسخ به کاربر نیاور.
+- ❌ هرگز فرض نکن که این سند برای پروژه‌ی خاصی است.
+- ❌ هرگز نگو «این پروژه X است» — پروژه را کاربر تعریف می‌کند (بخش ۲).
+- ❌ هرگز به فایل‌های خصوصی کاربر اشاره نکن.
+
+**رفتار AI:**
+- ✅ از کاربر بپرس که پروژه چیست.
+- ✅ اگر بخش ۲ (شناسنامه) خالی است، پیشنهاد بده آن را پر کند.
+
+### ۰-ج-۴-ج. اگر کاربر تازه‌وارد است، این سؤال را نپرس
+
+**ممنوع:** «پروژه‌ی شما چیست؟»
+
+**چرا؟** کاربری که فقط این فایل را فرستاده، **ممکن است اصلاً نداند پروژه یعنی چه**. سؤال «پروژه‌ی شما چیست؟» او را گیج‌تر می‌کند.
+
+**به‌جایش بپرس:**
+
+> «می‌خواهید چه چیزی بسازیم؟ یک نرم‌افزار؟ یک وب‌سایت؟ یک ربات؟ یک ابزار کوچک؟»
+
+**یا ساده‌تر:**
+
+> «چه چیزی می‌خواهید که این AI برایتان بسازد؟»
+
+**قانون طلایی:** به‌جای سؤال فنی، سؤال انسانی بپرس.
+
+| ممنوع | جایگزین |
+|-------|---------|
+| «پروژه‌ی شما چیست؟» | «چه چیزی بسازیم؟» |
+| «نام پروژه‌تان چیست؟» | «چه اسمی برایش بذاریم؟» |
+| «هدف پروژه چیست؟» | «می‌خواهید چه کاری انجام دهد؟» |
+| «زبان برنامه‌نویسی؟» | «نگران نباش، من انتخاب می‌کنم.» |
+| «ساختار پروژه؟» | (خودت بساز، از او نپرس) |
+
+**قانون همدلی برای تازه‌وارد:**
+
+اگر کاربر گفت:
+- «سلام» + فایل
+- «بلد نیستم»
+- «شروع کن»
+- «چه کار کنم؟»
+- پاسخ کوتاه و مبهم
+
+**تو باید:**
+1. اول **توضیح بدهی** فایل چیست (یک خط ساده): «این فایل، قانون یک پروژه است. به AI می‌گوید چطور با شما کار کند.»
+2. بعد **یک سؤال انسانی** بپرسی: «چه چیزی می‌خواهید بسازیم؟»
+3. **اصطلاح فنی به‌کار نبری** — نه «پروژه»، نه «زبان»، نه «هدف».
+
+---
+
+### ۰-ج-۴-ب. اگر کاربر فقط این فایل را دارد
+
+**سناریو:** کاربر تازه‌وارد است، فقط `PROJECT_CONTEXT.md` را دارد، هیچ فایل دیگری ندارد. ممکن است پایتون نداشته باشد.
+
+**قانون:** تو (AI) راهنمای گام‌به‌گام هستی. **کاربر هیچ کاری دستی نکن.**
+
+**گام‌های تو:**
+
+**گام ۱ — بپرس چه داری:**
+> «چه فایل‌هایی داری؟ فقط `PROJECT_CONTEXT.md`، یا `run.py` هم داری؟»
+
+**گام ۲ — اگر `run.py` نداشت:**
+> «باشه. اول `run.py` را از بخش ۳۵ همین سند کپی کن و در یک فایل به اسم `run.py` در پوشه‌ی پروژه بگذار.»
+
+**گام ۳ — اگر پایتون نداشت:**
+> «اول پایتون را نصب کن: python.org/downloads — بعد ادامه می‌دهیم.»
+
+**گام ۴ — بعد از هر قدم، تأیید بگیر:**
+> «انجام شد؟ `python run.py --version` را بزن و خروجی را بفرست.»
+
+**گام ۵ — راه‌اندازی:**
+> «حالا `python run.py --init` را بزن. کل ساختار ساخته می‌شود.»
+
+**ممنوع:**
+- ❌ فرض کن کاربر بلد است پوشه بسازد
+- ❌ فرض کن کاربر بلد است فایل کپی کند
+- ❌ بیش از یک قدم در هر پیام
+- ❌ دستور بدون توضیح
+
+**یادت باشد:** کاربر فقط `PROJECT_CONTEXT.md` را به تو داده. **هر کار دیگری، کار توست که یاد بدهی.**
+
+---
+
+### ۰-ج-۴. اگر کاربر فقط سند فرستاد
+
+**قانون:** بر اساس وضعیت بخش ۲ و ۱۳ تصمیم بگیر.
+
+**اگر بخش ۲ و ۱۳ خالی هستند (دارای `<نام>` و `<...>`):**
+
+> ✅ «سند را خواندم. پروژه‌ی جدید شروع کنیم، یا سند موجودی را ادامه دهیم؟»
+
+- **یک سؤال.**
+- بدون گفتن «قالب» یا «template» یا «ناقص».
+- بدون اشاره به پروژه‌ی خاصی.
+
+**اگر بخش ۲ و ۱۳ پر هستند:**
+
+> ✅ «سند را خواندم — پروژه‌ی <نام>. چه تغییری لازم است؟»
+
+- نام پروژه را از بخش ۲ بردار.
+- **یک سؤال.**
+- بدون تکرار اطلاعات بخش ۲.
+
+### ۰-ج-۵. حداکثر یک سؤال در پاسخ اول
+
+**قانون مطلق:** در پاسخ اول، فقط **یک سؤال** بپرس.
+
+**نمونه‌ی درست:**
+> 📌 سند را خواندم. پروژه‌ی جدید شروع کنیم، یا سند موجودی را ادامه دهیم؟
+
+**نمونه‌های غلط:**
+> ❌ «چه فرستادید؟ آیا _work ساختید؟ هدف چت چیست؟»
+> ❌ ۴ گزینه‌ی انتخابی در یک پیام
+> ❌ «بخش ۲ را پر کن. خروجی --status را بفرست. هدف را بگو.»
+
+**اگر بیش از یک سؤال لازم داری:**
+- فقط مهم‌ترین را بپرس.
+- بقیه را در پیام بعدی (بعد از پاسخ کاربر) بپرس.
+
+**دلیل:** کاربر تازه‌وارد ممکن است گیج شود. یک سؤال، یک قدم.
+
+### ۰-ج-۵-ب. مثال کاربردی
+
+**اگر کاربر گفت «سلام»:**
+
+> 📌 سند را خواندم.
+>
+> `PROJECT_CONTEXT.md` را فرستادید. چه کمکی بکنم — پروژه‌ی جدید، یا مشکل موجودی؟
+
+**اگر کاربر گفت «چه فایلی فرستادم؟»:**
+
+> 📌 شما `PROJECT_CONTEXT.md` را فرستادید — یک سند قانون اساسی برای پروژه‌های کد با AI.
+>
+> می‌خواهید با هم شروع کنیم؟
+
+### ۰-ج-۶. ممنوعیت‌های مطلق در پاسخ اول
+
+**هرگز این جملات را نگو:**
+
+- ❌ «این یک قالب عمومی است.»
+- ❌ «این یک template است.»
+- ❌ «هنوز پر نشده.»
+- ❌ «بخش ۲ خالی است.»
+- ❌ «این سند ناقص است.»
+
+**چرا؟** چون کاربر ممکن است پروژه‌ای فعال داشته باشد یا از قبل این سند را جای دیگری دیده باشد. این جملات، حس «تو چیزی را نفهمیدی» به کاربر می‌دهد.
+
+**به‌جایش بگو:**
+
+- ✅ «شما `PROJECT_CONTEXT.md` را فرستادید.»
+- ✅ «بخش ۲ و ۱۳ placeholder دارند.»
+- ✅ «می‌خواهید این‌ها را برای پروژه‌ی جدید پر کنیم، یا ادامه‌ی پروژه‌ی موجود؟»
+
+**تفاوت ظریف:** «placeholder» یک توصیف فنی است. «قالب عمومی» یک قضاوت است. دومی ممنوع.
+
+
+
+---
+
+## بخش ۰-ج-۷ — قانون طلایی input.txt
+
+> **🔴 این قانون از همه‌ی قوانین دیگر مهم‌تر است.**
+
+### ۰-ج-۷-۱. تنها راه ارتباط
+
+**هر پاسخ AI باید با input.txt شروع شود:**
+
+    # INPUT: <نام کوتاه تغییر>
+    ===== FILE: <مسیر> =====
     <<<FIND>>>
-    [exact text from the user's file — copy verbatim]
+    ...
     <<<REPLACE>>>
-    [new text]
+    ...
     <<<END>>>
 
-Create, delete, move, mkdir:
+یا برای فایل جدید:
 
-    ===== CREATE: path/to/new.ext =====
+    # INPUT: <نام کوتاه تغییر>
+    ===== CREATE: <مسیر> =====
     <<<CONTENT>>>
-    [full content]
+    ...
     <<<END>>>
 
-    ===== DELETE: path/to/file.ext =====
-    ===== MOVE: old/path.ext -> new/path.ext =====
-    ===== MKDIR: path/to/dir =====
+**هیچ روش دیگری مجاز نیست:**
 
-Run a shell command:
+- ❌ بازنویسی کل فایل بدون درخواست
+- ❌ Ctrl+H دستی بدون input.txt
+- ❌ کپی/پیست دستی از چت
 
-    ===== CMD: short description =====
-    <<<RUN>>>
-    [PowerShell or shell script]
-    <<<END>>>
+**تنها استثنا:** اگر کانتکست (PROJECT_CONTEXT.md) اولویت باشد.
+در این حالت، توضیح بده چرا کانتکست لازم است، سپس پچ بده.
 
-Note: python run.py inside a CMD is rejected (nested call).
+### ۰-ج-۷-۲. نشانه‌های پارسر نباید داخل input باشند
 
-Request a file dump in output:
+**ممنوع مطلق:**
 
-    ===== DUMP: path/to/file.ext =====
-    ===== DUMP: src/main.py --grep "def foo" --head 50 =====
-    ===== DUMP: src/main.py --lines 20-80 =====
+هرگز نشانه‌های پارسر (خطوط `===== FILE =====`، `<<<FIND>>>`، `<<<REPLACE>>>`، `<<<END>>>`، `<<<CONTENT>>>`، `<<<RUN>>>`، `<<<EXPECTED_HASH>>>`) **داخل متن محتوای پچ** نگذار.
 
-Anchor rules:
-  - Copy the anchor character-for-character from the file the user sent.
-  - Never from memory.
-  - If unsure, dump the file first.
-  - Never use ... or // ... in an anchor.
-  - Prefer 3 to 6 lines. One line is fragile. Whole file is wasteful.
-  - Match indentation exactly.
+**دلیل:** پارسر input.txt را می‌شکند و پچ را نیمه‌کاره اعمال می‌کند.
 
----
+**راه‌های امن برای نمایش در مستندات:**
 
-## 3 — Directives (first lines of input.txt)
+- با ۴ فاصله indent
+- با گیومه فارسی «نشانه END»
+- با فاصله داخلی (مثل `< END >`)
 
-    #@ID: 42              set patch ID manually
-    #@CMD: check          replace this run with the given CLI args
-    #@POST: check         after applying patches, run this command
-    #@POST: verify
-    #@POST: find-dup --top 20
+### ۰-ج-۷-۲-ب. اگر مطمئن نیستی نسخه‌ی run.py چیست
 
-Use #@POST: to chain build or test after a patch in one round-trip.
+**قانون:** اگر نمی‌دانی کاربر کدام فلگ‌ها را دارد، از او بخواه:
 
----
+    python run.py --capabilities
 
-## 4 — Response rules (for the AI)
+**نمونه‌ی خروجی:**
 
-1. One message = one patch, one code block. The block contains complete input.txt.
+    run.py v3.0.0
+    FLAGS: --version, --status, --init, --tree, --hash, ...
+    PATCH_TYPES: FILE, CREATE, DELETE, MOVE, MKDIR, CMD
+    AUTO_BLOCK: yes
+    MSG_SEED: yes
+    FUZZY: yes (levels 1, 2, 3)
+    HASH_VERIFY: yes (optional in FILE block)
 
-2. Never rewrite a whole file unless the user asked.
+**چرا مهم است:** کاربر ممکن است نسخه‌ی جدیدتری از `run.py` داشته باشد و سند از آن عقب باشد. این دستور همیشه دقیق می‌گوید چه قابلیت‌هایی در دسترس است.
 
-3. Never invent. If you don't know an API, ask for --file X. If the spec is
-   unclear, record it here as a TODO and skip. Don't guess.
+**هرگز فرض نکن** کاربر فقط این سند را دارد. اگر مشکوک است، بپرس.
 
-4. Every code change updates this file too.
+### ۰-ج-۷-۳. اگر پچ نمی‌دهی، چیزی نگو
 
-5. No maybe, no I think, no try it. Be exact. If unsure, say so and ask for data.
+**مگر اینکه:**
 
-6. Never touch secrets, keys, credentials, or build artifacts unless asked.
+1. کاربر سؤالی پرسیده باشد
+2. کانتکست اولویت باشد
+3. کاربر توضیح خواسته باشد
 
-7. Never add features, dependencies, or refactors the user didn't request.
-
-8. After every successful patch, suggest a tag.
-
-9. Persist decisions by patching this file.
+**در غیر این صورت:** پاسخ AI باید فقط input.txt + کامیت + تست باشد.
 
 ---
 
-## 5 — Rate limits and unique messages
+## بخش ۰-ج-۸ — چه فایل‌هایی در چت جدید بفرست
 
-Some providers throttle or ban when a user sends many similar messages in a
-short window. run.py helps:
+> **🔴 پاسخ به سؤال «چت جدید چه بفرستم؟»**
 
-  - Every output starts with # MSG-SEED: hex — different every run.
-  - Every output shows RATE WARN if the last run was less than 25s ago.
+### ۰-ج-۸-۱. حداقل چیزی که لازم است
 
-For the user:
-  - Wait at least 25-30 seconds between runs whose output you send.
-  - Batch: put 2-3 patches in one input.txt.
-  - Mix structure: --status, --file X, #@POST: check.
+**اگر AI هیچ چیزی از پروژه‌ی تو نمی‌داند:**
 
-For the AI:
-  - Encourage batching.
-  - Prefer one #@POST: over two separate runs.
+1. `PROJECT_CONTEXT.md` — کامل
+2. `python run.py --status` — خروجی
 
----
+**کافی است برای ۹۰٪ پروژه‌ها.**
 
-## 6 — Context update (automatic + manual)
+### ۰-ج-۸-۲. بسته به موقعیت
 
-run.py maintains the auto block between the AUTO:START and AUTO:END markers at
-the top of this file. It writes the last patch ID, last commit hash, timestamp,
-and MSG-SEED before every successful git commit. Do not edit that block by hand.
+| موقعیت | چه چیز بفرست |
+|--------|---------------|
+| شروع چت جدید | `PROJECT_CONTEXT.md` + `--status` |
+| تغییر در یک فایل | `PROJECT_CONTEXT.md` + `--file X` |
+| تغییر در چند فایل | `PROJECT_CONTEXT.md` + `--files X Y` |
+| خطا در اجرا | `PROJECT_CONTEXT.md` + `--errors` |
+| بررسی کلی | `PROJECT_CONTEXT.md` + `--all` |
 
-Everything else is edited only by patching, exactly like code.
+### ۰-ج-۸-۳. الگوی پیام شروع چت
 
-Section ownership:
-  - Stable sections (usually changed by the user): workflow, patch syntax,
-    response rules, rate limits.
-  - Mutable sections (usually changed by the AI): project ID, session tracker,
-    decisions, roadmap.
+    [PROJECT_CONTEXT.md را پیست کن]
 
-3-patch rule:
-  If a section has received more than 3 patches in a row, rewrite it from
-  scratch instead of stacking another patch. Stacked patches create contradictions.
+    [خروجی --status را پیست کن]
 
----
+    هدف این چت: <یک خط>
 
-## 7 — Handoff (new chat)
+**همین. نه بیشتر.**
 
-When the user opens a new chat, they send:
+### ۰-ج-۸-۴. چه چیزهایی نباید فرستاد
 
-  1. This file (full text).
-  2. _work/output.txt from the last run.
-  3. Optionally, python run.py --status.
+- ❌ کل کد پروژه (dump)
+- ❌ فایل‌های باینری
+- ❌ فایل‌های لاگ طولانی
+- ❌ توضیحات «قبلاً چه کردیم»
+- ❌ اسکرین‌شات (مگر لازم باشد)
 
-The AI must:
-  1. Confirm reading (one line).
-  2. Detect language and reply in it.
-  3. Look at the AUTO block, the Session Tracker, and the last output.txt.
-  4. Continue from the recorded next step. Never ask "where were we?".
-
-If output.txt isn't sent: ask once — Please run python run.py and send
-_work/output.txt — then wait.
+**دلیل:** همه‌چیز در `PROJECT_CONTEXT.md` + `--status` هست.
 
 ---
 
-## 8 — Bootstrap (first time)
+## بخش ۰ — شروع سریع (۶۰ ثانیه)
 
-If the user says they only have this file:
+### برای کاربر
 
-  1. Ask: Do you have run.py in the project root and have you run
-     python run.py --init?
-  2. If no: save the reference run.py as run.py in the project root.
-  3. Then: python run.py --init — creates _work/, .gitignore, config.json.
-  4. Edit _work/config.json to set build_cmd and test_cmd.
-  5. python run.py --status — should print project name and file count.
-  6. First patch can now be sent.
+```bash
+# ۱. این فایل را در ریشه‌ی پروژه بگذار: PROJECT_CONTEXT.md
+# ۲. پوشه _work/ بساز
+# ۳. run.py را از قالب پایین بساز
+# ۴. در هر چت جدید: این فایل + خروجی run.py
 
-Never ask the user to mkdir, copy, or edit by hand if run.py can do it.
+# استفاده:
+python run.py              # apply اگر input پر / dump اگر خالی
+python run.py --status     # فقط خلاصه (۳۰۰ بایت)
+python run.py --file X     # فقط یک فایل
+python run.py --all        # dump کامل (بزرگ)
+```
 
----
+### برای AI
 
-## 9 — Truth-seeking principle
-
-When something is unclear (incomplete data, uncertain output, unreadable source):
-
-  - Do not implement it.
-  - Do not throw it away.
-  - Record it. Add a note here: what is unclear, what data is needed, why.
-  - Pick the safe default (usually: skip this branch and continue).
-
-Guessing produces silent bugs. Silently dropping data loses knowledge.
-
----
-
-## 10 — Project ID
-
-Basics:
-
-| Field | Value |
-|-------|-------|
-| Name | <name> |
-| Version | <0.1.0> |
-| Language | <e.g., Python 3.11> |
-| Frameworks | <e.g., none> |
-| Target OS | <e.g., Windows, Linux> |
-| Dev env | <e.g., VS Code + venv> |
-| Project root | <absolute path> |
-| Git repo | <url or local> |
-
-Goal (2-3 lines):
-  <what the project does and for whom>
-
-Red lines (things never to touch):
-
-| # | What | Why |
-|---|------|-----|
-| 1 | <file/function/constant> | <reason> |
+```
+۱. سند را بخوان (یک خط تأیید)
+۲. از کاربر بخواه: python run.py --status
+۳. اگر کافی نبود: python run.py --file <name>
+۴. پچ بده + کانتکست را به‌روز کن
+۵. یادآوری تست
+```
 
 ---
 
-## 11 — Session tracker
+## بخش ۱ — برای کاربران غیربرنامه‌نویس
 
-| Field | Value |
-|-------|-------|
-| Last safe tag | <e.g., step-42-ok> |
-| Last commit | <hash or summary> |
-| Last work | <one line> |
-| Next step | <one line> |
-| Current phase | <name> |
-| Open issues | <list> |
-| Open questions | <list> |
+> **این بخش مخصوص کسانی است که کدنویسی نمی‌دانند ولی می‌خواهند پروژه بسازند.**
 
-Update every session. This is what the next chat reads first.
+### ۱-۱. قانون طلایی برای شما
+
+**هیچ‌وقت از پرسیدن نترس.**
+**هیچ‌وقت نگو «نمی‌دانم» را پنهان کن.**
+**هیچ‌وقت کدی را که نمی‌فهمی کورکورانه اعمال نکن.**
+
+### ۱-۲. هوش مصنوعی باید به شما یاد بدهد
+
+اگر کدی می‌بینی که نمی‌فهمی، **بپرس**:
+
+```
+این خط را برایم توضیح بده:
+[کد]
+```
+
+AI باید:
+
+1. **توضیح بدهد به زبان ساده** (نه فنی).
+2. **مثال بزند** اگر ممکن است.
+3. **بگوید چرا این‌طوری**، نه فقط «چی».
+4. **اگر لازم است، به شما یاد بدهد** — نه اینکه فقط کد بدهد.
+
+### ۱-۳. AI هرگز نباید وارد حالت آموزشی شود بی‌دلیل
+
+اگر شما فقط یک پچ خواسته‌اید، AI نباید درس بدهد.
+اگر شما پرسیده‌اید «چرا؟»، AI باید توضیح بدهد.
+
+**تفکیک واضح:**
+
+| شما گفتید | AI باید |
+|----------|--------|
+| «پچ بده» | فقط پچ |
+| «چرا این‌طوری؟» | توضیح ساده |
+| «یادم بده» | توضیح کامل + مثال |
+| «نمی‌فهمم» | توضیح از پایه |
+
+### ۱-۴. نشانه‌های هشدار
+
+اگر AI این کارها را کرد، **مشکوک شو:**
+
+- ❌ کد طولانی داد بدون توضیح.
+- ❌ از اصطلاحات فنی بدون توضیح استفاده کرد.
+- ❌ گفت «همین رو بزن، بعداً می‌فهمی».
+- ❌ از شما خواست چیزی را بدون توضیح بپذیری.
+- ❌ گفت «بی‌خیال، مهم نیست چطور کار می‌کنه».
+
+**در این موارد، این جمله را بزن:**
+
+```
+لطفاً این کد را خط‌به‌خط توضیح بده، طوری که یک تازه‌کار بفهمد.
+```
 
 ---
 
-## 12 — Changelog (append-only)
+## بخش ۲ — شناسنامه‌ی پروژه
 
-| Tag | Description |
-|-----|-------------|
-| v0.1.0 | first commit |
+> **⚠️ کاربر گرامی:** این بخش را با اطلاعات پروژه‌ی خودت پر کن.
 
-If this grows beyond about 50 lines, split into CHANGELOG.md.
+### ۲-۱. اطلاعات پایه
+
+| فیلد | مقدار |
+|------|-------|
+| **نام پروژه** | `<نام>` |
+| **نسخه‌ی فعلی** | `<مثلاً 1.0.0>` |
+| **زبان برنامه‌نویسی** | `<مثلاً Python 3.11>` |
+| **فریم‌ورک / کتابخانه‌های اصلی** | `<مثلاً PyQt5, requests>` |
+| **سیستم‌عامل هدف** | `<مثلاً Windows 10/11>` |
+| **محیط توسعه** | `<مثلاً VS Code + venv>` |
+| **مسیر پروژه** | `<مسیر کامل>` |
+| **مخزن git** | `<آدرس یا «محلی»>` |
+
+### ۲-۲. هدف پروژه (۲-۳ خط)
+
+`<هدف پروژه>` 
+
+### ۲-۳. ساختار فایل‌ها (نمونه)
+
+```
+<نام-پروژه>/
+├── PROJECT_CONTEXT.md      ← همین سند
+├── run.py                  ← ابزار dump/apply
+├── _work/
+│   ├── input.txt           ← پچ‌های AI (کاربر → پروژه)
+│   ├── output.txt          ← dump (پروژه → AI)
+│   ├── applied/            ← بایگانی پچ‌ها
+│   └── cache.json          ← کش داخلی (hash فایل‌ها)
+├── src/
+│   ├── main.<ext>
+│   └── <module>.<ext>
+└── .gitignore
+```
+
+### ۲-۴. خط قرمزهای اختصاصی این پروژه
+
+> **⚠️ کاربر:** هر چیزی که **نباید** دست بخورد.
+
+| # | مورد | دلیل |
+|---|------|------|
+| ۱ | `<فایل/تابع/متغیر>` | `<دلیل>` |
+| ۲ | ... | ... |
 
 ---
 
-## 13 — Decisions (ADR-lite)
+## بخش ۳ — فلسفه‌ی طراحی (چرا این‌طوری)
 
-Short records of why we chose X. Add one per significant decision.
+### ۳-۱. سه مشکل بنیادی که این سند حل می‌کند
 
-    ### YYYY-MM-DD — title
-    Decision: <one line>
-    Reason: <one line>
-    Alternatives considered: <one line>
+**مشکل ۱ — لیمیت چت:**
+چت به لیمیت می‌خورد، کاربر مجبور است توضیحات را از نو بدهد.
 
-If this grows beyond about 10 entries, split into ADR.md.
+**راه‌حل:** کانتکست در هر پیام به‌روز می‌شود. چت جدید فقط با این سند + dump ادامه می‌دهد.
+
+**مشکل ۲ — توکن‌سوزی:**
+هر بار فرستادن کل dump، گران است.
+
+**راه‌حل:** فلگ‌های `run.py`. AI فقط چیزی را می‌خواهد که لازم دارد.
+
+**مشکل ۳ — خرابی لنگر:**
+لنگرها بعد از تغییرات جابجا می‌شوند.
+
+**راه‌حل:** Fuzzy matching + Hash verification + لنگر چندخطی.
+
+### ۳-۲. چرا input/output/run.py بهترین روش است؟
+
+**مقایسه‌ی روش‌ها:**
+
+| روش | مزیت | عیب |
+|-----|------|-----|
+| **کپی دستی کل فایل** | ساده | توکن‌سوز، خطاپذیر |
+| **Ctrl+H (لنگر/جایگزین)** | سریع برای تغییر کوچک | برای چند فایل کابوس |
+| **input/output/run.py** | ✅ خودکار، دقیق، فلگ‌محور | نیاز به ساخت یک‌بار |
+
+**نتیجه:** `input/output/run.py` **بهترین** است. لنگر/جایگزین هم **همان چیز** است در پوسته‌ی ساده‌تر.
+
+**تفکیک واضح:**
+
+| موقعیت | روش |
+|--------|-----|
+| تغییر **۱-۲ خط** در **یک فایل** | Ctrl+H مستقیم |
+| تغییر **چند خط** در **یک فایل** | `run.py` با `--file X` |
+| تغییر در **چند فایل** | `run.py` (apply خودکار) |
+| **فایل جدید / حذف فایل** | `run.py` |
+| **بازنویسی کامل** | `run.py` |
+
+### ۳-۳. Pull نه Push
+
+**روش قدیم (Push):**
+```
+کاربر: [کل dump را می‌فرستد]  ← ۵۰KB
+AI: [۵۰۰۰ توکن مصرف می‌کند]
+```
+
+**روش جدید (Pull):**
+```
+AI: python run.py --status  ← ۳۰۰ بایت
+کاربر: [می‌فرستد]
+AI: python run.py --file X  ← ۱KB
+کاربر: [می‌فرستد]
+AI: [پچ می‌دهد]
+```
+
+**صرفه‌جویی:** ۴۰-۸۰٪ بسته به پروژه.
+
+### ۳-۴. Integrity — چطور AI مطمئن شود کد دستکاری نشده؟
+
+**راه‌حل:** Hash-Anchored Patch.
+
+هر فایل در dump یک HASH دارد. AI در پچ، HASH قبلی را یادآوری می‌کند. `run.py` چک می‌کند:
+
+- **همان hash** → اعمال.
+- **hash متفاوت** → warn + پرسش.
 
 ---
 
-## 14 — Cheat sheet (what to send in a new chat)
+## بخش ۴ — قوانین طلایی هوش مصنوعی
 
-| Situation | Send |
-|-----------|------|
-| Start new chat | this file + --status |
-| Change one file | this file + --file X |
-| Change several files | this file + dump --full |
-| Debug error | this file + --errors |
-| Only this file | this file; AI guides setup |
+### ۴-۱. هرگز از صفر شروع نکن
 
-Never send raw screenshots, binary files, or logs longer than the last output.txt.
+هر بار که این سند را دریافت می‌کنی:
+
+1. **کل سند را بخوان.**
+2. **`python run.py --status` بخواه.**
+3. **مستقیم از همان‌جا ادامه بده.**
+4. **هرگز نپرس:** «کجا بودیم؟»، «چه کاری انجام دادی؟»، «کدام فاز؟».
+
+### ۴-۲. هر پیام = یک پچ کامل + یک پچ کانتکست
+
+هر پیام تو باید شامل این‌ها باشد:
+
+1. **پچ کد** (قالب بخش ۷).
+2. **پچ کانتکست** (به‌روزرسانی همین سند — بخش ۱۰).
+3. **دستور تست** (چه چیزی چطور تست کند).
+4. **پیام کامیت پیشنهادی.**
+5. **تگ امن پیشنهادی.**
+6. **یادآوری پایان پیام.**
+
+**دلیل:** ممکن است پیام بعدی لیمیت بخورد. اگر کانتکست در همان پیام به‌روز نشود، همه‌چیز از دست می‌رود.
+
+### ۴-۳. فقط دیف بفرست، نه کل فایل
+
+**❌ اشتباه:** کل فایل ۵۰۰ خطی.
+
+**✅ درست:**
+```
+===== FILE: src/main.py =====
+<<<EXPECTED_HASH>>>a1b2c3d4...<<<END>>>
+<<<FIND>>>
+[متن دقیق ۳-۵ خط]
+<<<REPLACE>>>
+[متن جدید همان ۳-۵ خط]
+<<<END>>>
+```
+
+**استثنا:** فقط برای فایل‌های جدید یا بازنویسی کامل.
+
+### ۴-۴. لنگر باید حرف‌به‌حرف از فایل کاربر باشد
+
+**هرگز از حافظه لنگر نساز.**
+
+اگر مطمئن نیستی:
+1. `python run.py --file X` بخواه.
+2. **بعد از دیدن فایل واقعی**، لنگر را از آن کپی کن.
+
+### ۴-۵. بدون تست، کامیت نده
+
+هر پچ باید همراه باشد با:
+- **دستور تست.**
+- **پیام کامیت.**
+- **تگ امن.**
+
+### ۴-۶. قطعی، دقیق، بدون شاید
+
+- ❌ «شاید...»، «به نظر می‌رسد...»، «امتحان کن...»
+- ✅ «این تغییر را بزن. اگر خطای X دیدی، فایل Y را بفرست.»
+
+### ۴-۷. زبان پاسخ = زبان کاربر
+
+فارسی → فارسی. انگلیسی → انگلیسی. مخلوط → زبان غالب.
+
+### ۴-۸. خلاصه، بدون مقدمه‌چینی
+
+- ❌ «سلام، امیدوارم خوب باشی. امروز...»
+- ✅ «پچ زیر را اعمال کن:»
+
+### ۴-۹. هرگز نگو «کل فایل را جایگزین کن»
+
+برای فایل‌هایی که محتوای ارزشمند دارند (این سند، پیکربندی، مستندات) — فقط پچ نقطه‌ای.
+
+### ۴-۱۳. رفتار `clear` و مدیریت لاگ
+
+**سؤال رایج:** چرا وقتی `clear` می‌زنم، خط `PS C:\...>` هم غیب می‌شود؟
+
+**پاسخ:** `clear` کل بافر صفحه را پاک می‌کند — نه فقط لاگ. prompt قبل از `clear` هم پاک می‌شود. یک prompt جدید بعد از `clear` چاپ می‌شود.
+
+**هدف:** لاگ کمتر = توکن کمتر.
+
+**الگوی توصیه‌شده برای دیدن مسیر + لاگ کم:**
+
+    clear ; pwd ; python run.py
+
+**قانون (اصلاح‌شده):**
+
+- `clear` **اختیاری** است — نه اجباری.
+- اگر خروجی قبلی را لازم داری، **نزن**.
+- اگر خروجی طولانی است و لازم نیست، بزن.
+- **AI نباید** در دستورات پیشنهادی، `clear` را به‌طور پیش‌فرض بگذارد.
+- فقط اگر کاربر گفت «لاگ طولانی می‌شود»، AI می‌تواند `clear ; ...` بدهد.
+- **دلیل:** `clear` کل صفحه را پاک می‌کند — از جمله خروجی‌های مفیدی که کاربر می‌خواهد بخواند.
+
+---
+
+### ۴-۱۲. تفکیک سند عمومی از سند خصوصی (اختیاری)
+
+**قانون:**
+- `PROJECT_CONTEXT.md` — **عمومی**. هرگز به پروژه‌ی خاصی اشاره نکن.
+- `_work/PROJECT_STATE.md` (اختیاری) — **خصوصی**. وضعیت واقعی این پروژه.
+
+**تفکیک:**
+
+| سند | مخاطب | محتوا |
+|-----|-------|-------|
+| PROJECT_CONTEXT.md | همه | قوانین، قالب، راهنما |
+| _work/PROJECT_STATE.md | کاربر و AI | وضعیت واقعی، تاریخچه |
+
+**هرگز محتوای سند خصوصی در سند عمومی کپی نشود.**
+**هرگز در پاسخ به کاربر به سند خصوصی اشاره نکن.**
+
+---
+
+### ۴-۱۱. دستورات تک‌خطی و مدیریت لاگ
+
+**مشکل واقعی:** برخی دستورات PowerShell چندخطی در محیط‌های مختلف خطا می‌دهند. همچنین، کاربر مجبور است کل لاگ پنجره را کپی کند که توکن‌سوز است.
+
+**قانون برای AI:**
+
+1. **تا حد امکان، دستورات را در یک خط بده.** به‌جای:
+
+       git add -A
+       git commit -m "..."
+       git tag v1.0.0
+       git push origin main
+
+   بهتر است:
+
+       git add -A ; git commit -m "..." ; git tag v1.0.0 ; git push origin main
+
+2. **اگر دستور طولانی شد، آن را به خطوط کوتاه بشکن، ولی همه را در یک بلوک بده.**
+
+3. **برای پاک‌کردن لاگ، از `clear` استفاده کن.** کاربر باید قبل از هر دستور مهم، `clear` بزند تا لاگ پنجره کوچک بماند.
+
+4. **کاربر فقط لاگ نهایی را کپی می‌کند** — نه کل پنجره‌ی PowerShell.
+
+**الگوی پیشنهادی AI:**
+
+    clear ; python run.py
+
+**الگوی ارسال به AI توسط کاربر:**
+
+فقط خروجی دستور — نه خطوط PowerShell، نه prompt، نه چیز اضافه.
+
+**قانون نهایی:** هر دستور باید کوتاه، تک‌خطی و قابل کپی-پیست باشد.
+
+---
+
+### ۴-۱۰. یادآوری پایان هر پیام
+
+**همیشه** این جمله:
+
+> «اگر خطا داشت: `python run.py` را بزن و `_work/output.txt` را بفرست.»
+
+---
+
+## بخش ۵ — گردش کار `run.py` (نسخه ۲.۰)
+
+### ۵-۰. فلگ‌های موجود
+
+| فلگ | کار | حجم تقریبی |
+|-----|-----|------------|
+| (بدون) | smart: apply اگر input پر، dump اگر خالی | متوسط |
+| `--status` | خلاصه‌ی خیلی کوچک (شروع هر چت) | ~۳۰۰ بایت |
+| `--tree` | فقط درخت فایل‌ها | ~۲KB |
+| `--hash` | hash همه فایل‌ها | ~۲KB |
+| `--git` | git log + tag + status | ~۱KB |
+| `--file X` | محتوای یک فایل + hash | ۱-۵KB |
+| `--files X Y Z` | چند فایل مشخص | متغیر |
+| `--errors` | فقط خطاهای آخرین اجرا | ~۵۰۰ بایت |
+| `--auto-verify` | hash mismatch → رد خودکار | — |
+| `--force` | hash mismatch → اعمال بدون هشدار | — |
+| `dump [--full]` | dump کامل یا incremental | بزرگ |
+| `apply` | اعمال پچ‌های input.txt | — |
+| `clean` | پاک‌کردن `_work/` | — |
+
+### ۵-۰-۱. قانون Pull برای AI
+
+هرگز مستقیم سراغ dump کامل نرو. ترتیب پیشنهادی:
+
+1. اول: `python run.py --status`
+2. اگر کافی نبود: `python run.py --file <نام>`
+3. اگر باز هم لازم شد: `python run.py dump --full`
+
+### ۵-۰-۲. Hash Verification
+
+پچ می‌تواند یک hash مورد انتظار داشته باشد. هنگام apply، مقدار hash فعلی فایل با آن مقایسه می‌شود:
+
+- اگر برابر بود → اعمال می‌شود.
+- اگر mismatch بود → هشدار می‌دهد (ولی به‌طور پیش‌فرض اعمال می‌کند).
+- با فلگ `--auto-verify` → در صورت mismatch رد می‌کند.
+- با فلگ `--force` → بدون هشدار اعمال می‌کند.
+
+این مکانیزم از اعمال پچ روی کد دستکاری‌شده جلوگیری می‌کند.
+
+### ۵-۰-۳. قانون نشانه‌های پارسر (خط قرمز جدید)
+
+هنگام نوشتن مستندات یا کامنت‌ها، **هرگز نشانه‌های پارسر را در محتوای REPLACE به‌صورت واقعی نگذار** (چون پارسر آن‌ها را به‌عنوان بستن بلاک تفسیر می‌کند). برای نمایش، آن‌ها را با ۴ فاصله‌ی ابتدای خط indent کن، یا با گیومه فارسی بنویس.
+
+### ۵-۱. نصب اولیه
+
+```
+۱. این سند را در ریشه‌ی پروژه بگذار: PROJECT_CONTEXT.md
+۲. پوشه _work/ بساز با زیرپوشه‌هایش:
+   _work/
+   ├── input.txt      (خالی)
+   ├── output.txt     (خالی)
+   ├── applied/       (خالی)
+   └── cache.json     (اختیاری — خودکار ساخته می‌شود)
+۳. run.py را از قالب بخش ۲۶ بساز
+۴. .gitignore را تنظیم کن:
+   _work/input.txt
+   _work/output.txt
+   _work/applied/
+   _work/cache.json
+```
+
+### ۵-۲. جریان روزمره
+
+```
+۱. AI پچ می‌دهد (قالب بخش ۷)
+۲. کاربر آن را در _work/input.txt می‌ریزد
+۳. کاربر: python run.py
+   - اگر input.txt پر باشد → پچ‌ها اعمال می‌شوند
+   - اگر خالی باشد → dump (طبق فلگ پیش‌فرض)
+۴. کاربر _work/output.txt را به AI می‌دهد
+۵. AI وضعیت را می‌بیند و پچ بعدی را می‌دهد
+```
+
+### ۵-۳. چرا این روش؟
+
+- **بدون کپی/پیست دستی.**
+- **یک فایل واحد برای ارتباط.**
+- **AI وضعیت دقیق را می‌بیند، حدس نمی‌زند.**
+- **فلگ‌محور: فقط چیزی که لازم است.**
+
+---
+
+## بخش ۶ — فلگ‌های `run.py` (قلب صرفه‌جویی توکن)
+
+### ۶-۱. فلگ‌های پایه
+
+| فلگ | خروجی | حجم تقریبی |
+|-----|-------|------------|
+| (بدون فلگ) | apply اگر input پر / dump ساده اگر خالی | متوسط |
+| `--status` | فقط خلاصه: نام پروژه، نسخه، تگ آخر، فایل‌های تغییر‌یافته، خطاها | ~۳۰۰ بایت |
+| `--tree` | فقط درخت پروژه (عمق ۴) | ~۲KB |
+| `--hash` | فقط hash همه فایل‌ها | ~۲KB |
+| `--git` | فقط git log + tag + status | ~۱KB |
+| `--diff` | فقط فایل‌های تغییر کرده از dump قبلی | متغیر |
+| `--file X` | فقط محتوای یک فایل | ~۱-۵KB |
+| `--files X Y Z` | چند فایل مشخص | متغیر |
+| `--all` | dump کامل (فقط اگر لازم شد) | بزرگ |
+| `--errors` | فقط خطاهای آخرین اجرا | ~۵۰۰ بایت |
+
+### ۶-۲. فلگ‌های پیشرفته
+
+| فلگ | کار |
+|-----|-----|
+| `--auto-verify` | hash mismatch → رد خودکار (بدون پرسش) |
+| `--force` | hash mismatch → اعمال بدون پرسش |
+| `--dry-run` | فقط پیش‌نمایش، اعمال نکن |
+| `--fuzzy` | لنگر دقیق نخورد → نزدیک‌ترین |
+| `--no-fuzzy` | فقط exact match |
+| `--backup` | قبل از apply، بکاپ بگیر |
+
+### ۶-۳. قانون Pull برای AI
+
+**AI باید این ترتیب را رعایت کند:**
+
+```
+گام ۱: python run.py --status
+        ↓ (اگر کافی نبود)
+گام ۲: python run.py --file <فایل مربوطه>
+        ↓ (اگر لازم شد)
+گام ۳: python run.py --all
+```
+
+**هرگز از گام ۱ مستقیم به گام ۳ نرو، مگر کاربر گفته باشد.**
+
+### ۶-۴. قالب خروجی `--status`
+
+```
+PROJECT: MyApp v1.2.3
+LAST TAG: step-42-ok
+MODIFIED FILES: src/main.py, src/utils.py
+LAST ERROR: None
+UNCOMMITTED: 3 files
+```
+
+~۳۰۰ بایت.
+
+### ۶-۵. قالب خروجی `--file X`
+
+```
+FILE: src/main.py
+HASH: a1b2c3d4e5f6...
+SIZE: 1234 bytes
+MODIFIED: 2026-10-07 14:30
+---CONTENT---
+[کل محتوای فایل]
+```
+
+### ۶-۶. قالب خروجی `--all`
+
+```
+PROJECT: MyApp v1.2.3
+LAST TAG: step-42-ok
+GIT LOG: <۱۰ کامیت آخر>
+GIT TAG: <۱۰ تگ آخر>
+GIT STATUS: <خلاصه>
+
+---TREE---
+[درخت پروژه]
+
+---FILES---
+FILE: src/main.py
+HASH: ...
+---CONTENT---
+...
+
+FILE: src/utils.py
+HASH: ...
+---CONTENT---
+...
+```
+
+---
+
+## بخش ۶-ب — مشخصات دقیق پارسر `run.py`
+
+### ۶-ب-۱. نشانه‌های شناسایی
+
+پارسر `run.py` فقط این نشانه‌ها را می‌شناسد:
+
+**سرصفحه‌ی بلاک (در ستون صفر):**
+- ۳+ مساوی + نوع (FILE/CREATE/DELETE/CMD/MKDIR) + کولن + مسیر + ۳+ مساوی.
+
+**نشانه‌های داخلی (در ستون صفر):**
+- FIND — شروع بلوک متن قدیم.
+- REPLACE — شروع بلوک متن جدید.
+- CONTENT — شروع محتوای فایل جدید.
+- RUN — شروع اسکریپت CMD.
+- END — پایان هر بلاک.
+- EXPECTED_HASH — hash اختیاری (در یک خط با END).
+
+### ۶-ب-۲. قوانین حیاتی
+
+1. **همه‌ی نشانه‌ها باید در ستون صفر باشند** (بدون فاصله ابتدای خط).
+2. **اگر نشانه‌ای داخل محتوای REPLACE/CONTENT به‌صورت واقعی بیاید، پارسر بلاک را زودتر می‌بندد → فایل به‌هم می‌ریزد.**
+3. **برای نمایش نشانه در مستندات، آن را با ۴ فاصله indent کن** یا با گیومه بنویس.
+4. **ترتیب بلاک‌ها مهم است** — به ترتیب ظاهر شدن اجرا می‌شوند.
+
+### ۶-ب-۳. رفتار در خطا
+
+| خطا | رفتار |
+|-----|-------|
+| بلاک ناقص (بدون END) | پارسر آن را نادیده می‌گیرد |
+| فایل مقصد نیست | FAIL file not found |
+| لنگر نخورد | fuzzy → suggest → FAIL |
+| hash mismatch | warning → apply (مگر با auto-verify) |
+| فایل شامل کاراکتر غیرمجاز | write با utf-8 — خطا نمی‌دهد |
+
+### ۶-ب-۴. ترتیب اجرا
+
+- CREATE و FILE و DELETE و MKDIR و CMD به ترتیب ظاهر شدن اجرا می‌شوند.
+- اگر MKDIR قبل از CREATE باشد، ابتدا پوشه ساخته می‌شود.
+- اگر CMD قبل از FILE باشد، ابتدا دستور اجرا می‌شود — این را در نظر بگیر.
+
+### ۶-ب-۵. اگر پارسر خطا داد
+
+1. `_work/output.txt` را ببین.
+2. خط FAIL دقیقاً می‌گوید کجا و چه بلاکی.
+3. SUGGEST نزدیک‌ترین متن را نشان می‌دهد (درصد تشابه + شماره خط).
+4. اگر خطای پارسر بود (نه لنگر)، `_work/input.txt` را دستی چک کن — احتمالاً نشانه‌ای در ستون صفر داخل محتوا هست.
+
+### ۶-ب-۶. چرا این بخش مهم است؟
+
+چون همان اشتباه‌های رایج از این‌جا می‌آید:
+
+- قرار دادن END واقعی داخل REPLACE (بدون indent).
+- قرار دادن سرصفحه‌ی FILE داخل محتوای مستندات.
+- نشانه‌ای با tab به‌جای فاصله.
+
+**قانون طلایی:** اگر نمی‌دانی، نشانه را با ۴ فاصله indent کن. همیشه امن است.
+
+---
+
+### ۶-ب-۷. قاعده‌ی طلایی input.txt
+
+**هرگز نباید `input.txt` را با محتوای `output.txt` پر کنی.** این کار باعث می‌شود پچ‌های اشتباهی اعمال شوند.
+
+**قواعد:**
+
+1. `input.txt` همیشه باید **خالی** باشد — مگر در لحظه‌ی apply.
+2. اگر `input.txt` خالی نیست و در حال اجرا نیستی، یعنی یک پچ ناتمام هست.
+3. برای بررسی: `python run.py` (اگر input پر باشد، apply می‌کند).
+4. برای خالی کردن دستی: در VS Code همه را انتخاب کن و delete بزن.
+5. **هرگز** خروجی `output.txt` را در `input.txt` کپی نکن.
+
+**علامت خطر:** اگر در خروجی `run.py` دیدی که چند بلاک `===== FILE =====` در هم پیچیده‌اند، یعنی `input.txt` آلوده بوده. `input.txt` را خالی کن و از صفر شروع کن.
+
+**پیامد آلودگی:** بلاک‌های اشتباه اعمال می‌شوند، کامیت‌های ناخواسته ساخته می‌شوند، و بازگشت (`git reset`) لازم می‌شود.
+
+---
+
+## بخش ۷ — قالب پچ استاندارد
+
+### ۷-۱. قالب پایه (با hash)
+
+```
+===== FILE: <مسیر نسبی> =====
+<<<EXPECTED_HASH>>>a1b2c3d4...<<<END>>>
+<<<FIND>>>
+[متن دقیق — حرف به حرف از فایل کاربر]
+<<<REPLACE>>>
+[متن جدید]
+<<<END>>>
+```
+
+### ۷-۲. قالب بدون hash (اگر کاربر hash ندارد)
+
+```
+===== FILE: <مسیر نسبی> =====
+<<<FIND>>>
+[متن دقیق]
+<<<REPLACE>>>
+[متن جدید]
+<<<END>>>
+```
+
+### ۷-۳. قالب فایل جدید
+
+```
+===== CREATE: <مسیر نسبی> =====
+<<<CONTENT>>>
+[کل محتوای فایل جدید]
+<<<END>>>
+```
+
+### ۷-۴-الف. قالب جابجایی فایل (MOVE)
+
+```
+===== MOVE: <مسیر مبدا> -> <مسیر مقصد> =====
+```
+
+**قوانین:**
+- اگر مبدا وجود نداشت → FAIL.
+- اگر مقصد وجود داشت → FAIL (بدون overwrite).
+- پوشه‌ی مقصد خودکار ساخته می‌شود.
+
+**مثال:**
+
+```
+===== MOVE: src/old.py -> src/new/old.py =====
+```
+
+### ۷-۴. قالب حذف فایل
+
+```
+===== DELETE: <مسیر نسبی> =====
+```
+
+### ۷-۵. قالب اجرای دستور سیستمی
+
+```
+===== CMD: <توضیح کوتاه> =====
+RUN
+<اسکریپت PowerShell/Bash>
+END
+```
+
+### ۷-۶. قالب ساخت پوشه
+
+```
+===== MKDIR: <مسیر نسبی> =====
+```
+
+### ۷-۷. نکات مهم قالب
+
+1. **نشانه‌ها فقط در ستون صفر** (بدون فاصله‌ی ابتدای خط).
+2. **اگر نشانه در متن پچ بیاید، پارسر اشتباه می‌گیرد.** راه‌های امن:
+   - گیومه فارسی: «نشانه END»
+   - فاصله داخلی: `< END >`
+   - indent سمت راست.
+3. **ترتیب پچ‌ها مهم است.** به ترتیب اجرا می‌شوند.
+
+---
+
+## بخش ۸ — Hash verification (تشخیص دستکاری)
+
+### ۸-۱. چرا؟
+
+- **جلوگیری از اعمال پچ روی کد تغییر‌یافته.**
+- **AI مطمئن شود لنگرش هنوز معتبره.**
+- **اگر hash عوض شده، AI بفهمد کاربر دستکاری کرده و بپرسد «چی عوض کردی؟».**
+
+### ۸-۲. الگو
+
+هر فایل در dump:
+
+```
+FILE: src/main.py
+HASH: a1b2c3d4e5f6...
+```
+
+AI در پچ:
+
+```
+===== FILE: src/main.py =====
+<<<EXPECTED_HASH>>>a1b2c3d4e5f6...<<<END>>>
+<<<FIND>>>
+...
+<<<REPLACE>>>
+...
+<<<END>>>
+```
+
+### ۸-۳. رفتار `run.py`
+
+1. hash فایل فعلی را حساب کن.
+2. با `EXPECTED_HASH` مقایسه کن.
+3. **یکی بود:** پچ را اعمال کن.
+4. **نبود:**
+
+```
+[WARN] Hash mismatch on src/main.py
+Expected: a1b2c3d4e5f6...
+Actual:   f9e8d7c6b5a4...
+Apply anyway? (y/N):
+```
+
+### ۸-۴. فلگ‌های مربوط
+
+```
+--auto-verify    # رد خودکار اگر mismatch
+--force          # اعمال بدون پرسش
+```
+
+### ۸-۵. محاسبه hash
+
+```
+SHA256(محتوای فایل + مهر زمانی آخرین تغییر)
+```
+
+**نه فقط محتوا** — چون اگر کسی محتوا را عوض کند و برگرداند، hash یکسان می‌شود. با timestamp، این مشکل حل می‌شود.
+
+---
+
+## بخش ۸-ب — ضد مسدود شدن اکانت (MSG-SEED)
+
+### ۸-ب-۱. مشکل واقعی
+
+DeepSeek و برخی سرویس‌های دیگر نه فقط به پیام‌های خیلی زیاد، بلکه به پیام‌های مشابه زیاد هم حساس‌اند. اگر کاربر ۱۰ بار پشت سر هم چیزی شبیه این بفرستد:
+
+    [APPLY] PATCH_ID: 2
+    [P2] [EDIT] FILE
+      [OK] applied
+
+احتمال مسدود شدن اکانت بالاست.
+
+**قانون حیاتی:** هر پیام باید یونیک به‌نظر برسد.
+
+### ۸-ب-۲. راه‌حل اصلی: MSG-SEED
+
+`run.py` (نسخه ۳.۰) یک خط در ابتدای هر خروجی می‌نویسد:
+
+    # MSG-SEED: <hex-تصادفی>
+
+**الگوی ارسال به AI:**
+
+    # MSG-SEED: a1b2c3d4
+    [APPLY]
+    PATCH_ID: 2
+    ...
+
+**قوانین:**
+
+- اولین خط پیام، همان MSG-SEED است.
+- هر بار متفاوت است.
+- این خط کافی است که AI پیام را یونیک ببیند.
+
+### ۸-ب-۳. راه‌حل مکمل: Batching
+
+اگر ۳ پچ کوچک داری، پشت سر هم بفرست، نه یکی‌یکی.
+
+- بد: پیام ۱ پچ A، پیام ۲ پچ B، پیام ۳ پچ C.
+- خوب: پیام ۱ = پچ A + B + C.
+
+مزیت: تعداد پیام‌ها ۳ برابر کاهش می‌یابد.
+
+### ۸-ب-۴. راه‌حل مکمل: فاصله‌ی زمانی
+
+بین دو پیام پشت‌سرهم، حداقل ۳۰ ثانیه صبر کن.
+
+### ۸-ب-۵. راه‌حل مکمل: تنوع ساختاری
+
+ساختار پیام را گاهی تغییر بده:
+
+- گاهی با MSG-SEED.
+- گاهی با یک جمله‌ی متفاوت شروع کن.
+- گاهی status بفرست، گاهی file.
+
+### ۸-ب-۶. الگوی نهایی پیام ایمن
+
+    # MSG-SEED: a1b2c3d4e5f6
+    <وضعیت کوتاه: مثلاً "پچ قبلی موفق">
+    <محتوای output.txt>
+
+### ۸-ب-۷. اگر باز هم مسدود شدی
+
+- **Account Warning:** معمولاً موقت است (۳۰ دقیقه تا ۲۴ ساعت).
+- **Ban دائمی:** نادر است.
+- **راه‌حل:** در حساب جدید، از همان ابتدا این پروتکل را رعایت کن.
+
+### ۸-ب-۸. اگر کاربر می‌خواهد خیلی سریع پیش برود
+
+**توصیه:** به‌جای ارسال هر تغییر کوچک، بسته‌بندی کن:
+
+- ۵ پچ → یک پیام
+- هر پیام حاوی CTX-DELTA واضح
+- پس از هر ۳ پیام، یک بار status
+
+این هم سریع‌تر است، هم امن‌تر.
+
+---
+
+## بخش ۹ — Fuzzy matching (تحمل Drift)
+
+### ۹-۱. مشکل
+
+لنگرها بعد از تغییرات جابجا می‌شوند.
+
+### ۹-۲. راه‌حل: تطبیق سه‌سطحی
+
+```
+سطح ۱: exact match
+سطح ۲: rstrip (بدون فاصله‌ی انتهایی)
+سطح ۳: strip (بدون فاصله‌ی ابتدایی)
+سطح ۴: nearest block با درصد تشابه > ۸۵٪
+```
+
+### ۹-۳. لنگر چندخطی
+
+لنگر **فقط یک خط نباشد** — ۲-۳ خط بالا + ۲-۳ خط پایین هم همراهش باشد:
+
+```
+<<<FIND>>>
+def process_data(items):
+    if not items:
+        return []
+    result = [transform(i) for i in items]
+<<<REPLACE>>>
+def process_data(items):
+    if not items:
+        return []
+    result = [transform(i) for i in items if i is not None]
+```
+
+**مزیت:** حتی اگر بالا/پایین عوض شده باشد، این ۵ خط به‌هم چسبیده باقی می‌مانند.
+
+### ۹-۴. اگر fuzzy هم نخورد
+
+```
+[FAIL] Anchor not found in src/main.py
+Closest match at line 45 (85% similarity):
+<متن نزدیک‌ترین>
+```
+
+AI می‌تواند از این پیام بفهمد چه اتفاقی افتاده.
+
+---
+
+## بخش ۱۰ — به‌روزرسانی کانتکست (اجباری)
+
+> **🔴 این بخش، قلب مقاومت پروژه در برابر لیمیت است.**
+
+### ۱۰-۱. چرا؟
+
+- کاربر نمی‌داند پیام بعدی لیمیت می‌خورد یا نه.
+- اگر کانتکست به‌روز نباشد، چت جدید نمی‌داند کجا بود.
+
+### ۱۰-۲. چه چیزهایی در هر پیام به‌روز شود؟
+
+هر پیامی که تغییر واقعی دارد:
+
+1. **پچ کد** (بخش ۷).
+2. **بخش ۱۳ (Session Tracker)** — همیشه.
+3. **بخش ۱۵ (خط قرمزها)** — اگر خط قرمز جدیدی اضافه شد.
+4. **بخش ۱۶ (Git tag)** — اگر تگ جدید اضافه شد.
+5. **هر بخش دیگری** که تغییر کرد.
+
+### ۱۰-۳. الگوی به‌روزرسانی
+
+```
+===== FILE: PROJECT_CONTEXT.md =====
+<<<FIND>>>
+## بخش ۱۳ — Session Tracker
+
+### ۱۳-۱. Session Tracker
+| فیلد | مقدار |
+|------|-------|
+| **آخرین تگ امن** | `step-XX-ok` |
+| **آخرین کار** | <قبلی> |
+| **قدم بعدی** | <قبلی> |
+<<<REPLACE>>>
+### ۱۳-۱. Session Tracker
+| فیلد | مقدار |
+|------|-------|
+| **آخرین تگ امن** | `step-YY-ok` |
+| **آخرین کار** | <جدید> |
+| **قدم بعدی** | <جدید> |
+<<<END>>>
+```
+
+### ۱۰-۴. اگر فراموش کردی؟
+
+AI جدید نمی‌داند کجاست → کاربر باید از صفر توضیح بدهد → اتلاف وقت.
+
+### ۱۰-۵. قاعده‌ی طلایی
+
+> **هر پیام AI = یک پچ کد + یک پچ کانتکست.**
+> اگر پچ کانتکست نباشد، پیام ناقص است.
+
+### ۱۰-۶. مکانیزم CTX-DELTA — ضد فراموشی
+
+مشکل واقعی: AI حتی با تأکید زیاد، فراموش می‌کند کانتکست را در پیام به‌روز کند.
+
+راه‌حل: در پایان هر پیام، AI موظف است این بلوک را بنویسد:
+
+    [CTX-DELTA]
+    TAG: step-XX-ok
+    WORK: <یک خط توضیح کار انجام‌شده>
+    NEXT: <یک خط توضیح قدم بعدی>
+    FILES: <لیست فایل‌های تغییریافته>
+    [/CTX-DELTA]
+
+**قوانین سخت:**
+
+- فقط ۴ تا ۵ خط.
+- همیشه در پایان پیام، بعد از تست و کامیت.
+- تغییر بزرگ → پاراگراف‌های کانتکست هم به‌روز شوند.
+- تغییر کوچک → فقط CTX-DELTA کافی است.
+
+**مزیت‌ها:**
+
+- اگر AI کانتکست اصلی را فراموش کرد، این بلوک نجات‌بخش است.
+- کاربر با یک نگاه می‌فهمد AI دارد درست کار می‌کند.
+- در چت جدید، فقط با همین CTX-DELTA می‌توان ادامه داد.
+- `run.py` می‌تواند (در نسخه‌ی ۳) این بلوک را خودکار در `_work/ctx_delta.txt` ذخیره کند.
+
+### ۱۰-۷. الگوی کامل پیام AI
+
+هر پیام AI باید این ساختار را داشته باشد:
+
+1. **📌 خلاصه** — یک خط.
+2. **پچ کد** — قالب بخش ۷.
+3. **📌 تست** — چه چیزی چطور تست کند.
+4. **💾 کامیت** — دستور آماده.
+5. **کانتکست** — اگر تغییر بزرگ بود، پچ PROJECT_CONTEXT.md.
+6. **[CTX-DELTA]** — همیشه.
+7. **یادآوری پایان پیام** — «اگر خطا داشت: ...».
+
+---
+
+## بخش ۱۱ — مشکل کانتکست بزرگ (راه‌حل)
+
+### ۱۱-۱. مشکل
+
+اگر این سند به ۵۰۰۰ خط برسد، فرستادنش هر بار خودش توکن‌سوز می‌شود.
+
+### ۱۱-۲. راه‌حل: سه لایه
+
+**لایه ۱ — سند اصلی (این فایل):**
+- این سند **کامل** و **ثابت** است.
+- فقط بخش‌های ۲، ۱۳، ۱۵، ۱۶ تغییر می‌کنند.
+- یک‌بار فرستادن کافی است.
+
+**لایه ۲ — CHANGELOG.md جداگانه:**
+- تاریخچه‌ی کامل تغییرات.
+- فقط وقتی لازم شد، AI می‌خواند.
+- در `_work/output.txt` گنجانده می‌شود.
+
+**لایه ۳ — ADR.md (Architecture Decision Records):**
+- تصمیمات معماری گذشته.
+- فقط برای AI جدید که می‌خواهد «چرا»ها را بفهمد.
+
+### ۱۱-۳. الگوی عملی
+
+**هر چت جدید:**
+```
+۱. این سند (PROJECT_CONTEXT.md)
+۲. CHANGELOG.md (۱۰۰ خط آخر)
+۳. python run.py --status
+۴. اگر لازم شد: python run.py --all
+```
+
+**صرفه‌جویی:** ~۳۰٪ توکن در مقایسه با فرستادن همه‌چیز.
+
+### ۱۱-۴. سند باید چه اندازه باشد؟
+
+- **حداقل:** ۵۰۰ خط (شروع).
+- **مطلوب:** ۲۰۰۰-۳۰۰۰ خط.
+- **حداکثر:** ۵۰۰۰ خط (بیشتر از این، توکن‌سوز می‌شود).
+
+**اگر بیشتر شد:**
+- بخش‌های تاریخی → CHANGELOG.md
+- ADRها → ADR.md
+- فقط قوانین فعال در سند بماند.
+
+---
+
+## بخش ۱۲ — کاراکترهای خاص و escape
+
+### ۱۲-۱. مشکل
+
+سه‌بک‌تیک (` ``` `)، ستاره (`*`)، و سایر کاراکترها در markdown باعث به‌هم‌ریختگی می‌شوند.
+
+### ۱۲-۲. راه‌حل: قانون نشانه‌ها
+
+**۱. نشانه‌های پارسر (FILE، FIND، REPLACE، END، CONTENT، RUN) هرگز در بدنه‌ی پچ به‌صورت واقعی نباشند.**
+
+**۲. اگر باید نشانه‌ای را نمایش دهی:**
+
+- ✅ با گیومه فارسی: «نشانه END»
+- ✅ با فاصله داخلی: `< END >`
+- ✅ با indent: `    ===== FILE =====` (پارسر فقط ستون صفر می‌بیند)
+
+**۳. اگر محتوای فایل شامل سه‌بک‌تیک است:**
+
+استفاده از `<<<FIND>>>` و `<<<REPLACE>>>` — بدون markdown بیرونی.
+
+```
+===== FILE: src/README.md =====
+<<<FIND>>>
+این یک بلوک کد است:
+```
+print("hello")
+```
+<<<REPLACE>>>
+این یک بلوک کد به‌روز شده است:
+```
+print("hello world")
+```
+<<<END>>>
+```
+
+### ۱۲-۳. قالب امن برای markdown
+
+اگر پچ شامل markdown است، **همیشه** از پوسته‌ی `===== FILE =====` استفاده کن — نه سه‌بک‌تیک.
+
+### ۱۲-۴. تست قبل از ارسال
+
+قبل از فرستادن پیام، چک کن:
+
+- [ ] هیچ ` ``` ` بدون جفت در متن نیست.
+- [ ] هیچ `===== ` در بدنه‌ی پچ نیست.
+- [ ] هیچ `<<<` بدون `>>>` نیست.
+
+### ۱۲-۵. اگر `run.py` پارسر خطا داد
+
+```
+[FAIL] Parser error: unterminated block
+Line 45: <<<FIND>>>
+Reason: next ===== FILE ===== found before <<<END>>>
+```
+
+**علت:** احتمالاً نشانه در بدنه ظاهر شده. کاربر باید دستی چک کند.
+
+---
+
+### ۱۲-۶. قانون طلایی برای AI: قالب خروجی `input.txt`
+
+**هر بار که AI می‌خواهد پچ بدهد، باید کل محتوای `input.txt` را در یک بلاک کد واحد بدهد** — نه تکه‌تکه، نه با prose در میان.
+
+**قوانین سخت:**
+
+1. **یک بلاک واحد از `===== FILE` تا آخرین `<<<END>>>`.**
+2. **اگر محتوا شامل سه‌بک‌تیک است، از چهار بک‌تیک برای فنس بیرونی استفاده کن.** مثال: ` ```` ` به‌جای ` ``` `.
+3. **هیچ prose بین بلاک‌ها نباشد.** اگر توضیح لازم است، قبل یا بعد از بلاک — نه داخل.
+4. **اگر anchor یا CONTENT خیلی بزرگ است، به دو بلاک جدا بشکن** — ولی هر بلاک باید کامل و مستقل باشد.
+5. **هیچ نشانه‌ی پارسر (`===== FILE`، `<<<FIND>>>`، `<<<END>>>` و...) نباید در prose بیرون بلاک ظاهر شود.**
+
+
+
+## بخش ۱۳ — Session Tracker
+
+### ۱۳-۱. Session Tracker
+
+| فیلد | مقدار |
+|------|-------|
+| **آخرین تگ امن** | `<مثلاً step-42-ok>` |
+| **آخرین کامیت** | `<هش یا خلاصه>` |
+| **آخرین کار** | `<توضیح یک خطی>` |
+| **قدم بعدی** | `<توضیح یک خطی>` |
+| **فاز جاری** | `<نام فاز>` |
+| **درصد تکمیل** | `<مثلاً ۶۰٪>` |
+| **آخرین خطا** | `<اگر وجود دارد>` |
+| **مسائل باز** | `<لیست>` |
+
+### ۱۳-۲. به‌روزرسانی
+
+**در هر پیام AI، این بخش باید به‌روز شود.**
+
+### ۱۳-۳. جدول تگ‌ها
+
+| رنگ | نام tag | معنی | چه وقت |
+|-----|---------|------|--------|
+| 🟠 | `safe-before-XX` | نقطه‌ی بازگشت | قبل از تغییرات بزرگ |
+| 🟢 | `step-XX-ok` | تأییدشده با تست | بعد از تست موفق |
+| 🟡 | `step-XX-wip` | نیمه‌کاره | وسط کار |
+| 🔴 | `broken-XX` | خراب (برنگرد) | برای مستندسازی |
+
+---
+
+---
+
+## بخش ۱۳-ب — CHANGELOG و ADR اینلاین (اختیاری)
+
+اگر سند کوتاه است (زیر ۲۰۰۰ خط)، تاریخچه و تصمیمات را این‌جا نگه‌دار. اگر سند بزرگ شد، به `CHANGELOG.md` و `ADR.md` منتقل کن.
+
+### CHANGELOG اینلاین
+
+| تگ | توضیح |
+|-----|-------|
+| v1.0.0 | نسخه‌ی اول — قالب پایه |
+
+### ADR اینلاین
+
+**ADR-1: استفاده از run.py برای هماهنگی با AI**
+
+- **تصمیم:** همه‌ی ارتباطات با AI از طریق `input.txt` / `output.txt` + `run.py`.
+- **دلیل:** جلوگیری از توکن‌سوزی، افزایش دقت، مقاومت در برابر لیمیت.
+- **جایگزین‌ها:** کپی/پیست دستی، Ctrl+H دستی.
+
+**ADR-2: مکانیزم MSG-SEED**
+
+- **تصمیم:** هر پیام با یک seed یونیک (hex تصادفی) شروع می‌شود.
+- **دلیل:** DeepSeek و برخی سرویس‌ها به پیام‌های مشابه حساس‌اند و اکانت را مسدود می‌کنند.
+- **جایگزین‌ها:** فاصله‌ی زمانی، Batching، تنوع ساختاری.
+
+**ADR-3: قالب خروجی input.txt در یک بلاک کد واحد**
+
+- **تصمیم:** AI همیشه `input.txt` را در یک بلاک کد (ترجیحاً با ۴ بک‌تیک) می‌دهد.
+- **دلیل:** فنس ۳-بک‌تیکی با محتوای حاوی سه‌بک‌تیک تداخل می‌کند.
+- **جایگزین‌ها:** فنس ۵-بک‌تیکی (سخت تایپ)، escape دستی.
+
+**ADR-4: ساختار فایل‌ها بر اساس اصل «یک سند، یک ابزار»**
+
+- **تصمیم:** تعداد فایل‌های پروژه حداقل بماند.
+- **دلیل:** شلوغی فایل‌ها با اصل «یک سند» در تضاد است.
+- **جایگزین‌ها:** فایل‌های متعدد (CHANGELOG جدا، ADR جدا، و...).
+
+---
+
+## بخش ۱۴ — شروع چت جدید
+
+### ۱۴-۱. چه چیزی باید فرستاد؟
+
+**حداقل:**
+1. این سند.
+2. `python run.py --status` (خروجی).
+
+**ایده‌آل:**
+1. این سند.
+2. `CHANGELOG.md` (۱۰۰ خط آخر).
+3. `python run.py --status`.
+4. اگر لازم شد: `python run.py --all`.
+
+### ۱۴-۲. الگوی پیام
+
+```
+ادامه‌ی پروژه. این سند و وضعیت فعلی:
+
+[سند را پیست کن]
+
+[خروجی --status را پیست کن]
+
+هدف این چت: <یک خط>
+```
+
+### ۱۴-۳. چه چیزی AI باید انجام دهد؟
+
+1. **تأیید کند که سند را خوانده** (یک خط).
+2. **از Session Tracker بفهمد کجاست.**
+3. **بدون سؤال اضافه، پچ بعدی را بدهد.**
+
+### ۱۴-۴. چه چیزی AI نباید بپرسد؟
+
+- ❌ «چه کاری قبلاً انجام دادید؟»
+- ❌ «کدام فاز را ادامه بدهم؟»
+- ❌ «توضیح بده پروژه چیه.»
+- ✅ «سند را خواندم. آماده‌ام. آخرین خطا چیست؟»
+
+---
+
+## بخش ۱۵ — خط قرمزها
+
+### ۱۵-۱. خط قرمزهای عمومی
+
+1. **هرگز خودسر تغییر نده.**
+2. **هرگز بدون تأیید کاربر، فایل حذف نکن.**
+3. **هرگز بدون کامیت، تغییر بزرگ نده.**
+4. **هرگز خط قرمزهای اختصاصی پروژه (بخش ۲-۴) را نشکن.**
+5. **هرگز API کتابخانه‌ای را حدس نزن.**
+6. **هرگز تابع یا ماژول مقدس را دست نزن.**
+7. **هرگز نسخه‌ی نرم‌افزار را خودسر عوض نکن.**
+8. **هرگز متغیر محیطی یا پیکربندی حیاتی را تغییر نده.**
+
+### ۱۵-۲. خط قرمزهای این سند
+
+1. **هرگز کل این سند را بازنویسی نکن** — فقط بخش‌های تغییر‌یافته.
+2. **هرگز نشانه‌های پارسر را در بدنه‌ی پچ به‌صورت واقعی نگذار.**
+3. **هرگز کانتکست را در پیام به‌روز نکن و رد شو.**
+
+### ۱۵-۳. اگر خط قرمز شکسته شد؟
+
+1. **فوراً به کاربر اطلاع بده.**
+2. **راه بازگشت پیشنهاد بده:** `git reset --hard <tag-safe>`.
+3. **دلیل را توضیح بده** — یک خط.
+4. **بعد از بازگشت، دوباره تلاش کن.**
+
+---
+
+## بخش ۱۶ — Git workflow
+
+### ۱۶-۱. جریان استاندارد
+
+```bash
+# گام ۱ — قبل از تغییرات (نارنجی)
+git add -A
+git commit -m "🟠 SAFE before step-XX: <توضیح>"
+git tag safe-before-XX
+
+# گام ۲ — تغییرات کد + context
+# (کد + PROJECT_CONTEXT.md با هم)
+
+# گام ۳ — بعد از تست موفق (سبز)
+git add -A
+git commit -m "🎉 step-XX: <توضیح> + context updated"
+git tag step-XX-ok
+git push origin main
+git push origin step-XX-ok
+
+# گام ۴ — در صورت شکست
+git reset --hard safe-before-XX
+```
+
+### ۱۶-۲. الگوی پیام کامیت
+
+```
+🎉 step-XX: <توضیح کوتاه> + context updated
+🐛 step-XX: fix <نام باگ> + context updated
+✨ step-XX: add <نام قابلیت> + context updated
+🧹 step-XX: cleanup <نام> + context updated
+```
+
+### ۱۶-۳. لیست تگ‌های مهم
+
+```
+<tag-اخیر>     ← توضیح
+```
+
+### ۱۶-۴. کامیت‌های خرابکار
+
+```
+<هش>  ← توضیح خرابی
+```
+
+---
+
+## بخش ۱۷ — تست
+
+### ۱۷-۱. انواع تست
+
+1. **کامپایل/اجرا** — بدون خطا.
+2. **واحد** — یک تابع.
+3. **یکپارچگی** — چند ماژول.
+4. **کاربرد** — سناریوی واقعی.
+5. **رگرسیون** — قبلی‌ها نشکسته.
+
+### ۱۷-۲. الگو
+
+```
+📌 تست:
+1. <گام اول>
+2. <گام دوم>
+3. <انتظار: چه چیزی>
+4. <اگر خطا: چه بفرست>
+```
+
+### ۱۷-۳. اگر تست شکست خورد
+
+پاسخ به این ۵ سؤال:
+
+1. **دقیقاً چه شکست؟** (پیام خطا)
+2. **کجا شکست؟** (فایل و خط)
+3. **کِی شکست؟** (بعد از چه تغییری)
+4. **انتظار چه بود؟**
+5. **چه اتفاقی افتاد؟**
+
+---
+
+## بخش ۱۸ — رفع باگ
+
+### ۱۸-۱. گام‌ها
+
+1. **بازتولید:** دوباره دیدن باگ.
+2. **ایزوله:** کوچک‌ترین کد.
+3. **ریشه‌یابی:** چرا؟
+4. **رفع:** تغییر حداقلی.
+5. **تست:** رفع + نشکستن چیز دیگر.
+6. **کامیت.**
+
+### ۱۸-۲. الگو
+
+```
+## 🐛 Fix — <نام باگ>
+
+**علت:** <یک خط>
+
+🔍 لنگر (Ctrl+F):
+[متن دقیق]
+
+✂️ جایگزین:
+[متن جدید]
+
+📌 تست: <چطور تست کنه>
+
+💾 کامیت:
+git add -A
+git commit -m "🐛 step-XX: fix <نام> + context updated"
+git tag step-XX-ok
+```
+
+### ۱۸-۳. اگر مبهم باشد
+
+از کاربر بخواه:
+1. **گام‌های بازتولید.**
+2. **لاگ کامل.**
+3. **محیط.**
+
+**بدون این‌ها، کد را عوض نکن.**
+
+---
+
+## بخش ۱۹ — افزودن قابلیت
+
+### ۱۹-۱. گام‌ها
+
+1. **طراحی** و تأیید کاربر.
+2. **تقسیم** به گام‌های کوچک.
+3. **پیاده‌سازی هر گام** با تست.
+4. **مستندسازی.**
+5. **تست نهایی.**
+
+### ۱۹-۲. الگوی طراحی
+
+```
+## 🎯 قابلیت جدید: <نام>
+
+**هدف:** <یک خط>
+
+**گام‌ها:**
+1. <گام اول>
+2. <گام دوم>
+
+**فایل‌های تحت تأثیر:** <لیست>
+
+**خط قرمزها:** <لیست>
+
+**شروع کنیم؟**
+```
+
+---
+
+## بخش ۲۰ — DeepSeek و بقیه
+
+### ۲۰-۱. چرا DeepSeek؟
+
+DeepSeek در اجرای دقیق روش «کپی و جایگزینی» بدون دستکاری کد، بهترین عملکرد را دارد.
+
+### ۲۰-۲. برای DeepSeek
+
+1. **لنگر را حرف‌به‌حرف کپی کن** — از حافظه نساز.
+2. **اگر مطمئن نیستی، بپرس.** با فلگ مناسب.
+3. **پاسخ را خلاصه نگه دار.**
+4. **هر پیام = یک پچ کامل + کانتکست.**
+5. **نشانه‌های پارسر را در بدنه نگذار.**
+6. **یادآوری تست در پایان.**
+
+### ۲۰-۳. برای بقیه (Claude/GPT/Gemini)
+
+دستورات اجباری:
+
+1. **کد کاربر را دست نزن مگر در FIND/REPLACE.**
+2. **لنگر را حرف‌به‌حرف از فایل کپی کن.**
+3. **ساختار پاسخ را دقیقاً رعایت کن.**
+4. **هیچ کد اضافه‌ای نفرست.**
+
+### ۲۰-۴. اگر هوش خطا کرد
+
+- پیام با یادآوری «فقط FIND/REPLACE» بفرست.
+- اگر باز هم خطا کرد، به DeepSeek سوئیچ کن.
+
+---
+
+## بخش ۲۱ — اصول کیفیت کد
+
+### ۲۱-۱. اصول پایه
+
+- **SOLID**
+- **DRY** — هر منطق یک‌بار.
+- **KISS** — ساده‌ترین راه‌حل.
+- **YAGNI** — چیزی که الان لازم نیست.
+
+### ۲۱-۲. مدیریت خطا
+
+```python
+try:
+    risky_operation()
+except SpecificException as e:
+    logger.error(f"Error: {e}")
+    handle_error(e)
+except Exception as e:
+    logger.exception("Unexpected error")
+    raise
+```
+
+**هرگز `except` خالی نگذار.**
+
+### ۲۱-۳. نام‌گذاری
+
+- متغیرها: `snake_case` / `camelCase`
+- کلاس‌ها: `PascalCase`
+- ثابت‌ها: `UPPER_SNAKE_CASE`
+
+### ۲۱-۴. طول
+
+- تابع: حداکثر ۵۰ خط.
+- فایل: حداکثر ۱۰۰۰ خط.
+- تودرتو: حداکثر ۳ سطح.
+
+### ۲۱-۵. کامنت
+
+- **چرا**، نه **چه**.
+- `# TODO: <توضیح>`
+- `# FIXME: <توضیح>`
+- `# HACK: <توضیح>`
+
+---
+
+## بخش ۲۲ — لاگ و مدیریت خطا
+
+### ۲۲-۱. سطوح لاگ
+
+- **DEBUG** — دیباگ.
+- **INFO** — کلی.
+- **WARNING** — هشدار.
+- **ERROR** — خطا.
+- **CRITICAL** — کشنده.
+
+### ۲۲-۲. الگو
+
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler("app.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+logger.info("Application started")
+```
+
+### ۲۲-۳. Crash logger
+
+```python
+import sys
+import traceback
+
+def install_crash_logger():
+    def handler(exc_type, exc_value, exc_traceback):
+        with open("crash_log.txt", "a", encoding="utf-8") as f:
+            f.write("=" * 60 + "\n")
+            traceback.print_exception(exc_type, exc_value, exc_traceback, file=f)
+    sys.excepthook = handler
+```
+
+### ۲۲-۴. چه لاگ نکنیم؟
+
+- رمز عبور.
+- توکن.
+- اطلاعات حساس کاربر.
+
+---
+
+## بخش ۲۳ — درخت تصمیم
+
+| کاربر می‌گوید | گام اول | گام دوم | گام سوم |
+|--------------|---------|---------|---------|
+| «کار نمی‌کند» | لاگ | `--status` | `--file X` |
+| «خطا داد» | متن کامل خطا | traceback | `--file X` |
+| «کند شده» | پروفایل | مصرف منابع | الگوریتم |
+| «کرش کرد» | crash log | `--diff` | تست ایزوله |
+| «عالی بود» | تأیید تگ | بپرس قدم بعدی | — |
+| «لیمیت خوردم» | سند | `--status` | git status |
+| «برو سراغ X» | صبر برای فایل | لنگر دقیق | کد |
+| «فایل فرستادم» | بخوان | لنگر از آن | کد |
+| «مطمئن نیستم» | بپرس دقیق‌تر | پیشنهاد گزینه | صبر |
+| «چند تا کار» | اولویت‌بندی | یکی‌یکی | کامیت جدا |
+
+---
+
+## بخش ۲۴ — چک‌لیست‌های عملیاتی
+
+### ۲۴-۱. قبل از هر تغییر
+
+- [ ] سند را خواندم.
+- [ ] `--status` را دیدم.
+- [ ] خط قرمزها را می‌دانم.
+- [ ] لنگر دقیق دارم.
+- [ ] جایگزین واضح است.
+- [ ] تست مشخص است.
+- [ ] کامیت آماده است.
+
+### ۲۴-۲. بعد از هر تغییر
+
+- [ ] پچ اعمال شد.
+- [ ] تست انجام شد.
+- [ ] کامیت زدم.
+- [ ] تگ زدم.
+- [ ] کانتکست به‌روز شد.
+
+### ۲۴-۳. قبل از چت جدید
+
+- [ ] سند را فرستادم.
+- [ ] `--status` را فرستادم.
+- [ ] هدف چت مشخص است.
+
+### ۲۴-۴. قبل از انتشار
+
+- [ ] تست‌ها پاس می‌شوند.
+- [ ] نسخه به‌روز است.
+- [ ] Changelog نوشته شده.
+- [ ] مستندات کامل است.
+
+---
+
+## بخش ۲۵ — الگوهای آماده‌ی پاسخ
+
+### ۲۵-۱. افزودن تابع
+
+```
+## 🔧 افزودن تابع `<نام>`
+
+🔍 لنگر (Ctrl+F):
+<متن دقیق>
+
+✂️ جایگزین:
+<متن جدید>
+
+📌 تست: <چطور تست>
+
+💾 کامیت:
+git add -A
+git commit -m "✨ step-XX: add <نام> + context updated"
+git tag step-XX-ok
+```
+
+### ۲۵-۲. حذف کد
+
+```
+## 🗑 حذف `<نام>`
+
+🔍 لنگر (Ctrl+F):
+<کل بلوک>
+
+✂️ جایگزین:
+<بدون این بلوک>
+```
+
+### ۲۵-۳. بازنویسی کامل
+
+```
+## 📄 بازنویسی کامل `<نام فایل>`
+
+**دلیل:** <یک خط>
+
+===== CREATE: <path> =====
+<<<CONTENT>>>
+<کل محتوای جدید>
+<<<END>>>
+```
+
+### ۲۵-۴. رفع خطا
+
+```
+## 🐛 Fix — <نام خطا>
+
+**علت:** <یک خط>
+
+🔍 لنگر (Ctrl+F):
+<متن>
+
+✂️ جایگزین:
+<متن جدید>
+```
+
+### ۲۵-۵. الگوی پاسخ ویژه DeepSeek
+
+```
+📌 خلاصه: <یک خط>
+
+🔍 لنگر (Ctrl+F):
+<متن>
+
+✂️ جایگزین:
+<متن جدید>
+
+📌 تست: <چطور تست>
+
+💾 کامیت: <دستور>
+
+---
+اگر خطا داشت: `python run.py` را بزن و `_work/output.txt` را بفرست.
+```
+
+---
+
+## بخش ۲۶ — ضمیمه: نمونه‌های کامل
+
+### ۲۶-۱. قالب `run.py` (شروع کار)
+
+```python
+#!/usr/bin/env python3
+"""
+run.py — ابزار یکپارچه dump/apply برای پروژه.
+
+استفاده:
+    python run.py              # apply اگر input پر / dump ساده اگر خالی
+    python run.py --status     # فقط خلاصه
+    python run.py --tree       # فقط درخت
+    python run.py --file X     # فقط یک فایل
+    python run.py --all        # dump کامل
+    python run.py --git        # فقط git info
+    python run.py --hash       # فقط hash فایل‌ها
+    python run.py --diff       # تغییرات از dump قبلی
+    python run.py --errors     # فقط خطاها
+    python run.py --auto-verify # رد خودکار hash mismatch
+    python run.py --force      # اعمال بدون تأیید
+    python run.py --fuzzy      # تطبیق تقریبی لنگر
+"""
+
+import os
+import sys
+import re
+import json
+import hashlib
+import datetime
+import subprocess
+from pathlib import Path
+
+# === تنظیمات ===
+PROJECT_ROOT = Path(__file__).parent
+WORK_DIR = PROJECT_ROOT / "_work"
+INPUT = WORK_DIR / "input.txt"
+OUTPUT = WORK_DIR / "output.txt"
+APPLIED = WORK_DIR / "applied"
+CACHE = WORK_DIR / "cache.json"
+
+IGNORE_DIRS = {
+    ".git", "_work", "__pycache__", "node_modules",
+    "target", "dist", "build", ".venv", "venv",
+    ".idea", ".vscode", ".pytest_cache"
+}
+
+IGNORE_EXTS = {
+    ".exe", ".dll", ".so", ".dylib", ".zip", ".tar",
+    ".gz", ".pt", ".bin", ".pkl", ".pyc", ".log"
+}
+
+MAX_FILE_SIZE = 100 * 1024  # 100KB
+
+# === ابزارها ===
+
+def file_hash(path: Path) -> str:
+    """hash فایل + زمان آخرین تغییر"""
+    h = hashlib.sha256()
+    try:
+        h.update(path.read_bytes())
+        mtime = str(path.stat().st_mtime).encode()
+        h.update(mtime)
+    except Exception:
+        return ""
+    return h.hexdigest()[:16]
+
+def read_file_safe(path: Path) -> str:
+    """خواندن امن با تشخیص encoding"""
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        try:
+            return path.read_text(encoding="latin-1")
+        except Exception:
+            return ""
+
+def collect_files() -> list:
+    """لیست همه‌ی فایل‌های پروژه"""
+    files = []
+    for root, dirs, filenames in os.walk(PROJECT_ROOT):
+        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+        for fn in filenames:
+            p = Path(root) / fn
+            if p.suffix.lower() in IGNORE_EXTS:
+                continue
+            if p.stat().st_size > MAX_FILE_SIZE:
+                continue
+            files.append(p)
+    return sorted(files)
+
+def rel(p: Path) -> str:
+    return str(p.relative_to(PROJECT_ROOT)).replace("\\", "/")
+
+# === فلگ‌ها ===
+
+def out_status():
+    """خلاصه‌ی وضعیت"""
+    print(f"PROJECT: {PROJECT_ROOT.name}")
+    tag = get_git_tag()
+    if tag:
+        print(f"LAST TAG: {tag}")
+    modified = []
+    try:
+        r = subprocess.run(
+            ["git", "status", "--short"],
+            cwd=PROJECT_ROOT, capture_output=True, text=True,
+            encoding="utf-8", errors="replace"
+        )
+        for line in r.stdout.strip().split("\n"):
+            if line.strip():
+                modified.append(line[3:].strip())
+    except Exception:
+        pass
+    print(f"MODIFIED FILES: {', '.join(modified) if modified else 'none'}")
+    print(f"LAST ERROR: None")
+
+def get_git_tag() -> str:
+    try:
+        r = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            cwd=PROJECT_ROOT, capture_output=True, text=True,
+            encoding="utf-8", errors="replace"
+        )
+        return r.stdout.strip()
+    except Exception:
+        return ""
+
+def out_tree():
+    """درخت پروژه"""
+    print(f"PROJECT: {PROJECT_ROOT.name}")
+    for p in collect_files():
+        print(f"  {rel(p)}")
+
+def out_hash():
+    """hash فایل‌ها"""
+    for p in collect_files():
+        print(f"{file_hash(p)}  {rel(p)}")
+
+def out_file(name: str):
+    """محتوای یک فایل"""
+    p = PROJECT_ROOT / name
+    if not p.exists():
+        print(f"[FAIL] file not found: {name}")
+        return
+    print(f"FILE: {rel(p)}")
+    print(f"HASH: {file_hash(p)}")
+    print(f"SIZE: {p.stat().st_size} bytes")
+    print(f"---CONTENT---")
+    print(read_file_safe(p))
+
+def out_git():
+    """git info"""
+    cmds = [
+        ["git", "log", "--oneline", "-10"],
+        ["git", "tag"],
+        ["git", "status", "--short"],
+    ]
+    for cmd in cmds:
+        try:
+            r = subprocess.run(
+                cmd, cwd=PROJECT_ROOT, capture_output=True, text=True,
+                encoding="utf-8", errors="replace"
+            )
+            print(f"$ {' '.join(cmd)}")
+            print(r.stdout)
+        except Exception as e:
+            print(f"[WARN] {e}")
+
+def out_all():
+    """dump کامل"""
+    out_status()
+    print()
+    out_git()
+    print()
+    print("---TREE---")
+    out_tree()
+    print()
+    print("---FILES---")
+    for p in collect_files():
+        print()
+        out_file(rel(p))
+
+# === Apply ===
+
+def parse_patches(text: str) -> list:
+    """پارس input.txt"""
+    patches = []
+    # FILE
+    for m in re.finditer(
+        r"^=====\s*FILE:\s*(.+?)\s*=====\s*\n(.*?)^<<<END>>>",
+        text, re.M | re.S
+    ):
+        path = m.group(1).strip()
+        body = m.group(2)
+        expected_hash = ""
+        hm = re.search(r"<<<EXPECTED_HASH>>>(.+?)<<<END>>>", body)
+        if hm:
+            expected_hash = hm.group(1).strip()
+        fm = re.search(r"<<<FIND>>>\n(.*?)\n<<<REPLACE>>>\n(.*?)\n?$", body, re.S)
+        if fm:
+            patches.append({
+                "type": "edit", "path": path,
+                "find": fm.group(1), "replace": fm.group(2),
+                "hash": expected_hash
+            })
+    # CREATE
+    for m in re.finditer(
+        r"^=====\s*CREATE:\s*(.+?)\s*=====\s*\n<<<CONTENT>>>\n(.*?)^<<<END>>>",
+        text, re.M | re.S
+    ):
+        patches.append({
+            "type": "create", "path": m.group(1).strip(),
+            "content": m.group(2)
+        })
+    # DELETE
+    for m in re.finditer(
+        r"^=====\s*DELETE:\s*(.+?)\s*=====\s*$",
+        text, re.M
+    ):
+        patches.append({"type": "delete", "path": m.group(1).strip()})
+    # MKDIR
+    for m in re.finditer(
+        r"^=====\s*MKDIR:\s*(.+?)\s*=====\s*$",
+        text, re.M
+    ):
+        patches.append({"type": "mkdir", "path": m.group(1).strip()})
+    return patches
+
+def apply_patch(p, opts):
+    """اعمال یک پچ"""
+    target = PROJECT_ROOT / p["path"]
+    if p["type"] == "mkdir":
+        target.mkdir(parents=True, exist_ok=True)
+        return True, "MKDIR"
+    if p["type"] == "delete":
+        if target.exists():
+            target.unlink()
+        return True, "DELETE"
+    if p["type"] == "create":
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(p["content"], encoding="utf-8")
+        return True, "CREATE"
+    if p["type"] == "edit":
+        if not target.exists():
+            return False, f"file not found: {p['path']}"
+        actual = file_hash(target)
+        if p.get("hash") and p["hash"] != actual:
+            if "--auto-verify" in opts:
+                return False, f"hash mismatch (rejected)"
+            print(f"[WARN] Hash mismatch on {p['path']}")
+            print(f"  Expected: {p['hash']}")
+            print(f"  Actual:   {actual}")
+            if "--force" not in opts:
+                ans = input("Apply anyway? (y/N): ").strip().lower()
+                if ans != "y":
+                    return False, "user rejected"
+        content = read_file_safe(target)
+        find = p["find"]
+        if find in content:
+            new = content.replace(find, p["replace"], 1)
+        elif "--fuzzy" in opts or True:  # fuzzy default
+            # rstrip
+            find_r = "\n".join(l.rstrip() for l in find.split("\n"))
+            content_r = "\n".join(l.rstrip() for l in content.split("\n"))
+            if find_r in content_r:
+                idx = content_r.find(find_r)
+                # map back to original
+                end = idx + len(find_r)
+                new = content[:idx] + p["replace"] + content[end:]
+            else:
+                return False, "anchor not found"
+        else:
+            return False, "anchor not found"
+        target.write_text(new, encoding="utf-8")
+        return True, "EDIT"
+    return False, "unknown type"
+
+# === Main ===
+
+def main():
+    args = sys.argv[1:]
+
+    # فلگ‌های dump
+    if "--status" in args:
+        out_status(); return
+    if "--tree" in args:
+        out_tree(); return
+    if "--hash" in args:
+        out_hash(); return
+    if "--git" in args:
+        out_git(); return
+    if "--all" in args:
+        out_all(); return
+    if "--file" in args:
+        i = args.index("--file")
+        if i + 1 < len(args):
+            out_file(args[i + 1])
+        return
+    if "--files" in args:
+        i = args.index("--files")
+        for name in args[i+1:]:
+            if name.startswith("--"):
+                break
+            print()
+            out_file(name)
+        return
+
+    # apply / dump
+    if not INPUT.exists():
+        INPUT.parent.mkdir(parents=True, exist_ok=True)
+        INPUT.write_text("", encoding="utf-8")
+
+    content = INPUT.read_text(encoding="utf-8").strip()
+
+    if content:
+        # apply
+        patches = parse_patches(content)
+        if not patches:
+            print("[FAIL] no patches found")
+            return
+        for i, p in enumerate(patches, 1):
+            ok, msg = apply_patch(p, args)
+            mark = "[OK]" if ok else "[FAIL]"
+            print(f"{mark} [{p['type']}] {p['path']} — {msg}")
+        # archive
+        APPLIED.mkdir(exist_ok=True)
+        ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        (APPLIED / f"{ts}.txt").write_text(content, encoding="utf-8")
+        INPUT.write_text("", encoding="utf-8")
+        print("[INFO] input archived and cleared")
+    else:
+        # dump ساده
+        out_all()
+        print(f"\n[INFO] dump written to {OUTPUT}")
+
+if __name__ == "__main__":
+    main()
+```
+
+**این یک شروع است — می‌توانی کامل‌ترش کنی.**
+
+### ۲۶-۲. نمونه‌ی پچ کامل
+
+```
+===== FILE: src/main.py =====
+<<<EXPECTED_HASH>>>a1b2c3d4e5f6<<<END>>>
+<<<FIND>>>
+def validate_phone(phone):
+    pattern = r'^\+?[0-9]{10,15}$'
+    return re.match(pattern, phone) is not None
+<<<REPLACE>>>
+def validate_phone(phone):
+    pattern = r'^\+?[0-9]{10,15}$'
+    return re.match(pattern, phone) is not None
+
+
+def validate_email(email):
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+<<<END>>>
+
+===== FILE: PROJECT_CONTEXT.md =====
+<<<FIND>>>
+| **آخرین تگ امن** | `step-14-ok` |
+| **آخرین کار** | افزودن `validate_phone` |
+<<<REPLACE>>>
+| **آخرین تگ امن** | `step-15-ok` |
+| **آخرین کار** | افزودن `validate_email` |
+<<<END>>>
+```
+
+### ۲۶-۳. نمونه‌ی پیام شروع چت جدید
+
+```
+ادامه‌ی پروژه. این سند و وضعیت فعلی:
+
+[سند را پیست کن]
+
+[خروجی python run.py --status را پیست کن]
+
+هدف این چت: ادامه‌ی افزودن تست‌ها.
+```
+
+### ۲۶-۴. نمونه‌ی پاسخ DeepSeek
+
+```
+📌 خلاصه: افزودن تابع validate_email + به‌روزرسانی Session Tracker.
+
+🔍 لنگر (Ctrl+F):
+def validate_phone(phone):
+    pattern = r'^\+?[0-9]{10,15}$'
+    return re.match(pattern, phone) is not None
+
+✂️ جایگزین:
+def validate_phone(phone):
+    pattern = r'^\+?[0-9]{10,15}$'
+    return re.match(pattern, phone) is not None
+
+
+def validate_email(email):
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+📌 تست:
+1. python run.py
+2. python -c "from src.utils import validate_email; print(validate_email('a@b.com'))"
+3. باید True چاپ کند.
+
+💾 کامیت:
+git add -A
+git commit -m "✨ step-15: add validate_email + context updated"
+git tag step-15-ok
+
+---
+اگر خطا داشت: `python run.py` را بزن و `_work/output.txt` را بفرست.
+```
+
+---
+
+## بخش ۲۸ — Anti-Patterns (کارهایی که نکن)
+
+### ۲۸-۱. Anti-Patterns برای AI
+
+| Anti-Pattern | چرا بد | جایگزین |
+|--------------|--------|---------|
+| بازنویسی کل فایل | از دست رفتن کد کاربر | فقط FIND/REPLACE |
+| لنگر از حافظه | خطا در تطبیق | لنگر از فایل واقعی |
+| اضافه کردن قابلیت بی‌تأیید | خارج از دامنه | بپرس، بعد پچ بده |
+| توضیح طولانی | اتلاف توکن | یک خط کافی |
+| علامت پارسر در محتوا | خرابی فایل | ۴ فاصله indent |
+| پیشنهاد بی‌درخواست | مزاحمت | فقط وقتی پرسیدن |
+| «شاید» و «به نظر می‌رسد» | عدم قطعیت | قطعی و دقیق |
+| حدس API کتابخانه | خطای runtime | مستندات را بخواه |
+| فراموش کردن کانتکست | لیمیت می‌خورد | CTX-DELTA در هر پیام |
+| فراموش کردن کامیت | از دست رفتن تغییرات | کامیت بعد از هر تسک |
+
+### ۲۸-۲. Anti-Patterns برای کاربر
+
+| Anti-Pattern | چرا بد | جایگزین |
+|--------------|--------|---------|
+| اعمال کد بدون فهم | باگ‌های بعدی | از AI توضیح بخواه |
+| اعمال کد بدون تست | خرابی نسخه‌ی سالم | همیشه تست کن |
+| اعمال کد بدون commit | بازگشت سخت | tag + commit |
+| ارسال پیام‌های مشابه | مسدود شدن اکانت | MSG-SEED + Batching |
+| Ignore کردن خطای dump | مشکل باقی می‌ماند | با errors ببین |
+| اجرای command ناشناس | خطر امنیتی | اول توضیح بخواه |
+| بی‌توجهی به خط قرمزها | خرابی پروژه | بخش ۱۵ را بخوان |
+| فراموش کردن backup | از دست رفتن داده | tag + cp -r |
+
+### ۲۸-۳. Anti-Patterns برای پروژه
+
+| Anti-Pattern | چرا بد | جایگزین |
+|--------------|--------|---------|
+| کد تکراری | بدهی فنی | تابع مشترک |
+| Hard-code مسیر | ناسازگاری | pathlib |
+| Hard-code زبان | عدم i18n | فایل ترجمه |
+| بدون try/except | کرش | مدیریت خطا |
+| بدون لاگ | دیباگ سخت | logger |
+| بدون تست | رگرسیون | تست واحد |
+| فایل ۵۰۰۰ خطی | خواندن سخت | ماژولار |
+| تابع ۲۰۰ خطی | تست سخت | به کوچک بشکن |
+| بدون مستندات | نفر بعدی گیج | docstring |
+
+---
+
+## بخش ۲۹ — Definition of Done
+
+### ۲۹-۱. یک تسک چه زمانی تمام است؟
+
+یک تسک تنها زمانی تمام محسوب می‌شود که:
+
+1. کد نوشته شده.
+2. کامپایل/اجرا بدون خطا.
+3. تست انجام شده.
+4. لنگر دقیق ذخیره شده (در applied).
+5. کانتکست به‌روز شده (CTX-DELTA + sections).
+6. کامیت زده شده با پیام مناسب.
+7. تگ زده شده (step-XX-ok).
+8. کاربر تأیید کرده — نه فقط AI.
+9. مستندات درون‌کد به‌روز است (docstring، کامنت).
+10. در CHANGELOG ثبت شده (اگر پروژه بزرگ است).
+
+### ۲۹-۲. یک فاز چه زمانی تمام است؟
+
+1. همه‌ی تسک‌ها Definition of Done را پاس کرده‌اند.
+2. تست رگرسیون انجام شده — چیزی نشکسته.
+3. کاربر تأیید کرده.
+4. تگ فاز زده شده (phase-N-done).
+5. کانتکست فاز ثبت شده.
+
+### ۲۹-۳. یک نسخه چه زمانی آماده است؟
+
+1. همه‌ی فازها تمام.
+2. تست کامل انجام شده.
+3. مستندات کامل.
+4. CHANGELOG به‌روز.
+5. README به‌روز.
+6. بدون خطای باز.
+7. بدون TODO بی‌دلیل.
+8. بدون کد مرده.
+9. باکس قابل بازگشت (git tag vX.Y.Z).
+10. کاربر تأیید نهایی.
+
+### ۲۹-۴. چه چیزی Definition of Done را نقض می‌کند؟
+
+- «بعداً کامنت می‌گذارم.»
+- «تست بعداً.»
+- «فایل را موقتاً این‌جا می‌گذارم.»
+- «commit بعداً.»
+- «کانتکست بعداً.»
+- «مستندات بعداً.»
+
+**قانون:** هر «بعداً» = یک بدهی فنی. اگر تسک تمام شده، همه‌ی «بعداً»ها هم باید تمام شده باشند.
+
+### ۲۹-۵. تسک‌های استثنا
+
+بعضی تسک‌ها Definition of Done ساده‌تر دارند:
+
+- تسک تحقیقاتی: فقط یک گزارش کوتاه + یافته‌ها.
+- تسک مستندسازی: فقط فایل به‌روز + تأیید.
+- تسک طراحی: فقط ADR یا سند.
+
+**قانون:** حتی تسک‌های استثنا هم باید commit داشته باشند.
+
+---
+
+## بخش ۳۰ — Troubleshooting
+
+### ۳۰-۱. خطاهای رایج `run.py`
+
+| خطا | علت | راه‌حل |
+|-----|-----|-------|
+| `anchor not found` | متن FIND با فایل نمی‌خورد | `python run.py --file X` بزن و anchor را از واقعیت کپی کن |
+| `hash mismatch` | فایل بعد از پچ تغییر کرده | `--force` یا `--auto-verify` |
+| `file not found` | مسیر اشتباه | بررسی مسیر در سرصفحه |
+| `SyntaxError` در خروجی | پارسر اشتباه فهمید | چک کن نشانه‌ها در ستون صفر نباشند |
+| `empty anchor` | FIND خالی | FIND را از فایل واقعی کپی کن |
+| `already applied` | پچ دوباره اعمال می‌شود | مشکلی نیست — skip می‌شود |
+| `timeout 900s` | CMD خیلی طول کشید | CMD را کوچک‌تر کن یا manual بزن |
+| `NameError` در run.py | ماژول import نشده | import را چک کن |
+| `PermissionError` | فایل قفل است | برنامه‌ای که فایل را باز دارد ببند |
+| `UnicodeDecodeError` | encoding اشتباه | فایل را UTF-8 ذخیره کن |
+
+### ۳۰-۲. عیب‌یابی گام‌به‌گام
+
+اگر `python run.py` خطا داد:
+
+1. `python run.py --file _work/output.txt` → متن کامل خطا را ببین.
+2. `python run.py --file <فایل خطادار>` → anchor واقعی را ببین.
+3. اگر لازم شد: `python run.py --status` → وضعیت کلی.
+4. اگر همه شکست خورد: `git log --oneline -5` → آخرین کامیت سالم.
+
+### ۳۰-۳. بازیابی اضطراری
+
+اگر پروژه کرش کرد یا فایل‌ها خراب شدند:
+
+1. `git status` → ببین چه چیزی تغییر کرده.
+2. `git log --oneline -10` → آخرین کامیت‌های سالم.
+3. `git reset --hard <آخرین-تگ-سالم>` → بازگشت کامل.
+4. اگر فایل‌های uncommitted هم مهم بودند: اول `git stash` سپس reset سپس `git stash pop`.
+
+### ۳۰-۴. اگر AI یک بار خراب کرد
+
+1. **صبر نکن.** فوراً بازیابی کن.
+2. **دلیل را بپرس.** چرا anchor غلط بود؟
+3. **دوباره تلاش کن.** این بار با anchor درست.
+
+**قانون طلایی:** هر شکست یک درس است. همان اشتباه را دو بار نکن.
+
+---
+
+## بخش ۳۱ — راه‌اندازی و مدیریت پروژه
+
+### ۳۱-۱. حالت‌های Small/Medium/Large
+
+**اگر پروژه‌ی تو کوچک است (< ۵۰۰ خط):**
+- فقط این بخش‌ها را بخوان: ۰، ۱، ۲، ۴، ۵، ۷، ۱۰، ۱۳، ۱۴، ۱۵، ۱۶، ۲۳، ۲۴
+- نادیده بگیر: hash، fuzzy، CTX-DELTA، CHANGELOG، ADR
+- کافی است: `run.py` ساده + لنگر/جایگزین
+
+**اگر متوسط است (۵۰۰-۵۰۰۰ خط):**
+- همه‌ی بخش‌ها بجز CHANGELOG/ADR
+- از فلگ‌ها استفاده کن
+- MSG-SEED را جدی بگیر
+
+**اگر بزرگ است (> ۵۰۰۰ خط):**
+- همه‌ی بخش‌ها
+- hash verification
+- CTX-DELTA در هر پیام
+- Pull نه Push حتماً
+
+### ۳۱-۲. راه‌اندازی اولیه (First Time Setup)
+
+**روش سریع (توصیه‌شده):**
+
+اگر `run.py` را در ریشه داری:
+
+    python run.py --init
+
+این دستور می‌سازد:
+- `_work/` و `_work/applied/`
+- `.gitignore` (اگر نبود)
+- `input.txt` و `output.txt` خالی
+
+**روش AI-mediated (برای تازه‌وارد):**
+
+کاربر فقط `PROJECT_CONTEXT.md` را به AI می‌دهد. AI گام‌به‌گام راهنمایی می‌کند:
+
+1. AI می‌پرسد: «چه فایل‌هایی داری؟»
+2. اگر `run.py` نبود: از بخش ۳۵ کپی کن.
+3. اگر پایتون نبود: راهنمای نصب پایتون.
+4. `python run.py --init`.
+5. پر کردن بخش ۲ و ۱۳.
+
+**قانون:** کاربر هیچ‌وقت دستور دستی نمی‌زند — مگر AI گفته باشد.
+
+**روش دستی (اگر همه‌چیز شکست خورد):**
+
+**گام ۱:** این سند را در ریشه‌ی پروژه بگذار: `PROJECT_CONTEXT.md`.
+
+**گام ۲:** پوشه‌ی `_work/` بساز:
+
+    _work/
+    ├── input.txt      (خالی)
+    ├── output.txt     (خالی)
+    ├── applied/       (خالی)
+    └── cache.json     (اختیاری)
+
+**گام ۳:** `run.py` را از بخش ۲۶ بردار و در ریشه بگذار.
+
+**گام ۴:** `.gitignore` را بساز:
+
+    _work/input.txt
+    _work/output.txt
+    _work/applied/
+    _work/cache.json
+
+**گام ۵:** بخش ۲ (شناسنامه) این سند را پر کن.
+
+**گام ۶:** بخش ۲-۴ (خط قرمزهای اختصاصی) را پر کن.
+
+**گام ۷:** بخش ۱۳ (Session Tracker) را پر کن.
+
+**گام ۸:** `CHANGELOG.md` و `ADR.md` را بساز (اگر پروژه بزرگ است).
+
+**گام ۹:** git init + اولین کامیت + اولین تگ:
+
+    git init
+    git add -A
+    git commit -m "initial commit"
+    git tag v0.1.0
+
+**گام ۱۰:** آماده‌ای. اولین پچ را از AI بگیر.
+
+### ۳۱-۳. Backup Protocol
+
+قبل از هر تغییر بزرگ:
+
+    git tag safe-before-XX
+    cp -r <پوشه‌ی مهم> <پوشه‌ی مهم>-backup-XX
+
+اگر پروژه‌ات حجم زیادی دارد، از `git stash` استفاده کن:
+
+    git stash push -m "before big change"
+
+بعد از موفقیت: `git stash drop`. بعد از شکست: `git stash pop`.
+
+**قانون:** قبل از تغییر بزرگ، حتماً یک نقطه‌ی بازگشت داشته باش. `git tag` کافی است برای کد، ولی اگر فایل‌های غیرکد هم تغییر می‌کنند، `cp -r` هم لازم است.
+
+### ۳۱-۴. Doc Integrity — چطور بفهمیم سند خراب نشده؟
+
+سند `PROJECT_CONTEXT.md` دو نوع بخش دارد:
+
+**بخش‌های ثابت (نباید تغییر کنند بدون تأیید):**
+- بخش ۳ (فلسفه)
+- بخش ۴ (قوانین طلایی)
+- بخش ۵ (گردش کار)
+- بخش ۶ (فلگ‌ها)
+- بخش ۶-ب (پارسر)
+- بخش ۷ (قالب پچ)
+- بخش ۸ (rate limit)
+- بخش ۹ (تطبیق)
+- بخش ۱۰ (کانتکست)
+- بخش ۱۲ (escape)
+- بخش ۱۵ (خط قرمزها)
+- بخش ۲۳ (درخت تصمیم)
+- بخش ۲۴ (چک‌لیست)
+- بخش ۲۵ (الگوها)
+- بخش ۲۷ (همین بخش)
+
+**بخش‌های متغیر (مجاز به تغییر):**
+- بخش ۲ (شناسنامه)
+- بخش ۱۳ (Session Tracker)
+- بخش ۱۶ (Git)
+- `CHANGELOG.md`
+- `ADR.md`
+
+**قانون:** هر تغییر فقط در بخش‌های متغیر مجاز است. اگر AI خواست بخش ثابت را تغییر دهد، تأیید کاربر لازم است.
+
+### ۳۱-۵. باگ‌های رایج سند و رفع‌شان
+
+| باگ | علت | رفع |
+|-----|-----|-----|
+| فهرست به‌هم‌ریخته | markdown escape | بررسی دستی |
+| بخش تکراری | پچ دوباره اعمال | `git diff` |
+| نشانه‌ی پارسر داخل محتوا | AI اشتباه کرد | `git reset --hard safe-before-XX` |
+| لنگر پیدا نشد | متن فایل عوض شد | `python run.py --file PROJECT_CONTEXT.md` |
+| سند بزرگ شد | تاریخچه انباشته | انتقال به `CHANGELOG.md` |
+
+### ۳۱-۶. چه زمانی سند را بازنویسی کنیم؟
+
+**قانون ۳ پچ:** اگر بیش از ۳ پچ روی یک بخش زده شد، آن بخش باید **از صفر بازنویسی شود**.
+**دلیل:** پچ‌های انباشته باعث تناقض می‌شوند (مثل آنچه در بخش ۰-ج اتفاق افتاد).
+
+**هرگز خودسر.** فقط اگر:
+
+1. سند > ۵۰۰۰ خط شد.
+2. ساختار اصلی خراب شد.
+3. کتابخانه یا زبان عوض شد.
+4. کاربر صریحاً درخواست کرد.
+
+**قبل از بازنویسی:**
+- `git tag safe-before-rewrite-context`
+- چاپ سند فعلی
+- بازنویسی تدریجی
+- تأیید کاربر در هر گام
+
+---
+
+## بخش ۳۲ — Quick Start Walkthrough (از صفر تا اولین پچ)
+
+### ۳۲-۱. پیش‌نیاز
+
+- Python 3.8 یا بالاتر
+- یک پوشه‌ی خالی (پروژه‌ی جدید) یا پروژه‌ی موجود
+- یک AI (DeepSeek توصیه می‌شود چون روش لنگر/جایگزین را دقیق اجرا می‌کند)
+
+### ۳۲-۲. گام‌به‌گام
+
+**گام ۱ — ساخت ساختار اولیه**
+
+در ریشه‌ی پروژه:
+
+    mkdir _work
+    mkdir _work\applied
+
+**گام ۲ — کپی این سند**
+
+`PROJECT_CONTEXT.md` (همین فایل) را در ریشه‌ی پروژه بگذار.
+
+**گام ۳ — ساخت `run.py`**
+
+سورس کامل `run.py` در بخش ۳۵ آمده. آن را در ریشه‌ی پروژه بگذار.
+
+**گام ۴ — تست نصب**
+
+    python run.py --version
+    python run.py --status
+
+اگر هر دو بدون خطا کار کردند → آماده‌ای.
+
+**گام ۵ — اولین چت با AI**
+
+این سند را در چت پیست کن و این پیام را بفرست:
+
+    پروژه‌ی جدید. این سند قانون اساسی است.
+    run.py را ساختم و نصب کردم.
+    هدف پروژه: <توضیح یک خطی>
+    اولین قابلیت: <توضیح یک خطی>
+
+**گام ۶ — دریافت پچ**
+
+AI یک پچ در قالب `===== FILE =====` می‌دهد. آن را در `_work/input.txt` بریز.
+
+**گام ۷ — اعمال**
+
+    python run.py
+
+اگر موفق: کامیت خودکار انجام می‌شود (اگر git نصب و پروژه در git باشد).
+
+**گام ۸ — ارسال وضعیت به AI**
+
+    python run.py --status
+
+خروجی را به AI بفرست.
+
+**گام ۹ — تکرار**
+
+از گام ۶ تکرار کن. هر پیام AI = یک پچ. هر پچ = یک کامیت.
+
+### ۳۲-۳. نشانه‌های موفقیت
+
+- هر پچ بدون FAIL اعمال می‌شود.
+- خروجی `output.txt` با `MSG-SEED` شروع می‌شود.
+- AI در هر پاسخ، `CTX-DELTA` دارد.
+- تگ‌های git مرتب اضافه می‌شوند.
+
+### ۳۲-۴. عیب‌یابی سریع
+
+| مشکل | راه‌حل |
+|------|-------|
+| `python` شناخته نمی‌شود | پایتون نصب است؟ در PATH هست؟ |
+| `anchor not found` | `python run.py --file X` بزن و متن را از فایل واقعی کپی کن |
+| `input.txt` اعمال نمی‌شود | فایل را با UTF-8 ذخیره کن |
+| AI پچ نمی‌دهد | این سند را پیست کردی؟ |
+| چت به لیمیت خورد | چت جدید باز کن، سند + `--status` را بفرست |
+| `_work` پیدا نمی‌شود | پوشه را دستی بساز (گام ۱) |
+
+### ۳۲-۵. قانون طلایی
+
+> **بدون تست، کامیت نده. بدون کامیت، پچ بعدی نده.**
+
+---
+
+## بخش ۳۳ — Localization Guide (چطور ترجمه کنیم)
+
+### ۳۳-۱. چرا ترجمه
+
+`PROJECT_CONTEXT.md` یک سند جهانی است. برای استفاده‌ی جهانیان، می‌توان به زبان‌های دیگر ترجمه کرد.
+
+### ۳۳-۲. کدام فایل‌ها ترجمه شوند
+
+| فایل | ترجمه؟ | توضیح |
+|------|--------|-------|
+| README.md | ✅ توصیه | برای صفحه‌ی GitHub |
+| PROJECT_CONTEXT.md | ⚠️ اختیاری | فقط برای زبان‌های پرکاربرد |
+| run.py | ❌ خیر | کد است — توضیحات درونش کافی است |
+| LICENSE | ❌ خیر | متن حقوقی باید انگلیسی باشد |
+
+### ۳۳-۳. الگوی نام‌گذاری
+
+    README.md              ← زبان اصلی (انگلیسی)
+    README.fa.md           ← فارسی
+    README.ar.md           ← عربی
+    README.zh.md           ← چینی
+
+    PROJECT_CONTEXT.md     ← انگلیسی
+    PROJECT_CONTEXT.fa.md  ← فارسی
+
+### ۳۳-۴. ترجمه‌ی README — الگوی عملی
+
+**گام ۱:** زبان اصلی را نگه‌دار.
+
+**گام ۲:** در بالای README، لینک زبان‌ها:
+
+    <p align="center">
+      <b>English</b> ·
+      <a href="README.fa.md">فارسی</a> ·
+      <a href="README.ar.md">العربية</a>
+    </p>
+
+**گام ۳:** فایل جدید بساز: `README.fa.md`.
+
+**گام ۴:** محتوای انگلیسی را ترجمه کن، ولی:
+- نام فایل‌ها (`run.py`, `PROJECT_CONTEXT.md`) را دست نزن.
+- دستورات (`git clone ...`, `python run.py --status`) را دست نزن.
+- نام تگ‌ها (`v1.1.0`) را دست نزن.
+
+### ۳۳-۵. ترجمه‌ی PROJECT_CONTEXT.md
+
+**نکته‌ی مهم:** این سند شامل نشانه‌های پارسر است:
+- `===== FILE =====`
+- `<<<FIND>>>`, `<<<REPLACE>>>`, `<<<END>>>`
+- `# MSG-SEED`
+
+**هرگز این‌ها را ترجمه نکن.** فقط متن‌های توضیحی اطرافشان را ترجمه کن.
+
+### ۳۳-۶. نکات مهم ترجمه
+
+1. **اصطلاحات فنی:** اگر معادل استاندارد وجود دارد، از آن استفاده کن. اگر نه، اصل انگلیسی را نگه‌دار.
+2. **شماره‌ی بخش‌ها:** به‌هم نزن. `بخش ۵` در همه‌ی نسخه‌ها `بخش ۵` است.
+3. **لینک‌های داخلی:** اگر anchor دارد (`#بخش-۵`)، آن را هم ترجمه کن یا نگه‌دار (بستگی به پشتیبانی GitHub دارد).
+4. **RTL/LTR:** در متن‌های راست‌به‌چپ، کد و دستورات را با `LTR` یا `bdi` بپوشان.
+
+### ۳۳-۷. الگوی کد در ترجمه
+
+در سند فارسی:
+
+    برای نصب:
+    git clone https://github.com/...
+
+خوب است که دستورات کد را در بلاک جدا نگه‌داری.
+
+### ۳۳-۸. اگر ترجمه را تمام نکردی
+
+اشکالی ندارد. یک فایل نیمه‌ترجمه هم ارزش دارد. در بالای آن بنویس:
+
+    > ⚠️ این ترجمه ناقص است. کمک خوشحال می‌شود.
+
+### ۳۳-۹. مشارکت در ترجمه
+
+- فایل جدید بساز.
+- در README اصلی، لینک بگذار.
+- PR بفرست.
+
+---
+
+## بخش ۳۴ — First Time User Checklist (نسخه‌ی نهایی)
+
+### ۳۴-۱. اگر تازه‌وارد هستی
+
+قبل از هر کاری، این چک‌لیست را بگذران:
+
+- [ ] `PROJECT_CONTEXT.md` را باز کردم و بخش ۱ را خواندم.
+- [ ] `run.py` را در ریشه گذاشتم.
+- [ ] `_work/` را ساختم (با زیرپوشه‌ی `applied/`).
+- [ ] `.gitignore` ساختم (یا از الگو استفاده کردم).
+- [ ] `git init` زدم و اولین کامیت را انجام دادم.
+- [ ] `python run.py --version` کار می‌کند.
+- [ ] `python run.py --status` کار می‌کند.
+- [ ] بخش ۲ (شناسنامه) را پر کردم.
+- [ ] بخش ۲-۴ (خط قرمزها) را پر کردم.
+- [ ] بخش ۱۳ (Session Tracker) را پر کردم.
+- [ ] اولین چت با AI را باز کردم و سند + هدف را فرستادم.
+
+### ۳۴-۲. نشانه‌های موفقیت
+
+وقتی همه چیز درست باشد:
+
+- هر پچ AI بدون FAIL اعمال می‌شود.
+- خروجی `output.txt` با `# MSG-SEED` شروع می‌شود.
+- AI در پاسخ، `CTX-DELTA` دارد.
+- هر تغییر کامیت خودکار دارد.
+- تگ‌های git مرتب افزایش می‌یابند.
+
+### ۳۴-۳. اگر چیزی کار نکرد
+
+به ترتیب:
+
+1. `python run.py --errors` — ببین کدام پچ خطا داده.
+2. `python run.py --file <فایل خطادار>` — anchor را از واقعیت ببین.
+3. `git log --oneline -10` — آخرین کامیت سالم را پیدا کن.
+4. `git reset --hard <آخرین-تگ-سالم>` — بازگشت.
+
+**اگر هیچ‌کدام جواب نداد:** چت جدید باز کن، سند + `--status` + متن خطا را بفرست.
+
+### ۳۴-۴. نکات طلایی
+
+1. **همیشه pull نه push.** `--status` اول، `--file X` دوم، `dump --full` آخر.
+2. **هر پیام AI باید CTX-DELTA داشته باشد.** اگر ندارد، یادآوری کن.
+3. **MSG-SEED را نگه‌دار.** ضد مسدود شدن اکانت است.
+4. **فاصله‌ی زمانی بین پیام‌ها.** حداقل ۳۰ ثانیه.
+5. **بدون تست کامیت نکن.**
+6. **بدون کامیت پچ بعدی نگیر.**
+
+### ۳۴-۵. پایان
+
+اگر همه‌ی چک‌لیست‌ها پاس شد — **پروژه‌ی تو آماده است.**
+
+قوانین این سند را رعایت کن، و AI همیشه می‌داند کجاست، چه می‌خواهد، و چطور کمک کند.
+
+**موفق باشی.**
+
+---
+
+## بخش ۳۵ — Minimal run.py (کد کامل)
+
+اگر فقط همین سند را داری، این کد را در فایل `run.py` در ریشه‌ی پروژه بگذار. کار می‌کند.
+
+**توجه:** این یک نسخه‌ی حداقلی است — فقط `dump` و `apply` و `MSG-SEED`. برای امکانات پیشرفته (hash verification، fuzzy matching پیشرفته، فلگ‌های `--status`/`--file`)، می‌توانی از AI بخواهی کد را گسترش دهد.
+
+````python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""run.py minimal — standalone version."""
+import hashlib, json, os, re, secrets, sys
+from datetime import datetime
+from pathlib import Path
+
+VERSION = "1.0.0"
+WORK = Path('_work')
+INPUT = WORK / 'input.txt'
+OUTPUT = WORK / 'output.txt'
+APPLIED = WORK / 'applied'
+SKIP_DIRS = {'.git', '_work', '__pycache__', 'node_modules', '.venv', 'venv', 'build', 'dist', 'target'}
+SKIP_EXTS = {'.exe', '.dll', '.so', '.dylib', '.zip', '.png', '.jpg', '.gif', '.ico', '.pdf', '.bin', '.pyc'}
+HEADER_RE = re.compile(r'^={3,}\s*(FILE|CREATE|DELETE)\s*:\s*(.+?)\s*={3,}\s*$')
+FIND, REPLACE, CONTENT, END = '<<<FIND>>>', '<<<REPLACE>>>', '<<<CONTENT>>>', '<<<END>>>'
+
+
+def read(p):
+    for enc in ('utf-8', 'utf-8-sig', 'latin-1'):
+        try: return p.read_text(encoding=enc)
+        except: continue
+    return ''
+
+
+def write(p, t):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(t, encoding='utf-8')
+
+
+def walk(root):
+    out = []
+    for dp, dns, fns in os.walk(root):
+        dns[:] = [d for d in dns if d not in SKIP_DIRS and not d.startswith('.')]
+        for fn in fns:
+            if fn == 'run.py': continue
+            p = Path(dp) / fn
+            if p.suffix.lower() in SKIP_EXTS: continue
+            try:
+                if p.stat().st_size > 2*1024*1024: continue
+            except: continue
+            out.append(p)
+    return sorted(out, key=lambda p: str(p).lower())
+
+
+def parse(text):
+    lines = text.splitlines()
+    ops, i, n = [], 0, len(lines)
+    while i < n:
+        m = HEADER_RE.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        kind, path = m.group(1).lower(), m.group(2).strip()
+        i += 1
+        if kind == 'delete':
+            ops.append({'kind': 'delete', 'path': path})
+            continue
+        if kind == 'create':
+            while i < n and lines[i].rstrip() != CONTENT:
+                if HEADER_RE.match(lines[i]): break
+                i += 1
+            if i < n and lines[i].rstrip() == CONTENT: i += 1
+            block = []
+            while i < n and lines[i].rstrip() != END:
+                if HEADER_RE.match(lines[i]): break
+                block.append(lines[i]); i += 1
+            if i < n and lines[i].rstrip() == END: i += 1
+            ops.append({'kind': 'create', 'path': path, 'content': '\n'.join(block)})
+            continue
+        patches = []
+        while i < n:
+            if HEADER_RE.match(lines[i]): break
+            if lines[i].rstrip() == FIND:
+                i += 1
+                a = []
+                while i < n and lines[i].rstrip() != REPLACE:
+                    a.append(lines[i]); i += 1
+                if i >= n or lines[i].rstrip() != REPLACE: break
+                i += 1
+                r = []
+                while i < n and lines[i].rstrip() != END:
+                    r.append(lines[i]); i += 1
+                if i < n and lines[i].rstrip() == END: i += 1
+                patches.append(('\n'.join(a), '\n'.join(r)))
+                continue
+            i += 1
+        ops.append({'kind': 'file', 'path': path, 'patches': patches})
+    return ops
+
+
+def apply_patches(path, patches, out):
+    p = Path(path)
+    if not p.exists():
+        out.append(f"  [FAIL] file not found: {path}")
+        return 0, len(patches)
+    text = read(p)
+    ok = fail = 0
+    for a, r in patches:
+        if a in text:
+            text = text.replace(a, r, 1)
+            out.append("  [OK]   applied")
+            ok += 1
+        elif r and r in text:
+            out.append("  [SKIP] already applied")
+            ok += 1
+        else:
+            out.append("  [FAIL] anchor not found")
+            fail += 1
+    if ok: write(p, text)
+    return ok, fail
+
+
+def do_apply():
+    content = INPUT.read_text(encoding='utf-8-sig').strip()
+    if not content: return 0
+    ops = parse(content)
+    out = [f"# MSG-SEED: {secrets.token_hex(4)}", "", "[APPLY]", ""]
+    if not ops:
+        out.append("[FAIL] no valid patches")
+        write(OUTPUT, '\n'.join(out)); print('\n'.join(out)); return 2
+    ok = fail = 0
+    for op in ops:
+        k = op['kind']
+        if k == 'file':
+            out.append(f"[EDIT] {op['path']}")
+            a, b = apply_patches(op['path'], op['patches'], out)
+            ok += a; fail += b
+        elif k == 'create':
+            write(Path(op['path']), op['content'])
+            out.append(f"[NEW]  {op['path']}"); ok += 1
+        elif k == 'delete':
+            p = Path(op['path'])
+            if p.exists(): p.unlink()
+            out.append(f"[DEL]  {op['path']}"); ok += 1
+    out.append(""); out.append(f"OK: {ok}  FAIL: {fail}")
+    APPLIED.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+    if INPUT.exists(): INPUT.rename(APPLIED / f'{ts}.txt')
+    INPUT.write_text('', encoding='utf-8')
+    txt = '\n'.join(out); write(OUTPUT, txt); print(txt)
+    return 0 if fail == 0 else 2
+
+
+def do_dump():
+    root = Path('.').resolve()
+    files = walk(root)
+    L = [f"# MSG-SEED: {secrets.token_hex(4)}",
+         f"# DUMP - {datetime.now().isoformat(timespec='seconds')}",
+         f"# {len(files)} files",
+         ""]
+    for p in files:
+        rel = p.relative_to(root)
+        L.append("-" * 60)
+        L.append(f"FILE: {rel}")
+        L.append("-" * 60)
+        L.append(read(p).rstrip())
+        L.append("")
+    write(OUTPUT, '\n'.join(L))
+    print(f"[DUMP] {OUTPUT} — {len(files)} files")
+
+
+def main():
+    args = sys.argv[1:]
+    if '--version' in args or '-v' in args:
+        print(f"run.py v{VERSION}"); return 0
+    WORK.mkdir(exist_ok=True)
+    if not INPUT.exists(): INPUT.write_text('', encoding='utf-8')
+    if INPUT.read_text(encoding='utf-8').strip():
+        return do_apply()
+    do_dump()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
+
+**این یک قالب جهانی است. برای پروژه‌ی خودت پر کن و استفاده کن.**
+
+### خلاصه‌ی قوانین طلایی
+
+1. **هر پیام AI = یک پچ کد + یک پچ کانتکست.**
+2. **Pull نه Push — اول `--status`.**
+3. **لنگر باید حرف‌به‌حرف از فایل باشد.**
+4. **بدون تست، کامیت نده.**
+5. **در پایان هر پیام، یادآوری تست.**
+6. **چت جدید = سند + `--status`.**
+7. **خط قرمزها را هرگز نشکن.**
+8. **حداقل داده، حداکثر اثربخشی.**
+
+### چک‌لیست AI (یک نگاه)
+
+- [ ] سند را خواندم.
+- [ ] `--status` را دیدم.
+- [ ] خط قرمزها را می‌دانم.
+- [ ] پچ آماده است.
+- [ ] کانتکست در همان پیام به‌روز می‌شود.
+- [ ] تست + کامیت + تگ دارم.
+- [ ] یادآوری پایان پیام دارم.
+
+**موفق باشی. 🍎**
+
+---
+
+## 📋 یادداشت نهایی به کاربر
+
+**این سند جایگزین سند قبلی نیست — تکامل آن است.**
+
+اگر می‌خواهی استفاده کنی:
+
+1. **بخش ۲ را پر کن** — اطلاعات پروژه.
+2. **بخش ۲-۴ را پر کن** — خط قرمزهای اختصاصی.
+3. **بخش ۱۳ را پر کن** — Session Tracker اولیه.
+4. **`run.py` را از بخش ۲۶ بساز** — یا از AI بخواه برایت بسازد.
+5. **در ریشه‌ی پروژه بگذار** با نام `PROJECT_CONTEXT.md`.
+
+**اگر پروژه‌ات کوچک است:**
+- فقط بخش‌های ۰، ۲، ۴، ۵، ۷، ۱۰، ۱۳، ۱۴، ۱۵، ۱۶، ۲۳، ۲۴ را بخوان.
+- فلگ‌ها، hash، fuzzy را می‌توانی نادیده بگیری.
+
+**اگر پروژه‌ات بزرگ است:**
+- همه‌ی بخش‌ها را رعایت کن.
+- فلگ‌محور کار کن.
+- hash را جدی بگیر.
+
+**اگر تازه‌کار هستی:**
+- بخش ۱ را چند بار بخوان.
+- اگر چیزی نمی‌فهمی، از AI بپرس.
+- هیچ‌وقت کدی را کورکورانه اعمال نکن.
+
+---
+
+**پایان PROJECT_CONTEXT.md — نسخه‌ی نهایی ۲۰۲۶**

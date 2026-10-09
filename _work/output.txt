@@ -1,16 +1,60 @@
-# MSG-SEED: 2f51cdfc
-# PATCH_ID: 100
+# MSG-SEED: f524209c
 [APPLY]
 
-[P100] [NEW]  PROJECT_CONTEXT.md
-  [OK]   updated (8787 chars)
-[P100] [NEW]  run.py
-  [OK]   updated (39594 chars)
+# PATCH_ID: 36
+
+[P36] [CMD]  check git state
+  | 54e33dc patch 100: 20261009-135809
+  | 0614ca6 📝 v1.9.2: clear is optional, not required
+  | 542354b patch 35: 20261008-012222
+  | f115c90 ✨ v1.9.1: add --capabilities flag for AI self-check
+  | 375fad1 patch 33: 20261008-012010
+  | ced7f0d patch 31: 20261008-011734
+  | 95ee31f patch 30: 20261008-011709
+  | 0dcfd11 🧠 v1.8.3: forbid 'what is your project' for beginners
+  | 896e3de patch 28: 20261007-175035
+  | 4732548 🚀 v1.8.2: add --init flag (precise anchor)
+  | 4b4f824 patch 27: 20261007-174751
+  | 809fb94 🚀 v1.8.1: fix --init anchor + AI-mediated setup guide
+  | 4413830 🚀 v1.8.0: add --init flag for one-command project setup
+  | 715325e 🧹 v1.7.5: remove context-forge references + delete orphan section + 3-patch rule
+  | ad6bb07 patch 24: 20261007-174359
+  | =====TAGS=====
+  | safe-before-v2
+  | v1.0.0
+  | v1.0.1
+  | v1.1.0
+  | v1.2.0
+  | v1.4.0
+  | v1.5.0
+  | v1.6.0
+  | v1.6.3
+  | v1.7.0
+  | v1.7.1
+  | v1.7.2
+  | v1.7.3
+  | v1.7.4
+  | v1.7.5
+  | v1.8.0
+  | v1.8.1
+  | v1.8.2
+  | v1.8.3
+  | v1.9.1
+  | v1.9.2
+  | =====STATUS=====
+  |  M _work/.patch_id
+  |  M _work/input.txt
+  |  M _work/output.txt
+  | =====CURRENT FILE SIZE=====
+  | 9227
+  | =====LINES=====
+  | 213
+  [OK]   exit 0
 
 ============================================================
-PATCH_ID: 100  |  OK: 2  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 36  |  OK: 1  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0100-20261009-135809.txt
+[ARCH] _work\applied\P0036-20261009-141015.txt
        input.txt emptied - ready for next patch
 
-[GIT] commit: patch 100: 20261009-135809
+[GIT] commit: patch 36: 20261009-141015
