@@ -1986,5 +1986,226 @@ Ask the user for:
 **Shall we start?**
 ```
 
-<!-- CONTINUE: 20 -->
+## Section 20 — DeepSeek and the Others
+
+### 20-1. Why DeepSeek?
+
+DeepSeek performs best at executing the "copy and replace" method exactly, without touching code.
+
+### 20-2. For DeepSeek
+
+1. **Copy the anchor character-by-character** — don't build it from memory.
+2. **If unsure, ask.** With the right flag.
+3. **Keep replies concise.**
+4. **Every message = one complete patch + context.**
+5. **Don't put parser markers in the body.**
+6. **Test reminder at the end.**
+
+### 20-3. For others (Claude/GPT/Gemini)
+
+Mandatory instructions:
+
+1. **Don't touch the user's code except in FIND/REPLACE.**
+2. **Copy the anchor character-by-character from the file.**
+3. **Follow the reply structure exactly.**
+4. **Don't send any extra code.**
+
+### 20-4. If the AI fails
+
+- Send a message reminding "only FIND/REPLACE".
+- If it still fails, switch to DeepSeek.
+
+---
+
+## Section 21 — Code Quality Principles
+
+### 21-1. Base principles
+
+- **SOLID**
+- **DRY** — each piece of logic once.
+- **KISS** — the simplest solution.
+- **YAGNI** — nothing you don't need yet.
+
+### 21-2. Error handling
+
+```python
+try:
+    risky_operation()
+except SpecificException as e:
+    logger.error(f"Error: {e}")
+    handle_error(e)
+except Exception as e:
+    logger.exception("Unexpected error")
+    raise
+```
+
+**Never leave a bare `except`.**
+
+### 21-3. Naming
+
+- Variables: `snake_case` / `camelCase`
+- Classes: `PascalCase`
+- Constants: `UPPER_SNAKE_CASE`
+
+### 21-4. Size
+
+- Function: max 50 lines.
+- File: max 1000 lines.
+- Nesting: max 3 levels.
+
+### 21-5. Comments
+
+- **Why**, not **what**.
+- `# TODO: <description>`
+- `# FIXME: <description>`
+- `# HACK: <description>`
+
+---
+
+## Section 22 — Logging & Error Handling
+
+### 22-1. Log levels
+
+- **DEBUG** — debugging.
+- **INFO** — general.
+- **WARNING** — warning.
+- **ERROR** — error.
+- **CRITICAL** — fatal.
+
+### 22-2. Pattern
+
+```python
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler("app.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+logger.info("Application started")
+```
+
+### 22-3. Crash logger
+
+```python
+import sys
+import traceback
+
+def install_crash_logger():
+    def handler(exc_type, exc_value, exc_traceback):
+        with open("crash_log.txt", "a", encoding="utf-8") as f:
+            f.write("=" * 60 + "\n")
+            traceback.print_exception(exc_type, exc_value, exc_traceback, file=f)
+    sys.excepthook = handler
+```
+
+### 22-4. What not to log
+
+- Passwords.
+- Tokens.
+- Sensitive user data.
+
+---
+
+## Section 23 — Decision Tree
+
+| User says | Step 1 | Step 2 | Step 3 |
+|-----------|--------|--------|--------|
+| "It doesn't work" | log | `--status` | `--file X` |
+| "It errored" | full error text | traceback | `--file X` |
+| "It got slow" | profile | resource usage | algorithm |
+| "It crashed" | crash log | `--diff` | isolated test |
+| "It was great" | confirm tag | ask next step | — |
+| "I hit the limit" | document | `--status` | git status |
+| "Go to X" | wait for file | exact anchor | code |
+| "I sent the file" | read | anchor from it | code |
+| "Not sure" | ask more precisely | offer options | wait |
+| "Several tasks" | prioritize | one at a time | separate commits |
+
+---
+
+## Section 24 — Operational Checklists
+
+### 24-1. Before any change
+
+- [ ] I read the document.
+- [ ] I saw `--status`.
+- [ ] I know the red lines.
+- [ ] I have the exact anchor.
+- [ ] The replacement is clear.
+- [ ] The test is defined.
+- [ ] The commit is ready.
+
+### 24-2. After each change
+
+- [ ] Patch applied.
+- [ ] Test done.
+- [ ] Committed.
+- [ ] Tagged.
+- [ ] Context updated.
+
+### 24-3. Before a new chat
+
+- [ ] Document sent.
+- [ ] `--status` sent.
+- [ ] Chat goal clear.
+
+### 24-4. Before release
+
+- [ ] Tests pass.
+- [ ] Version updated.
+- [ ] Changelog written.
+- [ ] Docs complete.
+
+---
+
+## Section 25 — Ready-Made Response Patterns
+
+### 25-1. Adding a function
+
+```
+## 🔧 Add function `<name>`
+
+🔍 Anchor (Ctrl+F):
+<exact text>
+
+✂️ Replacement:
+<new text>
+
+📌 Test: <how to test>
+
+💾 Commit:
+git add -A
+git commit -m "✨ step-XX: add <name> + context updated"
+git tag step-XX-ok
+```
+
+**Note:** since run.py v1.0+, the test/commit/tag go **inside** `input.txt` via `#@COMMIT:` and `#@TAG:` (Section 4-15). The above chat-style pattern is only for AI that don't support directives.
+
+### 25-2. Removing code
+
+```
+## 🗑 Remove `<name>`
+
+🔍 Anchor (Ctrl+F):
+<whole block>
+
+✂️ Replacement:
+<without that block>
+```
+
+### 25-3. Full rewrite
+
+```
+## 📄 Full rewrite of `<filename>`
+
+**Reason:** <one line>
+
+===== CREATE: <path> =====
+<<<CONTENT>>>
+<full new content>
 ```

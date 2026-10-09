@@ -1,30 +1,16 @@
-# MSG-SEED: 7f3de0ee
+# MSG-SEED: fd261e84
 [APPLY]
 
-# PATCH_ID: 42
+# PATCH_ID: 43
 
-# DBG: did=None commit_msg='🌍 en: sections 8–13 (hash, MSG-SEED, fuzzy, context, big-ctx, escape, tracker); 🧹 run.py: drop debug' tag_name='en-part-2b-ok'
-# DBG: content after directives (first 6 lines):
-# DBG:   '===== FILE: run.py ====='
-# DBG:   '<<<FIND>>>'
-# DBG:   '    out = [f"# MSG-SEED: {seed}", "[APPLY]", "", f"# PATCH_ID: {patch_id}", ""]'
-# DBG:   '    out.append(f"# DBG: did={did!r} commit_msg={commit_msg!r} tag_name={tag_name!r}")'
-# DBG:   '    out.append(f"# DBG: content after directives (first 6 lines):")'
-# DBG:   '    for _dl in content.splitlines()[:6]:'
-
-[P42] [EDIT] run.py
-  [OK]   [1/1] applied
-[P42] [EDIT] PROJECT_CONTEXT.en.md
-  [HASH] expected: a1b2c3d4e5f6...
-  [HASH] actual:   08e0919477d6
-  [WARN] hash mismatch - applying anyway
+[P43] [EDIT] PROJECT_CONTEXT.en.md
   [OK]   [1/1] applied
 
 ============================================================
-PATCH_ID: 42  |  OK: 2  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 43  |  OK: 1  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0042-20261009-144532.txt
+[ARCH] _work\applied\P0043-20261009-144608.txt
        input.txt emptied - ready for next patch
 
-[GIT] commit: 🌍 en: sections 8–13 (hash, MSG-SEED, fuzzy, context, big-ctx, escape, tracker); 🧹 run.py: drop debug
-[GIT] tag: en-part-2b-ok
+[GIT] commit: 🌍 en: sections 14–19 (new chat, red lines, git workflow, testing, bug fix, feature)
+[GIT] tag: en-part-3-ok
