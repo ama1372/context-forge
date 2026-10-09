@@ -46,7 +46,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.2.4"
+VERSION = "1.2.5"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -549,7 +549,9 @@ def _git_head():
 
 
 def _update_auto_block(patch_id, seed):
-    ctx = Path("PROJECT_CONTEXT.md")
+    ctx = Path("PROJECT_CONTEXT.en.md")
+    if not ctx.exists():
+        ctx = Path("PROJECT_CONTEXT.md")
     if not ctx.exists(): return
     text = ctx.read_text(encoding="utf-8")
     START, END_MARK = "<!-- AUTO:START -->", "<!-- AUTO:END -->"

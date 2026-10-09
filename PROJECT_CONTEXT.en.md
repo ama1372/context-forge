@@ -1738,11 +1738,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.2.4-en` |
-| **Last commit** | after v1.2.4 patch |
-| **Last work** | v1.2.4: read_directives tolerates unknown #@ directives (ordering bug fixed) |
+| **Last safe tag** | `v1.2.5-en` |
+| **Last commit** | after v1.2.5 patch |
+| **Last work** | v1.2.5: AUTO-BLOCK filename fixed; _work/ untracked |
 | **Next step** | First real test-project, end-to-end cycle with a small CLI |
-| **Current phase** | v1.2.4, project closed |
+| **Current phase** | v1.2.5, project closed |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; README.fa.md review |
