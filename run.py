@@ -27,6 +27,12 @@ Directives (in _work/input.txt, first lines):
   #@ID: N              set patch ID manually
   #@CMD: <args>        replace this run with args
   #@POST: <args>       after applying patches, run args and append output
+  #@NEED: <args>       after applying patches, dump args and append output
+                       (e.g. "status", "file X", "files X Y", "tree", "git",
+                        "errors", "hash", "capabilities", "all", "check",
+                        "verify", "find-dup")
+  #@COMMIT: <message>  custom git commit message (default: "patch N: <ts>")
+  #@TAG: <name>        git tag created after a successful commit
 
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.md section 2.
 """
@@ -196,6 +202,9 @@ def read_directives(text):
     patch_id = None
     cmd_args = None
     post_cmds = []
+    needs = []
+    commit_msg = None
+    tag_name = None
     idx = 0
     while idx < len(lines):
         s = lines[idx].strip()
@@ -213,8 +222,34 @@ def read_directives(text):
             try: post_cmds.append(shlex.split(m.group(1).strip()))
             except ValueError: post_cmds.append(m.group(1).strip().split())
             idx += 1; continue
+        m = re.match(r'^#@NEED:\s*(.+)$', s)
+        if m:
+            try: needs.append(shlex.split(m.group(1).strip()))
+            except ValueError: needs.append(m.group(1).strip().split())
+            idx += 1; continue
+        m = re.match(r'^#@COMMIT:\s*(.+)$', s)
+        if m: commit_msg = m.group(1).strip(); idx += 1; continue
+        m = re.match(r'^#@TAG:\s*(\S+)', s)
+        if m: tag_name = m.group(1); idx += 1; continue
         break
-    return patch_id, cmd_args, post_cmds, '\n'.join(lines[idx:])
+    return (patch_id, cmd_args, post_cmds, needs,
+            commit_msg, tag_name, '\n'.join(lines[idx:]))
+
+
+NEED_COMMANDS = {
+    'status', 'tree', 'hash', 'git', 'errors', 'capabilities',
+    'version', 'all', 'file', 'files', 'check', 'verify',
+    'find-dup', 'dump',
+}
+
+
+def need_to_args(need_args):
+    if not need_args:
+        return []
+    cmd = need_args[0].lower()
+    if cmd in NEED_COMMANDS:
+        return ['--' + cmd] + list(need_args[1:])
+    return list(need_args)
 
 
 def read_cmd_directive_only():
@@ -224,7 +259,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -501,7 +536,8 @@ def _update_auto_block(patch_id, seed):
 def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
     rate_msg = _rate_warn_line()
-    did, _, post_cmds, remaining = read_directives(content)
+    (did, _, post_cmds, needs,
+     commit_msg, tag_name, remaining) = read_directives(content)
     if did is not None: patch_id = did
     content = remaining
 
@@ -652,6 +688,25 @@ def do_apply(patch_id=None):
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
 
+    if post_cmds and fail == 0:
+        for sub_args in post_cmds:
+            out.append(""); out.append("=" * 60)
+            out.append(f"POST: {' '.join(sub_args)}"); out.append("=" * 60)
+            out.append("")
+            sub_out = dispatch_capture(sub_args)
+            if sub_out:
+                out.append(sub_out)
+
+    if needs:
+        for need_args in needs:
+            real_args = need_to_args(need_args)
+            out.append(""); out.append("=" * 60)
+            out.append(f"NEED: {' '.join(need_args)}"); out.append("=" * 60)
+            out.append("")
+            sub_out = dispatch_capture(real_args)
+            if sub_out:
+                out.append(sub_out)
+
     if fail == 0:
         try: _update_auto_block(patch_id, seed)
         except Exception: pass
@@ -661,32 +716,35 @@ def do_apply(patch_id=None):
             r0 = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
                                 capture_output=True, text=True)
             if r0.returncode == 0 and r0.stdout.strip() == 'true':
-                msg = f"patch {patch_id}: {ts}"
+                msg = commit_msg if commit_msg else f"patch {patch_id}: {ts}"
                 subprocess.run(['git', 'add', '-A'], capture_output=True)
                 r1 = subprocess.run(['git', 'commit', '-m', msg],
                                     capture_output=True, text=True)
                 out.append("")
                 if r1.returncode == 0:
                     out.append(f"[GIT] commit: {msg}")
+                    if tag_name:
+                        r2 = subprocess.run(['git', 'tag', tag_name],
+                                            capture_output=True, text=True)
+                        if r2.returncode == 0:
+                            out.append(f"[GIT] tag: {tag_name}")
+                        else:
+                            out.append(f"[GIT] tag failed: {r2.stderr.strip()[:200]}")
                 else:
                     combined = (r1.stdout or '') + (r1.stderr or '')
                     if 'nothing to commit' in combined:
                         out.append("[GIT] nothing to commit")
+                        if tag_name:
+                            r2 = subprocess.run(['git', 'tag', tag_name],
+                                                capture_output=True, text=True)
+                            if r2.returncode == 0:
+                                out.append(f"[GIT] tag: {tag_name}")
                     else:
                         out.append(f"[GIT] failed: {r1.stderr.strip()[:200]}")
         except FileNotFoundError:
             out.append(""); out.append("[GIT] git not installed")
         except Exception as e:
             out.append(""); out.append(f"[GIT] error: {e}")
-
-    if post_cmds and fail == 0:
-        for sub_args in post_cmds:
-            out.append(""); out.append("=" * 60)
-            out.append(f"POST: {' '.join(sub_args)}"); out.append("=" * 60)
-            out.append("")
-            sub_out = dispatch_capture(sub_args)
-            if sub_out:
-                out.append(sub_out)
 
     _rate_warn_write()
     txt = '\n'.join(out)
@@ -849,7 +907,7 @@ def do_capabilities():
           "--git --file --files --errors --auto-verify --force "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
-    print("DIRECTIVES: #@ID #@CMD #@POST")
+    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG")
     print("FEATURES: MSG-SEED RATE-WARN AUTO-BLOCK AUTODUMP "
           "FUZZY-MATCH SUGGEST HASH-VERIFY GIT-AUTO-COMMIT")
 

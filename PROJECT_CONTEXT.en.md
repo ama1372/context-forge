@@ -1,40 +1,3 @@
-# MSG-SEED: 025e48fc
-[APPLY]
-
-# PATCH_ID: 38
-
-[P38] [EDIT] run.py
-  [OK]   [1/1] applied
-[P38] [EDIT] run.py
-  [OK]   [1/1] applied
-[P38] [EDIT] run.py
-  [OK]   [1/1] applied
-[P38] [EDIT] run.py
-  [OK]   [1/1] applied
-[P38] [EDIT] run.py
-  [OK]   [1/1] applied
-[P38] [EDIT] run.py
-  [OK]   [1/1] applied
-[P38] [EDIT] PROJECT_CONTEXT.en.md
-  [OK]   [1/1] applied
-[P38] [EDIT] PROJECT_CONTEXT.en.md
-  [FAIL] [1/1] anchor not found
-         start: ### 4-10. End-of-message reminder
-         nearest: 73% match, line 32
-         ------------------------------------------------------------
-         | >
-         | > **5. At the end of every message, this line:**
-         | > "If there was an error: run `python run.py` and send `_work/output.txt`."
-         | >
-         ------------------------------------------------------------
-
-============================================================
-AUTODUMP (failed files - content for re-anchoring)
-============================================================
-
-------------------------------------------------------------
-FILE: PROJECT_CONTEXT.en.md  (size: 23681 bytes)
-------------------------------------------------------------
 # 📘 PROJECT_CONTEXT.md — Final Edition
 
 <!-- AUTO:START -->
@@ -785,11 +748,197 @@ Your every message must contain:
 **❌ Wrong:** a 500-line file in full.
 
 **✅ Right:**
+
+    ===== FILE: src/main.py =====
+    <<<EXPECTED_HASH>>>a1b2c3d4...<<<END>>>
+    <<<FIND>>>
+    [exact 3–5 lines]
+    <<<REPLACE>>>
+    [the new 3–5 lines]
+    <<<END>>>
+
+**Exception:** only for new files or full rewrites.
+
+### 4-4. The anchor must be copied character-by-character from the user's file
+
+**Never build the anchor from memory.**
+
+If unsure:
+1. Request `python run.py --file X`.
+2. **After seeing the real file**, copy the anchor from it.
+
+### 4-5. No commit without a test
+
+Every patch must come with:
+- **Test command.**
+- **Commit message.**
+- **Safe tag.**
+
+**All three go inside `input.txt`** — see Sections 4-14 and 4-15.
+
+### 4-6. Definite, precise, no "maybe"
+
+- ❌ "Maybe...", "It seems...", "Try..."
+- ✅ "Apply this change. If you see error X, send file Y."
+
+### 4-7. Reply language = user language
+
+Persian → Persian. English → English. Mixed → dominant language.
+
+### 4-8. Concise, no preambles
+
+- ❌ "Hi, hope you're well. Today..."
+- ✅ "Apply the patch below:"
+
+### 4-9. Never say "replace the whole file"
+
+For files with valuable content (this document, configs, docs) — point-patch only.
+
+### 4-13. `clear` behaviour and log management
+
+**Common question:** Why does the `PS C:\...>` line vanish when I hit `clear`?
+
+**Answer:** `clear` wipes the entire screen buffer — not just the log. The prompt before `clear` is also wiped. A new prompt is printed after `clear`.
+
+**Goal:** less log = fewer tokens.
+
+**Recommended pattern for seeing the path + keeping the log small:**
+
+    clear ; pwd ; python run.py
+
+**Rule (revised):**
+
+- `clear` is **optional** — not mandatory.
+- If you still need the previous output, **don't use it**.
+- If the output is long and no longer needed, use it.
+- **The AI must not** put `clear` in suggested commands by default.
+- Only if the user said "the log is getting long" may the AI give `clear ; ...`.
+- **Reason:** `clear` wipes the whole screen — including useful output the user wants to read.
+
+---
+
+### 4-12. Separating public and private documents (optional)
+
+**Rule:**
+- `PROJECT_CONTEXT.md` — **public**. Never reference a specific project.
+- `_work/PROJECT_STATE.md` (optional) — **private**. This project's real state.
+
+**Separation:**
+
+| Document | Audience | Content |
+|----------|----------|---------|
+| PROJECT_CONTEXT.md | Everyone | Rules, template, guide |
+| _work/PROJECT_STATE.md | User & AI | Real state, history |
+
+**Never copy private-document content into the public one.**
+**Never reference the private document in a reply to the user.**
+
+---
+
+### 4-11. Single-line commands and log management
+
+**Real problem:** some multi-line PowerShell commands fail in various environments. Also, the user has to copy the whole window log, which burns tokens.
+
+**Rule for the AI:**
+
+1. **Whenever possible, give commands on one line.** Instead of:
+
+       git add -A
+       git commit -m "..."
+       git tag v1.0.0
+       git push origin main
+
+   prefer:
+
+       git add -A ; git commit -m "..." ; git tag v1.0.0 ; git push origin main
+
+2. **If the command gets long, break it into short lines, but keep them in one block.**
+
+3. **To clear the log, use `clear`.** The user should hit `clear` before each important command so the window log stays small.
+
+4. **The user copies only the final log** — not the whole PowerShell window.
+
+**Recommended AI pattern:**
+
+    clear ; python run.py
+
+**User's pattern when sending to the AI:**
+
+Only the command output — no PowerShell lines, no prompt, nothing extra.
+
+**Final rule:** every command must be short, single-line, and copy-paste friendly.
+
+---
+
+### 4-10. End-of-message reminder
+
+**Always** this line:
+
+> "If there was an error: run `python run.py` and send `_work/output.txt`."
+
+### 4-14. `#@NEED:` — batched verification
+
+When you want to verify your patches in the same round trip, put `#@NEED:` directives at the top of `input.txt` (before the first patch block):
+
+    # INPUT: fix bug + verify
+    #@NEED: status
+    #@NEED: file src/main.py
+    ===== FILE: src/main.py =====
+    ...
+
+The user runs `python run.py` once (no flags). The `output.txt` contains:
+
+1. Patch application results.
+2. Auto-commit (if all patches succeeded).
+3. The requested NEED dumps.
+
+**Supported NEED commands:** `status`, `tree`, `hash`, `git`, `errors`, `capabilities`, `all`, `file X`, `files X Y Z`, `check`, `verify`, `find-dup`.
+
+**Why:** one round trip instead of two. The AI patches *and* sees the result *and* reaches the next decision point — all in one message from the user.
+
+### 4-15. The complete workflow — everything inside `input.txt`
+
+> **🔴 This is the single most important rule for the AI.**
+
+**The AI's message must contain ONLY the `input.txt` content.** No separate test commands, no separate commit commands, no shell snippets outside the block. Everything the user needs to run is inside `input.txt`.
+
+**The full cycle:**
+
+1. **AI writes `input.txt`** containing:
+   - `#@COMMIT: <message>` — the commit message.
+   - `#@TAG: <tagname>` — the tag to create after a successful commit.
+   - `#@POST: <run.py-subcommand>` — verification command (e.g. `verify`, `check`, `status`).
+   - `#@NEED: <run.py-subcommand>` — dumps appended to output (e.g. `file X`, `errors`).
+   - The patch blocks (FILE / CREATE / DELETE / MOVE / MKDIR / CMD).
+
+2. **User runs `python run.py`** — no flags. The user does nothing else.
+
+3. **`run.py` automatically:**
+   - Applies all patches.
+   - Runs `#@POST` commands (verification).
+   - Runs `#@NEED` commands and appends their output.
+   - **If and only if `FAIL: 0`**, commits with the `#@COMMIT` message and creates the `#@TAG` tag.
+   - Writes everything to `output.txt`.
+
+4. **User sends `output.txt` to the AI.**
+
+5. **AI reads the output and writes the next `input.txt`.**
+
+**What the AI must never do:**
+
+- ❌ Give a test command *outside* the `input.txt` block.
+- ❌ Give a commit command *outside* the `input.txt` block.
+- ❌ Ask the user to run any command other than `python run.py`.
+- ❌ Say "then run `git commit ...`" — this is already in `#@COMMIT`.
+
+**What the AI must always do:**
+
+- ✅ Put `#@COMMIT:` and `#@TAG:` at the top of `input.txt`.
+- ✅ Put verification via `#@POST:` if the project has a test setup.
+- ✅ Use `#@NEED:` to request additional file dumps if needed.
+- ✅ End the message with the `[CTX-DELTA]` block and the standard reminder.
+
+**Why this rule matters:** every manual step the user performs is a chance for error, and a token cost when pasted back to the AI. The single-block workflow removes both.
+
+<!-- CONTINUE: 5 -->
 ```
-
-============================================================
-PATCH_ID: 38  |  OK: 7  |  SKIP: 0  |  FAIL: 1
-
-[ARCH] _work\applied\P0038-20261009-143707.txt
-       1 patch(es) FAILED
-       input.txt emptied anyway
