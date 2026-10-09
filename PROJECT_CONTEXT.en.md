@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P112 |
-| Last commit | `3d2b008` |
-| Time | 2026-10-09 14:29 |
-| MSG-SEED | `de96a8d6` |
+| Last patch | P70 |
+| Last commit | `41b6abb` |
+| Time | 2026-10-09 17:55 |
+| MSG-SEED | `0a07118b` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1738,11 +1738,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.2.5-en` |
-| **Last commit** | after v1.2.5 patch |
-| **Last work** | v1.2.5: AUTO-BLOCK filename fixed; _work/ untracked |
+| **Last safe tag** | `v1.2.6-en` |
+| **Last commit** | after v1.2.6 patch |
+| **Last work** | v1.2.6: final verification |
 | **Next step** | First real test-project, end-to-end cycle with a small CLI |
-| **Current phase** | v1.2.5, project closed |
+| **Current phase** | v1.2.6, project closed |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; README.fa.md review |
