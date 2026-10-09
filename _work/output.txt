@@ -1,22 +1,26 @@
-# MSG-SEED: 928a668e
+# MSG-SEED: 0594be9a
 [APPLY]
 
-# PATCH_ID: 105
+# PATCH_ID: 106
 
-[P105] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
+[P106] [MKDIR] _work
+  [OK]   created
 
 ============================================================
-PATCH_ID: 105  |  OK: 1  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 106  |  OK: 1  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0105-20261009-142149.txt
+[ARCH] _work\applied\P0106-20261009-142219.txt
        input.txt emptied - ready for next patch
 
-[GIT] commit: patch 105: 20261009-142149
+[GIT] commit: patch 106: 20261009-142219
 
 ============================================================
-POST: file PROJECT_CONTEXT.md --grep "ابجد|جفر|SkyVent" --head 10
+POST: --file PROJECT_CONTEXT.md --grep ابجد|جفر|SkyVent --head 10
 ============================================================
 
-[FAIL] unknown command: file
-usage: python run.py [--version|--init|--capabilities|--status|--tree|--hash|--git|--file X|--files ...|--errors|dump [--full]|check|verify|find-dup|apply|clean]
+FILE: PROJECT_CONTEXT.md
+HASH: 93805d92d0a5
+SIZE: 119460 bytes
+FLAGS: --grep ابجد|جفر|SkyVent --head 10
+SHOWN: 0 of 3305 lines
+---CONTENT---
