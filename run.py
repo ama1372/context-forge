@@ -558,6 +558,11 @@ def do_apply(patch_id=None):
     ops = parse(content)
     seed = msg_seed()
     out = [f"# MSG-SEED: {seed}", "[APPLY]", "", f"# PATCH_ID: {patch_id}", ""]
+    out.append(f"# DBG: did={did!r} commit_msg={commit_msg!r} tag_name={tag_name!r}")
+    out.append(f"# DBG: content after directives (first 6 lines):")
+    for _dl in content.splitlines()[:6]:
+        out.append(f"# DBG:   {_dl!r}")
+    out.append("")
     if rate_msg:
         out.append(rate_msg)
         out.append("Hint: batch 2-3 patches per input.txt to reduce message count.")

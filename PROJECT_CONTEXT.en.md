@@ -896,6 +896,26 @@ The user runs `python run.py` once (no flags). The `output.txt` contains:
 
 **Why:** one round trip instead of two. The AI patches *and* sees the result *and* reaches the next decision point — all in one message from the user.
 
+### 4-16. Quality first, but prefer longer `input.txt`
+
+> **The priority is quality. Between two equally correct options, prefer the longer and more complete one.**
+
+**Reason:** every round trip with the AI is a chance to hit a rate limit or get blocked. Fewer, larger `input.txt` batches are safer than many small ones.
+
+**Rules:**
+
+- Prefer **one** `input.txt` with 3 patches over **three** `input.txt` files with 1 patch each.
+- Prefer **one** message with 2 questions over **two** messages with 1 question each.
+- Prefer including `#@NEED:` directives over asking the user to run separate commands.
+- Prefer including the context update in the same patch over deferring it.
+- Prefer `#@POST:` verification inside `input.txt` over a separate test command in chat.
+
+**Caveat:** quality still comes first. Do not include risky or unverified patches just to make the input longer. If a patch might be wrong, don't include it. If unsure, ask.
+
+**Anti-pattern:** spamming many tiny `input.txt` files to "move fast". This maximizes the chance of account blocking, and each small patch has the same overhead as a large one.
+
+**Best practice:** batch 2–4 small patches into one `input.txt` file, with a single `#@COMMIT:` and `#@TAG:` at the top.
+
 ### 4-15. The complete workflow — everything inside `input.txt`
 
 > **🔴 This is the single most important rule for the AI.**
