@@ -46,7 +46,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.2.1"
+VERSION = "1.2.4"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -256,7 +256,8 @@ def read_directives(text):
         if m: dump_mode = m.group(1).lower(); idx += 1; continue
         if s in ('#@PUSH:', '#@PUSH'):
             push = True; idx += 1; continue
-        break
+        # Unknown #@ directive (e.g. #@NEXT:, #@ROADMAP:) — skip, don't break.
+        idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
             commit_msg, tag_name, nodump, dump_mode, push,
             '\n'.join(lines[idx:]))
