@@ -1738,11 +1738,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.2.1-en` |
-| **Last commit** | after v1.2.1 patch |
-| **Last work** | v1.2.1: `--check-md` skips `_archive/` |
+| **Last safe tag** | `v1.2.2-en` |
+| **Last commit** | after v1.2.2 patch |
+| **Last work** | v1.2.2: untracked `_work/`, completed `.gitignore` |
 | **Next step** | First real test-project, end-to-end cycle with a small CLI |
-| **Current phase** | v1.2.1, structurally complete |
+| **Current phase** | v1.2.2, project closed |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; README.fa.md review |
