@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P104 |
-| Last commit | `d95a184` |
+| Last patch | P105 |
+| Last commit | `5ab6ac7` |
 | Time | 2026-10-09 14:21 |
-| MSG-SEED | `b9caf571` |
+| MSG-SEED | `928a668e` |
 <!-- AUTO:END -->
 
 > نسخه‌ی رویایی. طراحی‌شده برای هر پروژه، هر زبان، هر هوش مصنوعی. مخصوص DeepSeek.
@@ -395,7 +395,7 @@
 
 **نمونه‌ی خروجی:**
 
-    run.py v3.0.0
+    run.py v1.0.0
     FLAGS: --version, --status, --init, --tree, --hash, ...
     PATCH_TYPES: FILE, CREATE, DELETE, MOVE, MKDIR, CMD
     AUTO_BLOCK: yes

@@ -1,15 +1,44 @@
-# MSG-SEED: 91d72aea
+# MSG-SEED: b9caf571
 [APPLY]
 
-# PATCH_ID: 103
+# PATCH_ID: 104
 
-[P103] [EDIT] PROJECT_CONTEXT.md
-  [OK]   [1/1] applied
+[P104] [CMD]  audit PROJECT_CONTEXT.md
+  | ===== VERSION MENTIONS (3.0 or 3.x) =====
+  | 
+  | PROJECT_CONTEXT.md:398:    run.py v3.0.0
+  | 
+  | ===== PROJECT NAMES (context-forge / Hamk) =====
+  | 
+  | ===== SPECIFIC BRANDS (SkyVent / msrt / hamkai) =====
+  | 
+  | ===== PROJECT-SPECIFIC TERMS (���� / ��) =====
+  | 
+  | ===== SECTION COUNT =====
+  | 43
+  | ===== SUBSECTION COUNT =====
+  | 204
+  | ===== FILE SIZE =====
+  | 119460
+  | ===== LINE COUNT =====
+  | 2400
+  [OK]   exit 0
 
 ============================================================
-PATCH_ID: 103  |  OK: 1  |  SKIP: 0  |  FAIL: 0
+PATCH_ID: 104  |  OK: 1  |  SKIP: 0  |  FAIL: 0
 
-[ARCH] _work\applied\P0103-20261009-142023.txt
+[ARCH] _work\applied\P0104-20261009-142124.txt
        input.txt emptied - ready for next patch
 
-[GIT] commit: patch 103: 20261009-142023
+[GIT] commit: patch 104: 20261009-142124
+
+============================================================
+POST: dump --head 3
+============================================================
+
+[DUMP] _work\output.txt
+       mode: incremental
+       6 files total  |  2 included
+       size: 120,449 bytes
+
+[NEW] send this file to assistant: _work\output.txt
