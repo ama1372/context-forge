@@ -1761,6 +1761,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Reason:** this bug silently corrupts documents and cost this project several patches. Detection must be one command, not a manual read.
 - **Alternatives:** rely on review (rejected — the bug is invisible until the file is sent); use a third-party linter (rejected — adds a dependency).
 
+**ADR-13: The user has exactly three actions (Section 0-C-10-A)**
+
+- **Decision:** the user only (1) pastes into `input.txt`, (2) runs `python run.py`, (3) sends `output.txt`. No other step is allowed.
+- **Reason:** every extra step is a chance for error, a token cost, and a break in the protocol. Verification, commits, pushes, and context updates belong inside `input.txt` as directives.
+- **Alternatives:** allow the AI to add per-message checklists (rejected - that is exactly the pattern that was silently pushing work back onto the user).
+
+**ADR-14: Verification runs inside `input.txt` via `#@POST:` - language-agnostic (Section 4-19)**
+
+- **Decision:** the language-specific build/test commands live in `_work/config.json`, triggered by `#@POST: check` / `#@POST: verify` inside the patch. The user still runs only `python run.py`.
+- **Reason:** this makes the same protocol work for Rust, Python, Node, Go, and any other language without ever leaving `input.txt`.
+- **Alternatives:** a different workflow per language (rejected - the protocol must be universal); asking the user to run the language's native command (rejected - violates Section 0-C-10-A).
+
 **ADR-15: Single-document policy - no translated rule documents (Section 33)**
 
 - **Decision:** `PROJECT_CONTEXT.en.md` is the only rule document. Translated rule documents (e.g. `PROJECT_CONTEXT.fa.md`) are **not maintained**. Only READMEs may be translated.
