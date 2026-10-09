@@ -21,7 +21,6 @@ if not need13 and not need14:
     print('SKIP: ADR-13 and ADR-14 already present')
     sys.exit(0)
 
-# Anchor: insert before ADR-15 if present, else before Section 14
 anchor = re.search(r'\*\*ADR-15:', doc)
 if not anchor:
     anchor = re.search(r'^## Section 14\b', doc, re.M)
