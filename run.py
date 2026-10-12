@@ -46,7 +46,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1393,6 +1393,7 @@ def do_capabilities():
           "#@NEXT #@ROADMAP #@PUSH #@COMMIT_IF")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
     print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
+    print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")
     print("FEATURES: MSG-SEED RATE-WARN AUTO-BLOCK AUTODUMP "
           "FUZZY-MATCH SUGGEST HASH-VERIFY GIT-AUTO-COMMIT")
     print("NOTE: --check-md skips _archive/ by default (unmaintained)")
@@ -1524,14 +1525,50 @@ def do_init():
     gi = Path('.gitignore')
     if not gi.exists():
         gi.write_text(
-            "_work/input.txt\n_work/output.txt\n_work/applied/\n"
-            "_work/cache.json\n_work/.patch_id\n_work/.last_run\n"
-            "*.pyc\n__pycache__/\n.venv/\nvenv/\nbuild/\ndist/\n"
-            "target/\nnode_modules/\n*.log\n.DS_Store\nThumbs.db\n",
+            "# --- context-forge runtime ---\n"
+            "_work/\n"
+            "\n"
+            "# --- OS noise ---\n"
+            ".DS_Store\nThumbs.db\ndesktop.ini\n"
+            "\n"
+            "# --- Python ---\n"
+            "*.pyc\n*.pyo\n__pycache__/\n.venv/\nvenv/\n"
+            ".pytest_cache/\n.mypy_cache/\n.ruff_cache/\n"
+            "\n"
+            "# --- Node ---\n"
+            "node_modules/\n.pnpm-store/\n.next/\ncoverage/\n"
+            "\n"
+            "# --- Rust ---\n"
+            "target/\n"
+            "\n"
+            "# --- Build output ---\n"
+            "build/\ndist/\nout/\n*.egg-info/\n"
+            "\n"
+            "# --- Logs ---\n"
+            "*.log\nlogs/\ncrash_log.txt\n"
+            "\n"
+            "# --- Secrets (never commit) ---\n"
+            ".env\n.env.*\n!.env.example\n"
+            "*.pem\n*.key\n*.p12\n*.pfx\n"
+            "credentials.json\nsecrets.yaml\nsecrets.yml\n"
+            "id_rsa\nid_ed25519\n.ssh/\n"
+            "\n"
+            "# --- IDE ---\n"
+            ".idea/\n.vscode/\n*.swp\n*.swo\n",
             encoding='utf-8')
-        print("[INIT] .gitignore written")
+        print("[INIT] .gitignore written (extended default)")
     else:
         print("[INIT] .gitignore already exists - skipped")
+
+    sensitive = ['.env', 'credentials.json', 'secrets.yaml', 'secrets.yml',
+                 'id_rsa', 'id_ed25519']
+    present = [s for s in sensitive if Path(s).exists()]
+    if present:
+        print()
+        print("[INIT] WARNING: sensitive files present in project root:")
+        for s in present:
+            print(f"         - {s}")
+        print("[INIT] Ensure they are in .gitignore before any commit.")
     if not CONFIG.exists():
         CONFIG.write_text(json.dumps({
             "build_cmd": None, "test_cmd": None,

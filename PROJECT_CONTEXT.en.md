@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P83 |
-| Last commit | `319fb0a` |
-| Time | 2026-10-13 02:51 |
-| MSG-SEED | `fd841b7f` |
+| Last patch | P87 |
+| Last commit | `f5c446d` |
+| Time | 2026-10-13 02:54 |
+| MSG-SEED | `2bc6cef2` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -983,6 +983,152 @@ Every AI message must:
 - Never let "the project is heavy" or "the user is new" justify leaving the protocol.
 
 **The document is the project's constitution.** If the AI breaks it, the project loses its continuity across chats — the exact failure this document exists to prevent.
+
+---
+
+## Section 0-C-17 — File-creation discipline
+
+> **🔴 The AI does not create files casually. Every file must earn its place.**
+
+### 0-C-17-1. The rule
+
+A file may only be created if **all three** are true:
+
+1. The user (or the project) needs it.
+2. It has a clear lifecycle — is it source? runtime? output? config?
+3. Its place in the repo is decided **before** it is written — tracked or ignored.
+
+**Never** create a file "just to test something". Use `_work/` for that.
+
+### 0-C-17-2. Categories and their fate
+
+| Category | Examples | Fate |
+|----------|----------|------|
+| **Source** | `src/main.py`, `lib/*.rs`, `app/*.ts` | Tracked in git |
+| **Config** | `pyproject.toml`, `Cargo.toml`, `package.json` | Tracked |
+| **Docs** | `README.md`, `docs/*.md`, `CONTRIBUTING.md` | Tracked |
+| **Runtime / scratch** | `_work/`, `*.tmp`, `*.bak`, editor swap files | `_work/` or `.gitignore` |
+| **Logs** | `*.log`, `logs/`, `crash_log.txt` | `.gitignore` |
+| **Build output** | `dist/`, `build/`, `target/`, `__pycache__/`, `node_modules/` | `.gitignore` |
+| **Secrets** | `.env`, `*.pem`, `id_rsa`, `credentials.json` | `.gitignore` **and never commit** |
+
+### 0-C-17-3. Same-patch `.gitignore` rule
+
+If a patch creates a file whose category is *not* "source" / "config" / "docs", the **same `input.txt`** must also update `.gitignore` to exclude it.
+
+**Example (one patch, two blocks):**
+
+    # INPUT: add log capture
+    #@COMMIT: ✨ add log capture
+
+    ===== CREATE: src/logger.py =====
+    <<<CONTENT>>>
+    ...
+    <<<END>>>
+
+    ===== FILE: .gitignore =====
+    <<<FIND>>>
+    # --- Logs ---
+    <<<REPLACE>>>
+    # --- Logs ---
+    logs/
+    *.log
+    app.log
+    <<<END>>>
+
+**Why same-patch:** if the `.gitignore` update lands in a *later* patch, the file is already committed by then. The same-patch rule closes that window.
+
+### 0-C-17-4. What the AI must never do
+
+- ❌ Create a file outside a `===== CREATE: =====` block.
+- ❌ Create a file whose category is unclear — **ask** first.
+- ❌ Commit a file whose category is "runtime", "logs", "build output", or "secrets".
+- ❌ Add a whole directory to git "because it looks useful".
+- ❌ Write `.env`, `credentials.json`, `secrets.yaml`, `id_rsa`, `*.pem`, `*.key` to disk at all (see Section 0-C-18).
+- ❌ Bypass `.gitignore` with `git add -f`.
+
+### 0-C-17-5. When in doubt — the three questions
+
+Before `===== CREATE: <path> =====`, the AI answers these silently:
+
+1. **Is this source/config/docs?** → tracked.
+2. **Is this runtime/scratch/log/build?** → `.gitignore` in the same patch.
+3. **Is this a secret?** → refuse. See Section 0-C-18.
+
+If the answer is not obvious, **ask the user**.
+
+### 0-C-17-6. `VERSION` — tool vs. project (clarification)
+
+`run.py`'s `VERSION` string is the **tool's version**. The user's **project version** is a separate thing — usually expressed as a git tag (`v1.2.3`), a line in `pyproject.toml` / `Cargo.toml` / `package.json`, or `__version__`.
+
+**Rule (Section 15-1 #7 restated):**
+
+- The AI may bump `run.py`'s `VERSION` when patching the tool itself — that's an internal marker, not a project release.
+- The AI must **never** bump the *user's project version* (its `__version__`, its `Cargo.toml` version, its release tag) without an explicit `#@TAG:` from the user or a direct request.
+
+**Why:** the user's project version is a public contract. It changes at user-chosen release points. It is not the AI's to decide.
+
+---
+
+## Section 0-C-18 — Sensitive data protection
+
+> **🔴 The AI never writes, logs, prints, or commits secrets. Ever.**
+
+### 0-C-18-1. What counts as "sensitive"
+
+- API keys, tokens, JWTs, session cookies.
+- Passwords and password hashes.
+- Private SSH/GPG keys (`id_rsa`, `id_ed25519`, `*.pem`, `*.key`, `*.p12`, `*.pfx`).
+- OAuth client secrets.
+- Database connection strings with credentials.
+- `.env` files with real values.
+- Cookies, session IDs, personal data from real users.
+
+### 0-C-18-2. What the AI must never do
+
+- ❌ Write a real secret into any file, anywhere.
+- ❌ Print a secret into `output.txt` or the chat.
+- ❌ Include a secret in a patch's `<<<CONTENT>>>` or `<<<REPLACE>>>`.
+- ❌ Commit a file that *may* contain secrets (`.env`, `credentials.json`, `id_rsa`, etc.) without explicit confirmation — even if the user asked.
+- ❌ Create a `.env` file with real values. Create `.env.example` instead, with placeholders.
+
+### 0-C-18-3. What the AI must do
+
+- ✅ When a `.env` is needed, create `.env.example` with placeholder values only:
+
+      # .env.example — copy to .env and fill in real values
+      # Never commit .env — it is in .gitignore
+      DATABASE_URL=postgres://user:password@host/db
+      API_KEY=your-api-key-here
+
+- ✅ Ensure `.gitignore` excludes the real secret files **before** the AI mentions them.
+- ✅ If the AI must reference a secret, use a placeholder: `<YOUR_TOKEN>`.
+- ✅ If the user pastes a secret in chat by accident, warn them: *"This looks like a secret. Please rotate it and never paste it here."*
+
+### 0-C-18-4. Default `.gitignore` — always includes
+
+- `.env` and `.env.*` (except `.env.example`)
+- `*.pem`, `*.key`, `*.p12`, `*.pfx`
+- `credentials.json`, `secrets.yaml`, `secrets.yml`
+- `id_rsa`, `id_ed25519`, `.ssh/`
+
+`run.py --init` writes these by default (see the extended `.gitignore` template).
+
+### 0-C-18-5. If a secret is already in git history
+
+The AI **must tell the user**:
+
+> "A secret was committed in `<commit>`. Removing it from the working tree is not enough — it is still in git history. Rotate the secret immediately. Then rewrite history with `git filter-repo` or BFG Repo-Cleaner. Do not simply `git rm` and move on."
+
+The AI does not attempt to rewrite history on its own. That is the user's decision.
+
+### 0-C-18-6. If the user asks the AI to commit a secret
+
+**Refuse.** Say:
+
+> "I won't commit files that hold secrets. Rotate this value, then add the file to `.gitignore`. If the file is a template, we create `.env.example` instead."
+
+The user's inconvenience is never a reason to leak a secret.
 
 ---
 
@@ -2094,11 +2240,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.3.0` |
-| **Last commit** | OR-FIND + IF/ELIF/ELSE/ENDIF + COMMIT_IF + fix NEXT/ROADMAP parsing |
-| **Last work** | v1.3.0: Section 0-C-14 (conditional patches), ADR-20, OR-FIND parser, condition evaluator, COMMIT_IF policy, NEXT/ROADMAP now parsed directly |
+| **Last safe tag** | `v1.3.1` |
+| **Last commit** | file-creation discipline + sensitive data protection |
+| **Last work** | v1.3.1: Section 0-C-17 (file discipline + same-patch .gitignore), 0-C-18 (secrets), extended default `.gitignore`, ADR-21, ADR-22 |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.3.0 — released |
+| **Current phase** | v1.3.1 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; v1.4.0 (bootstrap helper) |
@@ -2373,6 +2519,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** during long operations, `run.py` writes short progress lines (`[P42] 3/15 …`) to **stderr**, overwritten with `\r`. Only when stderr is a tty. `output.txt` (stdout) stays clean and final. `--no-progress` disables it.
 - **Reason:** progress is for humans in a terminal, not for the AI. Mixing it with `output.txt` would pollute the payload the AI parses. stderr is the natural channel for transient UI.
 - **Alternatives:** progress to stdout (rejected — pollutes `output.txt`); a separate progress file (rejected — extra state); no progress (rejected — long commands feel frozen on big projects).
+
+**ADR-21: File-creation discipline (Section 0-C-17)**
+
+- **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
+- **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
+- **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-22: Sensitive data protection (Section 0-C-18)**
+
+- **Decision:** the AI never writes, prints, or commits secrets. When a secret file is required, it creates a `.env.example` with placeholders. When a secret has already been committed, the AI warns the user and explains history rewriting without doing it automatically.
+- **Reason:** accidental secret leakage is the highest-cost failure in AI-assisted coding. The AI's job is to keep the user safe, not to accept the user's request to commit `.env` "just this once".
+- **Alternatives:** trust the user (rejected — mistakes are unrecoverable); auto-rotate (rejected — the AI has no credentials); never touch `.env` files (rejected — the project often needs a template).
 
 **ADR-20: Conditional patches — OR-FIND, IF/ELIF/ELSE/ENDIF, COMMIT_IF (Section 0-C-14)**
 
