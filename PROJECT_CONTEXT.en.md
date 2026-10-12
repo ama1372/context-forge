@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P80 |
-| Last commit | `7589e09` |
-| Time | 2026-10-09 18:20 |
-| MSG-SEED | `382f07bd` |
+| Last patch | P81 |
+| Last commit | `03b07ae` |
+| Time | 2026-10-13 02:44 |
+| MSG-SEED | `0da96f42` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -725,6 +725,79 @@ All examples in this document use `python run.py` as the command. **Substitute**
 
 ---
 
+## Section 0-C-15 — Protocol fidelity (when the project feels heavy)
+
+> **🔴 When the AI feels the urge to switch workflows — stop. Re-read this section.**
+
+### 0-C-15-1. PROJECT_CONTEXT is the master document
+
+The rule document is the **single source of truth** for how the AI and the user work together. It is not a suggestion. It is not "one possible way". It is **the way**.
+
+If the AI ever feels the project has become too heavy for the protocol, that is a **signal to use the protocol's own tools more**, not to abandon the protocol.
+
+### 0-C-15-2. Forbidden drift — when it "feels easier" to leave the protocol
+
+Common drift patterns and what to do instead:
+
+| The AI thinks | What the AI must do instead |
+|---------------|----------------------------|
+| "Let me just edit this line for you" | Emit a `===== FILE =====` patch with `<<<FIND>>>` / `<<<REPLACE>>>` |
+| "Let me give you a shell script" | Put it in a `===== CMD: =====` block with `<<<RUN>>>`, or as `#@POST:` |
+| "This is a big change — let's skip the patch" | Split into multiple small patches in **one** `input.txt` |
+| "Let's move to a fresh chat with a new approach" | Do not leave the protocol. Open a new chat with **the same document + `--status`**. |
+| "I need to see the whole project" | Use `--file X`, `--files X Y`, or (in v1.2.0) `locate` / `defs` / `dead` |
+| "I'll write a quick Python script to do this" | That is what `#@POST:` is for |
+| "The rules are getting in the way" | That is the rule working as designed — trust it |
+
+### 0-C-15-3. When the project grows (heavy-context handling)
+
+The document is large. Big projects produce large `--all` dumps. Do not respond by abandoning the protocol. Respond by using the protocol's own slimming tools:
+
+- **`python run.py --slim-context --to <file>`** — writes a slimmer copy of the rule document to `<file>` (drops stable sections). Paste this version in a new chat when the full document is too large.
+- **`python run.py --file X`** — one file, not the whole project.
+- **`python run.py --diff`** — only what changed since the last dump.
+- **`python run.py locate "PATTERN"`** — (v1.2.0) find a line without dumping files.
+- **`python run.py defs`** — (v1.2.0) list all top-level definitions.
+- **`python run.py dead`** — (v1.2.0) find dead code to delete.
+- **`#@NEED: file X`** — batch file dumps into `output.txt` in the same run.
+
+### 0-C-15-4. When a new case appears
+
+A new case (new file type, new error, new feature shape) is **not** a reason to leave the protocol. It is a reason to **use more of the protocol**:
+
+- New file type → still `===== FILE =====` / `===== CREATE =====`
+- New error → still `#@POST: verify` + `#@NEED: errors`
+- New feature → still one patch per step, `#@COMMIT:` per step
+- New tool needed → add it to `run.py` via a normal patch
+- New language → tool can be rewritten (Section 0-C-13), protocol unchanged
+
+### 0-C-15-5. When the AI realizes it has drifted
+
+If the AI notices mid-conversation that it has drifted:
+
+1. **Stop.**
+2. **One-line apology.**
+3. **Re-send the same content in the correct format** (patch + CTX-DELTA).
+
+Not a long explanation. Not a plan. Just the correct format.
+
+### 0-C-15-6. Allowed extension points
+
+The protocol is extensible — **in these exact ways, and no others**:
+
+1. **`#@POST:` / `#@NEED:`** — chained verification.
+2. **`<<<OR-FIND>>>`** — (v1.2.0) multiple anchors.
+3. **`#@IF:` / `#@ELSE:` / `#@ENDIF:`** — (v1.3.0) conditional patches.
+4. **`#@IF-OUT:` / `#@ELIF-OUT:` / `#@ELSE:` / `#@ENDIF:`** — (v1.3.0) decision tree on the previous run's output.
+5. **`===== CMD: =====` + `<<<RUN>>>`** — inline shell.
+6. **New `run.py` subcommands** — added via a normal patch to `run.py`, documented in the rule document.
+
+**Not allowed:** Turing-complete loops, nested conditions, arbitrary shell in conditions, escapes to a different workflow.
+
+**Why:** the protocol's value is **transparency and debuggability**. Any feature that makes a failed patch harder to understand is a feature the protocol does not want.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -1207,6 +1280,8 @@ Do not lecture. One sentence is enough. If the user asks again, add:
 | `--ctx` | show the last `_work/ctx_delta.txt` block | small |
 | `--check-md [files...]` | scan markdown files for nested or unclosed fences (default: all `.md`) | small |
 | `--check-sections A B` | compare section headers between two documents | small |
+| `--slim-context [--drop A,B] [--all] [--to FILE]` | emit or write a slimmer copy of `PROJECT_CONTEXT.en.md` (default drops Sections 26 and 35) | small |
+| `--progress` / `--no-progress` | enable/disable transient progress on stderr (default: enabled when tty) | — |
 | `--auto-verify` | hash mismatch → auto reject | — |
 | `--force` | hash mismatch → apply without warning | — |
 | `dump [--full]` | full or incremental dump | large |
@@ -1829,14 +1904,14 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.0.7` |
-| **Last commit** | fix CI workflow (24 files) + issue templates |
-| **Last work** | v1.0.7: CI checks all 24 READMEs + required files + language bars; issue templates added |
-| **Next step** | Share on communities (Reddit, HN, awesome-lists); create GitHub Release v1.0.7 |
-| **Current phase** | v1.0.7 — released |
+| **Last safe tag** | `v1.1.0` |
+| **Last commit** | protocol fidelity + slim-context + progress-to-stderr |
+| **Last work** | v1.1.0: Section 0-C-15 (protocol fidelity), `--slim-context`, progress to stderr, ADR-17, ADR-18 |
+| **Next step** | v1.2.0 — integrate `locate` / `defs` / `dead` subcommands |
+| **Current phase** | v1.1.0 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
-| **Open issues** | Distribution: share on communities; first real test-project |
+| **Open issues** | v1.2.0 (locate/defs/dead); v1.3.0 (conditional patches); first real test-project |
 
 ### 13-2. Update
 
@@ -2096,6 +2171,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** `run.py` (Python) is the **reference implementation** of the tool. The protocol it implements is language-neutral. The AI may rewrite the tool in the user's project language (Rust, Go, Node, C#, etc.) provided it behaves identically (same flags, same directives, same patch syntax, same output sections).
 - **Reason:** the protocol is about discipline (files, patches, directives, MSG-SEED, auto-commit), not about Python. Forcing Python on a Rust project's user is a needless barrier. Documenting the rewrite contract keeps the protocol universal.
 - **Alternatives:** mandate Python everywhere (rejected — excludes projects without a Python runtime); ship separate tools per language (rejected — maintenance burden, N× drift risk).
+
+**ADR-17: `--slim-context` for large-context projects (Section 0-C-15-3)**
+
+- **Decision:** add `python run.py --slim-context [--to FILE]` that emits (or writes) a slimmer copy of the rule document. Default drops Sections 26 (examples) and 35 (embedded source). The full document on disk is untouched.
+- **Reason:** the rule document grows (~150 KB). Big projects paste it every new chat. A slim version (~90 KB) reduces context pressure without touching the single source of truth. `--to FILE` lets automation write it without polluting `output.txt`.
+- **Alternatives:** split the document permanently (rejected — breaks single-source rule); trim the document itself (rejected — the embedded source and examples are load-bearing for newcomers).
+
+**ADR-18: Progress output goes to stderr, not stdout (Section 0-C-15-1)**
+
+- **Decision:** during long operations, `run.py` writes short progress lines (`[P42] 3/15 …`) to **stderr**, overwritten with `\r`. Only when stderr is a tty. `output.txt` (stdout) stays clean and final. `--no-progress` disables it.
+- **Reason:** progress is for humans in a terminal, not for the AI. Mixing it with `output.txt` would pollute the payload the AI parses. stderr is the natural channel for transient UI.
+- **Alternatives:** progress to stdout (rejected — pollutes `output.txt`); a separate progress file (rejected — extra state); no progress (rejected — long commands feel frozen on big projects).
 
 ## Section 14 — Starting a New Chat
 

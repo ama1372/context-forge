@@ -46,7 +46,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.0.7"
+VERSION = "1.1.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -84,6 +84,31 @@ FENCE_RE = re.compile(r'^\s*```[a-zA-Z0-9_+\-]*\s*$')
 
 AUTO_VERIFY = False
 FORCE_APPLY = False
+PROGRESS = True
+
+
+def _progress(msg):
+    """Write a transient progress line to stderr (never to stdout/output.txt)."""
+    if not PROGRESS:
+        return
+    try:
+        if not sys.stderr.isatty():
+            return
+        sys.stderr.write(msg)
+        sys.stderr.flush()
+    except Exception:
+        pass
+
+
+def _progress_newline():
+    if not PROGRESS:
+        return
+    try:
+        if sys.stderr.isatty():
+            sys.stderr.write('\n')
+            sys.stderr.flush()
+    except Exception:
+        pass
 
 
 def read(p):
@@ -609,8 +634,11 @@ def do_apply(patch_id=None):
 
     ok = fail = skip = 0
     fail_files = set()
-    for op in ops:
+    total_ops = len(ops)
+    for idx_op, op in enumerate(ops, 1):
         kind = op['kind']
+        _label = op.get('path', '') or op.get('desc', '') or kind
+        _progress(f"[P{patch_id}] {idx_op}/{total_ops} {_label[:50]}...\r")
 
         if kind == 'file':
             out.append(f"[P{patch_id}] [EDIT] {op['path']}")
@@ -834,6 +862,7 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[CTX] save failed: {e}")
 
+    _progress_newline()
     _rate_warn_write()
     txt = '\n'.join(out)
     write(OUTPUT, txt); print(txt)
@@ -1166,12 +1195,72 @@ def do_check_sections(path_a, path_b):
     return 0 if not (only_a or only_b) else 1
 
 
+def do_slim_context(args):
+    """Emit or write a slimmer copy of PROJECT_CONTEXT.en.md.
+
+    Default drops Sections 26 (examples) and 35 (embedded run.py source).
+    The full document on disk is not modified.
+    """
+    drop = {'26', '35'}
+    out_file = None
+    if '--all' in args:
+        drop = set()
+    if '--drop' in args:
+        i = args.index('--drop')
+        if i + 1 < len(args):
+            drop = {s.strip() for s in args[i + 1].split(',') if s.strip()}
+    if '--to' in args:
+        i = args.index('--to')
+        if i + 1 < len(args):
+            out_file = args[i + 1]
+    doc = Path('PROJECT_CONTEXT.en.md')
+    if not doc.exists():
+        print("[FAIL] PROJECT_CONTEXT.en.md not found")
+        return 1
+    text = read(doc)
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    parts = re.split(r'(^## Section [^\n]+$)', text, flags=re.M)
+    out = [parts[0] if parts else '']
+    dropped = []
+    i = 1
+    while i < len(parts) - 1:
+        header = parts[i]
+        body = parts[i + 1] if i + 1 < len(parts) else ''
+        m = re.search(r'## Section ([\w\-]+)', header)
+        if m and m.group(1) in drop:
+            dropped.append(m.group(1))
+            i += 2
+            continue
+        out.append(header)
+        if body:
+            out.append(body)
+        i += 2
+    result = ''.join(out)
+    orig_lines = text.count('\n')
+    new_lines = result.count('\n')
+    footer = (
+        f"\n<!-- SLIM-CONTEXT: dropped Sections "
+        f"{', '.join(sorted(dropped)) or '(none)'} | "
+        f"{new_lines} lines (was {orig_lines}) -->\n"
+    )
+    payload = result.rstrip() + footer
+    if out_file:
+        p = Path(out_file)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(payload, encoding='utf-8')
+        print(f"[SLIM] wrote {out_file} ({new_lines} lines, dropped: {', '.join(sorted(dropped)) or 'none'})")
+    else:
+        print(payload)
+    return 0
+
+
 def do_capabilities():
     print(f"run.py v{VERSION}")
     print("FLAGS: --version --init --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
-          "--check-md --check-sections "
+          "--check-md --check-sections --slim-context "
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
+          "--progress --no-progress "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP #@NEXT #@ROADMAP #@PUSH")
@@ -1346,7 +1435,7 @@ def dispatch_capture(args):
 
 
 def dispatch(args):
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
     if not args: return None
     cmd = args[0]
 
@@ -1376,6 +1465,13 @@ def dispatch(args):
             return do_check_sections(rest[0], rest[1])
         print("[FAIL] --check-sections needs two paths")
         return 1
+    if cmd == '--slim-context':
+        i = args.index('--slim-context')
+        return do_slim_context(args[i+1:])
+    if cmd == '--no-progress':
+        PROGRESS = False; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--progress':
+        PROGRESS = True; return dispatch(args[1:]) if args[1:] else None
 
     if cmd == '--file':
         i = args.index('--file')
@@ -1422,7 +1518,7 @@ def dispatch(args):
 
 
 def main():
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
         INPUT.write_text('', encoding='utf-8')
@@ -1439,6 +1535,7 @@ def main():
         if '--no-fuzzy' in args: FUZZY = False
         if '--dry-run' in args: DRY_RUN = True
         if '--backup' in args: BACKUP = True
+        if '--no-progress' in args: PROGRESS = False
         return dispatch(args)
 
     if INPUT.read_text(encoding='utf-8').strip():
