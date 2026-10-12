@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P82 |
-| Last commit | `bf095e9` |
-| Time | 2026-10-13 02:49 |
-| MSG-SEED | `6f04ffe1` |
+| Last patch | P83 |
+| Last commit | `319fb0a` |
+| Time | 2026-10-13 02:51 |
+| MSG-SEED | `fd841b7f` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -725,6 +725,103 @@ All examples in this document use `python run.py` as the command. **Substitute**
 
 ---
 
+## Section 0-C-14 — Conditional patches
+
+> **The protocol gains power without Turing-completeness. No loops, no nesting surprises.**
+
+### 0-C-14-1. `<<<OR-FIND>>>` — multiple anchors
+
+A single patch may provide several fallback anchors. The first one that matches the file wins.
+
+    ===== FILE: src/main.py =====
+    <<<FIND>>>
+    def old_name(x):
+    <<<OR-FIND>>>
+    def legacy_name(x):
+    <<<OR-FIND>>>
+    def alt_name(x):
+    <<<REPLACE>>>
+    def new_name(x):
+    <<<END>>>
+
+**When to use it:** the same logical anchor may have been renamed, reformatted, or moved. Instead of asking the user for the file, the AI provides the 2–3 most likely forms.
+
+**Output marker:** when the alternative is not the first, `run.py` writes `applied (alt 2/3)` — so you can see which variant won.
+
+**Do not overuse:** 2–3 alternatives is fine. 10 alternatives means you should look at the file first (`--file X`).
+
+### 0-C-14-2. `#@IF:` / `#@ELIF:` / `#@ELSE:` / `#@ENDIF:` — block conditions
+
+Wrap any patch block in a condition. The block runs only if the condition is true.
+
+    #@IF: exists src/old.py
+    ===== MOVE: src/old.py -> src/legacy.py =====
+    #@ELIF: missing src/old.py
+    ===== CREATE: src/legacy.py =====
+    <<<CONTENT>>>
+    # stub
+    <<<END>>>
+    #@ELSE:
+    ===== CMD: report =====
+    <<<RUN>>>
+    echo "unexpected state"
+    <<<END>>>
+    #@ENDIF:
+
+**Supported conditions:**
+
+| Condition | Meaning |
+|-----------|---------|
+| `exists <path>` | File or directory exists |
+| `missing <path>` | Path does not exist |
+| `contains <path> <text>` | File exists and contains the text |
+
+**Rules:**
+
+- Nesting is allowed, but keep it to one level. Deep nesting is a smell.
+- Conditions are evaluated **before** applying any patch.
+- Conditions do not run shell commands. No `$(...)`. No arbitrary code. Ever.
+- `#@IF:`, `#@ELIF:`, `#@ELSE:`, `#@ENDIF:` must be at column zero.
+
+### 0-C-14-3. `#@COMMIT_IF:` — commit policy
+
+By default, `run.py` commits and tags only if every patch succeeded (`FAIL: 0`). This can be overridden:
+
+| Value | Meaning |
+|-------|---------|
+| `all-ok` (default) | Commit only if `FAIL: 0` |
+| `any-ok` | Commit if at least one patch applied |
+| `always` | Commit unconditionally |
+| `never` | Never commit — patches apply, git stays clean |
+
+**Use `never` for:** dry runs, exploratory patches, "just see what happens" experiments.
+
+**Use `any-ok` for:** batches where some patches are optional.
+
+### 0-C-14-4. What is still forbidden
+
+Turing-completeness is not a goal. These are and remain forbidden:
+
+- ❌ `#@FOR`, `#@WHILE`, `#@LOOP` — no loops.
+- ❌ Shell substitution inside conditions (`#@IF: $(grep ...)`) — no arbitrary shell.
+- ❌ Conditions that themselves read `_work/output.txt` and re-run — no recursion.
+- ❌ Deeply nested conditions (more than 2 levels) — refactor into multiple messages.
+
+**Reason:** the protocol's value is transparency and debuggability. If a failed patch requires reading three nested conditions to understand, the protocol has failed.
+
+### 0-C-14-5. How the AI uses these — sparingly
+
+The AI uses conditional patches when they **save a round trip**, not to be clever:
+
+- ✅ "Move the file if it exists, otherwise create a stub."
+- ✅ "Try three likely anchor spellings."
+- ✅ "Run `verify`, and only commit if it passed."
+- ❌ "Try every possible fix and see which one sticks." — that is not this.
+
+If you are unsure, use the simple forms (single FIND, no conditions). The protocol degrades gracefully.
+
+---
+
 ## Section 0-C-15 — Protocol fidelity (when the project feels heavy)
 
 > **🔴 When the AI feels the urge to switch workflows — stop. Re-read this section.**
@@ -1417,6 +1514,8 @@ Directives are lines starting with `#@` at the top of `input.txt`, before the fi
 | `#@NEXT: <line>` | One-line "what's next" for the auto-generated `_work/ctx_delta.txt` |
 | `#@ROADMAP: a \| b \| c` | Pipe-separated roadmap for `_work/ctx_delta.txt` (at least 2 items) |
 | `#@PUSH:` | After a successful commit + tag, push both to `origin` (current branch) |
+| `#@COMMIT_IF: all-ok\|any-ok\|always\|never` | Override the commit policy (default: `all-ok`) |
+| `#@IF:` / `#@ELIF:` / `#@ELSE:` / `#@ENDIF:` | Conditionally include/exclude patch blocks (Section 0-C-14) |
 
 **Order of execution:** apply → POST → NEED → auto-context update → git commit → git tag.
 
@@ -1995,14 +2094,14 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.1.1` |
-| **Last commit** | Section 0-C-16 (new-project protocol — copy, never invent) |
-| **Last work** | v1.1.1: Section 0-C-16 + Section 14-3-A + ADR-19. (v1.2.0 P631 integration cancelled.) |
-| **Next step** | v1.3.0 — conditional patches (OR-FIND + IF/ELSE) |
-| **Current phase** | v1.1.1 — released |
+| **Last safe tag** | `v1.3.0` |
+| **Last commit** | OR-FIND + IF/ELIF/ELSE/ENDIF + COMMIT_IF + fix NEXT/ROADMAP parsing |
+| **Last work** | v1.3.0: Section 0-C-14 (conditional patches), ADR-20, OR-FIND parser, condition evaluator, COMMIT_IF policy, NEXT/ROADMAP now parsed directly |
+| **Next step** | First real test-project — end-to-end cycle with a small CLI |
+| **Current phase** | v1.3.0 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
-| **Open issues** | v1.3.0 (conditional patches); first real test-project |
+| **Open issues** | First real test-project; v1.4.0 (bootstrap helper) |
 
 ### 13-2. Update
 
@@ -2274,6 +2373,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** during long operations, `run.py` writes short progress lines (`[P42] 3/15 …`) to **stderr**, overwritten with `\r`. Only when stderr is a tty. `output.txt` (stdout) stays clean and final. `--no-progress` disables it.
 - **Reason:** progress is for humans in a terminal, not for the AI. Mixing it with `output.txt` would pollute the payload the AI parses. stderr is the natural channel for transient UI.
 - **Alternatives:** progress to stdout (rejected — pollutes `output.txt`); a separate progress file (rejected — extra state); no progress (rejected — long commands feel frozen on big projects).
+
+**ADR-20: Conditional patches — OR-FIND, IF/ELIF/ELSE/ENDIF, COMMIT_IF (Section 0-C-14)**
+
+- **Decision:** the protocol supports multi-anchor patches (`<<<OR-FIND>>>`), block conditions (`#@IF:` / `#@ELIF:` / `#@ELSE:` / `#@ENDIF:`), and a commit policy directive (`#@COMMIT_IF:`). No loops, no shell substitution in conditions, no recursion. Nesting conditions is allowed but discouraged beyond one level.
+- **Reason:** these features remove a full round trip when the AI can anticipate branches (file exists vs missing, anchor renamed, dry-run). But beyond these, the protocol's value is transparency — Turing-completeness is not the goal.
+- **Alternatives:** full scripting language in `input.txt` (rejected — undebuggable); no conditions at all (rejected — needless round trips for known branches); shell-based conditions (rejected — security and portability).
 
 **ADR-19: New-project bootstrap — copy the document, never invent (Section 0-C-16)**
 

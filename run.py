@@ -46,7 +46,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.1.1"
+VERSION = "1.3.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -78,6 +78,7 @@ HEADER_RE = re.compile(
 )
 MOVE_RE = re.compile(r'^={3,}\s*MOVE\s*:\s*(.+?)\s*->\s*(.+?)\s*={3,}\s*$')
 FIND, REPLACE, CONTENT, END = '<<<FIND>>>', '<<<REPLACE>>>', '<<<CONTENT>>>', '<<<END>>>'
+OR_FIND = '<<<OR-FIND>>>'
 RUN_MARKER = '<<<RUN>>>'
 HASH_MARKER_RE = re.compile(r'^<<<EXPECTED_HASH>>>\s*(.+?)\s*<<<END>>>\s*$')
 FENCE_RE = re.compile(r'^\s*```[a-zA-Z0-9_+\-]*\s*$')
@@ -245,6 +246,9 @@ def read_directives(text):
     nodump = False
     dump_mode = None
     push = False
+    commit_if = None
+    next_step = None
+    roadmap = []
     idx = 0
     while idx < len(lines):
         s = lines[idx].strip()
@@ -281,10 +285,19 @@ def read_directives(text):
         if m: dump_mode = m.group(1).lower(); idx += 1; continue
         if s in ('#@PUSH:', '#@PUSH'):
             push = True; idx += 1; continue
-        # Unknown #@ directive (e.g. #@NEXT:, #@ROADMAP:) — skip, don't break.
+        m = re.match(r'^#@COMMIT_IF:\s*(\S+)', s)
+        if m: commit_if = m.group(1).lower(); idx += 1; continue
+        m = re.match(r'^#@NEXT:\s*(.+)$', s)
+        if m: next_step = m.group(1).strip(); idx += 1; continue
+        m = re.match(r'^#@ROADMAP:\s*(.+)$', s)
+        if m:
+            roadmap = [x.strip() for x in m.group(1).split('|') if x.strip()]
+            idx += 1; continue
+        # Unknown #@ directive — skip, don't break.
         idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
             commit_msg, tag_name, nodump, dump_mode, push,
+            commit_if, next_step, roadmap,
             '\n'.join(lines[idx:]))
 
 
@@ -304,6 +317,94 @@ def need_to_args(need_args):
     return list(need_args)
 
 
+def eval_condition(text):
+    """Evaluate an #@IF / #@ELIF condition. Returns True/False.
+
+    Supported forms:
+      exists <path>              - file or directory exists
+      missing <path>             - path does not exist
+      contains <path> <text>     - file exists and contains the text
+    """
+    text = text.strip()
+    parts = text.split(None, 1)
+    if not parts:
+        return False
+    op = parts[0].lower()
+    rest = parts[1].strip() if len(parts) > 1 else ''
+    if op == 'exists':
+        return bool(rest) and Path(rest).exists()
+    if op == 'missing':
+        return bool(rest) and not Path(rest).exists()
+    if op == 'contains':
+        sp = rest.split(None, 1)
+        if len(sp) < 2:
+            return False
+        p = Path(sp[0])
+        needle = sp[1].strip().strip('"\'')
+        if not p.exists():
+            return False
+        try:
+            return needle in read(p)
+        except Exception:
+            return False
+    return False
+
+
+def apply_conditions(text):
+    """Filter out lines inside inactive #@IF / #@ELSE blocks.
+
+    Syntax:
+      #@IF: <cond>
+      ...
+      #@ELIF: <cond>
+      ...
+      #@ELSE:
+      ...
+      #@ENDIF:
+
+    Nesting is supported. Unknown lines pass through unchanged.
+    """
+    lines = text.split('\n')
+    out = []
+    stack = []  # each: {'taken': bool, 'active': bool}
+    for line in lines:
+        s = line.strip()
+        m = re.match(r'^#@IF:\s*(.+)$', s)
+        if m:
+            cond = eval_condition(m.group(1))
+            parent = all(f['active'] for f in stack) if stack else True
+            stack.append({'taken': cond, 'active': parent and cond})
+            continue
+        m = re.match(r'^#@ELIF:\s*(.+)$', s)
+        if m:
+            if not stack:
+                continue
+            top = stack[-1]
+            parent = all(f['active'] for f in stack[:-1]) if len(stack) > 1 else True
+            if top['taken']:
+                top['active'] = False
+            else:
+                cond = eval_condition(m.group(1))
+                top['active'] = parent and cond
+                top['taken'] = top['taken'] or cond
+            continue
+        if s == '#@ELSE:':
+            if not stack:
+                continue
+            top = stack[-1]
+            parent = all(f['active'] for f in stack[:-1]) if len(stack) > 1 else True
+            top['active'] = parent and not top['taken']
+            continue
+        if s == '#@ENDIF:':
+            if stack:
+                stack.pop()
+            continue
+        if stack and not all(f['active'] for f in stack):
+            continue
+        out.append(line)
+    return '\n'.join(out)
+
+
 def read_cmd_directive_only():
     if not INPUT.exists(): return None
     try:
@@ -311,7 +412,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -394,18 +495,26 @@ def parse(text):
             if lines[i].strip().startswith('<<<EXPECTED_HASH>>>'):
                 i += 1; continue
             if lines[i].rstrip() == FIND:
+                alts = []
+                cur = []
                 i += 1
-                a = []
-                while i < n and lines[i].rstrip() != REPLACE:
-                    a.append(lines[i]); i += 1
-                if i >= n or lines[i].rstrip() != REPLACE: break
+                while i < n and lines[i].rstrip() not in (REPLACE, OR_FIND):
+                    cur.append(lines[i]); i += 1
+                alts.append('\n'.join(strip_fences(cur)))
+                while i < n and lines[i].rstrip() == OR_FIND:
+                    i += 1
+                    cur = []
+                    while i < n and lines[i].rstrip() not in (REPLACE, OR_FIND):
+                        cur.append(lines[i]); i += 1
+                    alts.append('\n'.join(strip_fences(cur)))
+                if i >= n or lines[i].rstrip() != REPLACE:
+                    break
                 i += 1
                 r = []
                 while i < n and lines[i].rstrip() != END:
                     r.append(lines[i]); i += 1
                 if i < n and lines[i].rstrip() == END: i += 1
-                patches.append(('\n'.join(strip_fences(a)),
-                                '\n'.join(strip_fences(r))))
+                patches.append((alts, '\n'.join(strip_fences(r))))
                 continue
             i += 1
         ops.append({'kind': 'file', 'path': path,
@@ -475,22 +584,28 @@ def apply_patch(path, patches, out, fail_files=None):
         return 0, len(patches), 0
     raw = read(p); fe = eol(raw); text = lf(raw)
     ok = fail = skip = 0
-    for i, (a, r) in enumerate(patches, 1):
-        al, rl = lf(a), lf(r)
-        if not al:
-            out.append(f"  [FAIL] [{i}/{len(patches)}] empty anchor")
-            fail += 1
-            if fail_files is not None: fail_files.add(path)
-            continue
-        if rl and rl in text and not find_anchor(text, al):
-            out.append(f"  [SKIP] [{i}/{len(patches)}] already applied")
-            skip += 1; continue
-        f = find_anchor(text, al)
-        if not f:
-            first = al.splitlines()[0] if al else ''
-            out.append(f"  [FAIL] [{i}/{len(patches)}] anchor not found")
-            out.append(f"         start: {first[:70]}")
-            s = suggest(text, al)
+    for i, (alts, r) in enumerate(patches, 1):
+        rl = lf(r)
+        n_alts = len(alts)
+        matched = None
+        matched_idx = -1
+        for idx_alt, alt in enumerate(alts):
+            al = lf(alt)
+            if not al:
+                continue
+            f = find_anchor(text, al)
+            if f:
+                matched = f
+                matched_idx = idx_alt
+                break
+        if matched is None:
+            if rl and rl in text:
+                out.append(f"  [SKIP] [{i}/{len(patches)}] already applied")
+                skip += 1; continue
+            out.append(f"  [FAIL] [{i}/{len(patches)}] no anchor matched ({n_alts} alternative(s))")
+            first = alts[0].splitlines()[0] if alts and alts[0] else ''
+            out.append(f"         first anchor: {first[:70]}")
+            s = suggest(text, lf(alts[0])) if alts and alts[0] else None
             if s:
                 rr, blk, sl = s
                 out.append(f"         nearest: {rr*100:.0f}% match, line {sl+1}")
@@ -500,11 +615,12 @@ def apply_patch(path, patches, out, fail_files=None):
             fail += 1
             if fail_files is not None: fail_files.add(path)
             continue
-        s_, e_, lvl = f
+        s_, e_, lvl = matched
+        tag = f" (alt {matched_idx+1}/{n_alts})" if n_alts > 1 else ""
         if lvl > 1:
-            out.append(f"  [SOFT] [{i}/{len(patches)}] matched level {lvl}")
+            out.append(f"  [SOFT] [{i}/{len(patches)}] matched level {lvl}{tag}")
         text = text[:s_] + rl + text[e_:]
-        out.append(f"  [OK]   [{i}/{len(patches)}] applied")
+        out.append(f"  [OK]   [{i}/{len(patches)}] applied{tag}")
         ok += 1
     if ok or skip:
         write(p, crlf(text) if fe == '\r\n' else text)
@@ -604,9 +720,10 @@ def do_apply(patch_id=None):
     rate_msg = _rate_warn_line()
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push,
+     commit_if, next_step, roadmap,
      remaining) = read_directives(content)
     if did is not None: patch_id = did
-    content = remaining
+    content = apply_conditions(remaining)
 
     if patch_id is None:
         idfile = WORK / '.patch_id'
@@ -789,7 +906,18 @@ def do_apply(patch_id=None):
             if sub_out:
                 out.append(sub_out)
 
-    if fail == 0:
+    if commit_if in (None, '', 'all-ok'):
+        should_commit = (fail == 0)
+    elif commit_if == 'any-ok':
+        should_commit = (ok > 0)
+    elif commit_if == 'always':
+        should_commit = True
+    elif commit_if == 'never':
+        should_commit = False
+    else:
+        should_commit = (fail == 0)
+
+    if should_commit:
         try:
             r0 = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
                                 capture_output=True, text=True)
@@ -824,7 +952,7 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[GIT] error: {e}")
 
-    if push and fail == 0:
+    if push and should_commit:
         try:
             r_b = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
                                   capture_output=True, text=True, timeout=5)
@@ -848,8 +976,6 @@ def do_apply(patch_id=None):
 
     if fail == 0:
         try:
-            next_step = extract_next(content)
-            roadmap = extract_roadmap(content)
             paths = []
             for op in ops:
                 if op['kind'] in ('file', 'create', 'delete'):
@@ -1263,7 +1389,10 @@ def do_capabilities():
           "--progress --no-progress "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
-    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP #@NEXT #@ROADMAP #@PUSH")
+    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
+          "#@NEXT #@ROADMAP #@PUSH #@COMMIT_IF")
+    print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
+    print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
     print("FEATURES: MSG-SEED RATE-WARN AUTO-BLOCK AUTODUMP "
           "FUZZY-MATCH SUGGEST HASH-VERIFY GIT-AUTO-COMMIT")
     print("NOTE: --check-md skips _archive/ by default (unmaintained)")
