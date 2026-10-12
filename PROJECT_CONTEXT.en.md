@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P81 |
-| Last commit | `03b07ae` |
-| Time | 2026-10-13 02:44 |
-| MSG-SEED | `0da96f42` |
+| Last patch | P82 |
+| Last commit | `bf095e9` |
+| Time | 2026-10-13 02:49 |
+| MSG-SEED | `6f04ffe1` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -795,6 +795,97 @@ The protocol is extensible — **in these exact ways, and no others**:
 **Not allowed:** Turing-complete loops, nested conditions, arbitrary shell in conditions, escapes to a different workflow.
 
 **Why:** the protocol's value is **transparency and debuggability**. Any feature that makes a failed patch harder to understand is a feature the protocol does not want.
+
+---
+
+## Section 0-C-16 — New-project protocol (copy, never invent)
+
+> **🔴 The rule document is THE document, not a template. Copy it verbatim. Never invent a variant.**
+
+### 0-C-16-1. The rule document is not a template
+
+When a user opens a chat with this document and says "new project", the AI's first task is to **establish this exact document as the new project's master document**. Not a variant. Not a simplification. Not "an adapted version for your project". The exact same content.
+
+**The document is the constitution of the project.** The AI is its guardian, not its editor.
+
+### 0-C-16-2. Auto-bootstrap sequence (first 3 actions)
+
+The AI's first three actions in a new project, **in this order**:
+
+1. **Ensure `PROJECT_CONTEXT.en.md` exists in the new project folder — with the exact same content.**
+   - If the user pasted the document: the AI asks once: *"Is `PROJECT_CONTEXT.en.md` already in your new project folder, or should I create it?"*
+   - If it must be created: the AI emits it as `===== CREATE: PROJECT_CONTEXT.en.md =====` (verbatim, no edits).
+   - If it already exists: the AI verifies it — a `#@NEED: file PROJECT_CONTEXT.en.md --head 20` is enough.
+
+2. **Ensure `run.py` exists in the new project folder.**
+   - From Section 35 (the full embedded source), or from the repo if the user cloned it.
+   - If missing: `===== CREATE: run.py =====` (verbatim).
+
+3. **Run `python run.py --init`** — as a `===== CMD: ... =====` block with `<<<RUN>>>`.
+
+**Only after these three steps** does the AI proceed to the first feature patch.
+
+### 0-C-16-3. What the AI must never do
+
+- ❌ Never create a variant of the rule document ("here's a lighter version for you").
+- ❌ Never skip the copy because "the user already pasted it in chat".
+- ❌ Never "adapt" the document — rename sections, drop parts, translate to another language.
+- ❌ Never assume the file is on the user's disk just because it was in chat.
+- ❌ Never proceed with feature patches before `PROJECT_CONTEXT.en.md` and `run.py` exist in the new project's folder.
+- ❌ Never let a "small" or "simple" project justify a smaller rule document.
+
+### 0-C-16-4. Questions the AI must NOT ask
+
+- ❌ "Which parts of the rule document do you want to keep?"
+- ❌ "Should I simplify it for your project?"
+- ❌ "Do you want me to write my own version?"
+- ❌ "This seems like a lot. Want the short version?"
+
+**The answer to all of these is NO.** The document stays as-is. The only valid questions are the three auto-bootstrap asks above.
+
+### 0-C-16-5. When the user is a novice
+
+> **🔴 The AI must never exploit the user's lack of understanding.**
+
+If the user doesn't know:
+- What a file is.
+- Where to put `PROJECT_CONTEXT.en.md`.
+- Why the document must be copied as-is.
+- What `python run.py --init` does.
+
+**The AI explains simply — and follows the protocol anyway.** It does NOT:
+
+- Skip steps because "the user won't notice".
+- Shortcut the protocol "for simplicity".
+- Take a "just trust me" approach.
+- Adapt the procedure to what the user might understand.
+- Substitute a simplified workflow because the user seems confused.
+
+**If the user says "I don't understand":** stop, explain the step in plain language, wait. **Do not skip. Do not shortcut. Do not improvise.**
+
+### 0-C-16-6. When the AI feels tempted to invent
+
+Common temptation patterns and the correct response:
+
+| The AI thinks | What the AI must do instead |
+|---------------|----------------------------|
+| "This document is big — let me write a shorter one" | Copy it verbatim. Use `--slim-context` for chats, never for the master file. |
+| "The user pasted it, so it's already on disk" | Ask once. Do not assume. |
+| "I'll write a version tailored to this project" | The document is project-agnostic by design (Section 0-C-3). No tailoring. |
+| "The user won't notice if I skip step 3" | Every step is load-bearing. Do all three. |
+| "It's just a small script — no need for the full rule doc" | Small projects use the same document. Size is not a justification. |
+| "The user is confused — let me take a shortcut" | The user's confusion is not a license to break the protocol. |
+
+### 0-C-16-7. Protection of the procedure
+
+Every AI message must:
+
+- Respect the protocol (Section 0-C-15).
+- Keep `PROJECT_CONTEXT.en.md` untouched unless the user explicitly asked for a change.
+- Never replace the document with a variant.
+- Never let "the project is heavy" or "the user is new" justify leaving the protocol.
+
+**The document is the project's constitution.** If the AI breaks it, the project loses its continuity across chats — the exact failure this document exists to prevent.
 
 ---
 
@@ -1904,14 +1995,14 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.1.0` |
-| **Last commit** | protocol fidelity + slim-context + progress-to-stderr |
-| **Last work** | v1.1.0: Section 0-C-15 (protocol fidelity), `--slim-context`, progress to stderr, ADR-17, ADR-18 |
-| **Next step** | v1.2.0 — integrate `locate` / `defs` / `dead` subcommands |
-| **Current phase** | v1.1.0 — released |
+| **Last safe tag** | `v1.1.1` |
+| **Last commit** | Section 0-C-16 (new-project protocol — copy, never invent) |
+| **Last work** | v1.1.1: Section 0-C-16 + Section 14-3-A + ADR-19. (v1.2.0 P631 integration cancelled.) |
+| **Next step** | v1.3.0 — conditional patches (OR-FIND + IF/ELSE) |
+| **Current phase** | v1.1.1 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
-| **Open issues** | v1.2.0 (locate/defs/dead); v1.3.0 (conditional patches); first real test-project |
+| **Open issues** | v1.3.0 (conditional patches); first real test-project |
 
 ### 13-2. Update
 
@@ -2184,6 +2275,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Reason:** progress is for humans in a terminal, not for the AI. Mixing it with `output.txt` would pollute the payload the AI parses. stderr is the natural channel for transient UI.
 - **Alternatives:** progress to stdout (rejected — pollutes `output.txt`); a separate progress file (rejected — extra state); no progress (rejected — long commands feel frozen on big projects).
 
+**ADR-19: New-project bootstrap — copy the document, never invent (Section 0-C-16)**
+
+- **Decision:** when starting a new project, the AI copies `PROJECT_CONTEXT.en.md` **verbatim** into the new project's root. No variants. No simplifications. No "adapted" versions. The AI performs the three-step bootstrap (document → tool → `--init`) **before** any feature patch.
+- **Reason:** the observed failure mode — the AI invents its own version of the rule document for a new project, silently breaking the protocol. Novice users don't notice; the protocol drifts; continuity across chats is lost.
+- **Alternatives:** allow per-project variants (rejected — breaks single-source rule, silent drift); trust the AI's judgment (rejected — the failure mode is exactly this); ask the user "simplify?" (rejected — the user may not know the cost).
+
 ## Section 14 — Starting a New Chat
 
 ### 14-1. What to send
@@ -2215,6 +2312,18 @@ Goal of this chat: <one line>
 1. **Confirm it read the document** (one line).
 2. **Understand where we are from the Session Tracker.**
 3. **Without extra questions, give the next patch.**
+
+### 14-3-A. If this is a NEW project (not a continuation)
+
+Before any feature patch, the AI must perform the three-step bootstrap from Section 0-C-16:
+
+1. Verify (or create) `PROJECT_CONTEXT.en.md` — verbatim, no edits.
+2. Verify (or create) `run.py` — verbatim.
+3. `python run.py --init`.
+
+**Only then** proceed to the first feature patch.
+
+The AI **never** invents a variant of the rule document. The document is copied as-is — even if the user is new, even if the project feels small, even if the chat is long.
 
 ### 14-4. What the AI should NOT ask
 
