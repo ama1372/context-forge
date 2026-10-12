@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P89 |
-| Last commit | `7f6a5bb` |
-| Time | 2026-10-13 02:58 |
-| MSG-SEED | `c4c5f566` |
+| Last patch | P91 |
+| Last commit | `a5bb411` |
+| Time | 2026-10-13 03:02 |
+| MSG-SEED | `bb9adecb` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2240,11 +2240,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.4.0` |
-| **Last commit** | `.gitattributes` + `--bootstrap` + Section 32-6 + re-embed Section 35 |
-| **Last work** | v1.4.0: `.gitattributes` (EOL), `--bootstrap` command, Section 32-6 worked example, Section 35 re-embedded at v1.4.0, ADR-23 |
+| **Last safe tag** | `v1.4.2` |
+| **Last commit** | `--init` safety + Section 35 re-embed |
+| **Last work** | v1.4.2: `do_init` no longer wipes input.txt; correct filename in messages; Section 35 refreshed |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.0 — released |
+| **Current phase** | v1.4.2 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; gather community feedback |
@@ -2525,6 +2525,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-24: `--init` is non-destructive (Section 5-1, Section 32-2)**
+
+- **Decision:** `python run.py --init` never wipes an existing `input.txt`, `output.txt`, or `.gitignore`. It only creates files that don't exist. If `input.txt` has content, `--init` prints `input.txt has content (N bytes) - left untouched`.
+- **Reason:** a mid-patch `input.txt` is valuable state. `--init` is a setup command, not a reset command. Accidental data loss in the user's working file is unacceptable.
+- **Alternatives:** always wipe (rejected — destroys in-progress work); prompt before wiping (rejected — scripts and CI can't answer); add a separate `--reset` (rejected — extra surface; users can `rm _work/input.txt` if they really want).
 
 **ADR-23: `.gitattributes` for cross-platform EOL**
 
@@ -3826,7 +3832,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.4.0"
+VERSION = "1.4.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -5305,7 +5311,7 @@ def do_bootstrap():
     print("[BOOTSTRAP] context-forge")
     print(f"  Project:  {root}")
 
-    py = "%d.%d.%d" % (_sys.version_info[:3],)
+    py = "%d.%d.%d" % tuple(_sys.version_info[:3])
     py_ok = _sys.version_info >= (3, 8)
     print(f"  Python:   {py}  [{'OK' if py_ok else 'FAIL'} >=3.8]")
     print(f"  run.py:   v{VERSION}  [OK]")
@@ -5371,8 +5377,18 @@ def do_bootstrap():
 def do_init():
     WORK.mkdir(parents=True, exist_ok=True)
     APPLIED.mkdir(parents=True, exist_ok=True)
-    INPUT.write_text('', encoding='utf-8')
-    OUTPUT.write_text('', encoding='utf-8')
+    if not INPUT.exists():
+        INPUT.write_text('', encoding='utf-8')
+        print("[INIT] _work/input.txt created")
+    else:
+        size = INPUT.stat().st_size
+        if size > 0:
+            print(f"[INIT] _work/input.txt has content ({size} bytes) - left untouched")
+        else:
+            print("[INIT] _work/input.txt already empty")
+    if not OUTPUT.exists():
+        OUTPUT.write_text('', encoding='utf-8')
+        print("[INIT] _work/output.txt created")
     gi = Path('.gitignore')
     if not gi.exists():
         gi.write_text(
@@ -5429,9 +5445,10 @@ def do_init():
     print("[INIT] _work/ ready")
     print()
     print("Next steps:")
-    print("  1. Put PROJECT_CONTEXT.md in the project root")
+    print("  1. Put PROJECT_CONTEXT.en.md in the project root")
     print("  2. Edit _work/config.json - set build_cmd and test_cmd")
-    print("  3. Run: python run.py --status")
+    print("  3. Run: python run.py --bootstrap   (readiness check)")
+    print("  4. Run: python run.py --status      (quick summary)")
 
 
 def dispatch_capture(args):

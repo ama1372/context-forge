@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.4.0"
+VERSION = "1.4.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1526,7 +1526,7 @@ def do_bootstrap():
     print("[BOOTSTRAP] context-forge")
     print(f"  Project:  {root}")
 
-    py = "%d.%d.%d" % (_sys.version_info[:3],)
+    py = "%d.%d.%d" % tuple(_sys.version_info[:3])
     py_ok = _sys.version_info >= (3, 8)
     print(f"  Python:   {py}  [{'OK' if py_ok else 'FAIL'} >=3.8]")
     print(f"  run.py:   v{VERSION}  [OK]")
@@ -1592,8 +1592,18 @@ def do_bootstrap():
 def do_init():
     WORK.mkdir(parents=True, exist_ok=True)
     APPLIED.mkdir(parents=True, exist_ok=True)
-    INPUT.write_text('', encoding='utf-8')
-    OUTPUT.write_text('', encoding='utf-8')
+    if not INPUT.exists():
+        INPUT.write_text('', encoding='utf-8')
+        print("[INIT] _work/input.txt created")
+    else:
+        size = INPUT.stat().st_size
+        if size > 0:
+            print(f"[INIT] _work/input.txt has content ({size} bytes) - left untouched")
+        else:
+            print("[INIT] _work/input.txt already empty")
+    if not OUTPUT.exists():
+        OUTPUT.write_text('', encoding='utf-8')
+        print("[INIT] _work/output.txt created")
     gi = Path('.gitignore')
     if not gi.exists():
         gi.write_text(
@@ -1650,9 +1660,10 @@ def do_init():
     print("[INIT] _work/ ready")
     print()
     print("Next steps:")
-    print("  1. Put PROJECT_CONTEXT.md in the project root")
+    print("  1. Put PROJECT_CONTEXT.en.md in the project root")
     print("  2. Edit _work/config.json - set build_cmd and test_cmd")
-    print("  3. Run: python run.py --status")
+    print("  3. Run: python run.py --bootstrap   (readiness check)")
+    print("  4. Run: python run.py --status      (quick summary)")
 
 
 def dispatch_capture(args):
