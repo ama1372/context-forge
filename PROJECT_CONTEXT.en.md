@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P87 |
-| Last commit | `f5c446d` |
-| Time | 2026-10-13 02:54 |
-| MSG-SEED | `2bc6cef2` |
+| Last patch | P89 |
+| Last commit | `7f6a5bb` |
+| Time | 2026-10-13 02:58 |
+| MSG-SEED | `c4c5f566` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2240,14 +2240,14 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.3.1` |
-| **Last commit** | file-creation discipline + sensitive data protection |
-| **Last work** | v1.3.1: Section 0-C-17 (file discipline + same-patch .gitignore), 0-C-18 (secrets), extended default `.gitignore`, ADR-21, ADR-22 |
+| **Last safe tag** | `v1.4.0` |
+| **Last commit** | `.gitattributes` + `--bootstrap` + Section 32-6 + re-embed Section 35 |
+| **Last work** | v1.4.0: `.gitattributes` (EOL), `--bootstrap` command, Section 32-6 worked example, Section 35 re-embedded at v1.4.0, ADR-23 |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.3.1 — released |
+| **Current phase** | v1.4.0 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
-| **Open issues** | First real test-project; v1.4.0 (bootstrap helper) |
+| **Open issues** | First real test-project; gather community feedback |
 
 ### 13-2. Update
 
@@ -2525,6 +2525,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-23: `.gitattributes` for cross-platform EOL**
+
+- **Decision:** ship a `.gitattributes` file that normalizes line endings to LF for source and docs, keeps CRLF for `.bat`/`.cmd`, and marks binary files. Combined with `* text=auto eol=lf`, this ends CRLF/LF chaos.
+- **Reason:** this project hit CRLF bugs at least three times (README bars, `read_directives`, `strip_fences`). Cross-platform contributors produce mixed EOLs; a `.gitattributes` prevents the drift at the source.
+- **Alternatives:** rely on editor config (rejected - not enforced); normalize at runtime (rejected - too late by then); do nothing (rejected - the bug keeps coming back).
 
 **ADR-22: Sensitive data protection (Section 0-C-18)**
 
@@ -3474,7 +3480,13 @@ In the project root:
 
     python run.py --init
 
-That creates `_work/`, `_work/applied/`, an empty `.gitignore`, and empty `input.txt` / `output.txt`.
+That creates `_work/`, `_work/applied/`, `.gitignore` (extended default with secrets excluded), and empty `input.txt` / `output.txt`.
+
+Then verify the setup:
+
+    python run.py --bootstrap
+
+It prints a checklist of what's present and what's missing, plus the next steps. Re-run it any time.
 
 **Step 2 — Place this document**
 
@@ -3541,6 +3553,78 @@ Back to Step 6. Every AI message = one patch. Every patch = one commit + tag.
 ### 32-5. Golden rule
 
 > **No test, no commit. No commit, no next patch.**
+
+### 32-6. Worked example — from empty folder to first commit
+
+A complete, concrete run-through. `$` marks a command you type; indented lines are expected output.
+
+**Setup (one time):**
+
+    $ mkdir hello-cli && cd hello-cli
+    $ # download PROJECT_CONTEXT.en.md from the repo into this folder
+    $ # ask the AI: "Bootstrap run.py from Section 35" -> save the CREATE block
+    $ python run.py --init
+    [INIT] .gitignore written (extended default)
+    [INIT] _work/config.json written (edit build_cmd/test_cmd)
+    [INIT] _work/ ready
+
+    $ python run.py --bootstrap
+    [BOOTSTRAP] context-forge
+      Project:  /home/user/hello-cli
+      Python:   3.11.5  [OK >=3.8]
+      run.py:   v1.4.0  [OK]
+      _work/:   present
+      config:   present
+      Document: PROJECT_CONTEXT.en.md  [162,953 bytes]
+      ignore:   .gitignore present
+      git:      yes (branch main)
+
+    [BOOTSTRAP] You are ready.
+    Next steps:
+      1. Paste PROJECT_CONTEXT.en.md as the first message in a new AI chat.
+      2. Say: "New project. This is the master document. My goal: <one line>."
+      3. The AI sends a patch. Drop it into _work/input.txt.
+      4. Run: python run.py
+      5. Send _work/output.txt back to the AI.
+
+**First feature (with the AI):**
+
+Open a new chat. Paste the whole document. Say:
+
+    New project. This is the master document. My goal: a CLI tool
+    that prints "hello, <name>" when called. Start.
+
+The AI replies with a block. Copy the **whole block** into `_work/input.txt`. Then:
+
+    $ python run.py
+    # MSG-SEED: a1b2c3d4
+    [APPLY]
+    # PATCH_ID: 1
+    [P1] [NEW]  hello.py
+      [OK]   created (152 chars)
+    ...
+    PATCH_ID: 1  |  OK: 2  |  SKIP: 0  |  FAIL: 0
+    [ARCH] _work/applied/P0001-20261013-030000.txt
+           input.txt emptied - ready for next patch
+    [GIT] commit: step-1: add hello CLI
+    [GIT] tag: step-1-ok
+    [CTX] ctx_delta saved -> _work/ctx_delta.txt
+
+    $ python run.py --status
+    PROJECT: hello-cli
+    LAST TAG: step-1-ok
+    MODIFIED: 0 files
+    TOTAL FILES: 3
+
+Paste the `output.txt` (or just the `--status` line) back to the AI. It sends the next patch. Repeat.
+
+**What success looks like:**
+
+- Every patch shows `[OK]` per block. No `[FAIL]`.
+- The first line of `output.txt` is `# MSG-SEED: <random>`.
+- `[GIT] commit:` and `[GIT] tag:` appear after every successful patch.
+- The AI's reply ends with a `[CTX-DELTA]` block.
+- `python run.py --status` shows the last tag advancing (`step-1-ok`, `step-2-ok`, …).
 
 ---
 
@@ -3700,6 +3784,7 @@ Follow the rules in this document, and the AI always knows where it is, what it 
 Commands:
   python run.py                 smart: input empty -> dump; input full -> apply
   python run.py --init          first-time setup
+  python run.py --bootstrap     readiness check + next steps for new projects
   python run.py --version       show version
   python run.py --capabilities  what this tool can do (for the AI)
   python run.py --status        tiny summary for new chats
@@ -3741,7 +3826,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.4.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -3773,12 +3858,38 @@ HEADER_RE = re.compile(
 )
 MOVE_RE = re.compile(r'^={3,}\s*MOVE\s*:\s*(.+?)\s*->\s*(.+?)\s*={3,}\s*$')
 FIND, REPLACE, CONTENT, END = '<<<FIND>>>', '<<<REPLACE>>>', '<<<CONTENT>>>', '<<<END>>>'
+OR_FIND = '<<<OR-FIND>>>'
 RUN_MARKER = '<<<RUN>>>'
 HASH_MARKER_RE = re.compile(r'^<<<EXPECTED_HASH>>>\s*(.+?)\s*<<<END>>>\s*$')
 FENCE_RE = re.compile(r'^\s*```[a-zA-Z0-9_+\-]*\s*$')
 
 AUTO_VERIFY = False
 FORCE_APPLY = False
+PROGRESS = True
+
+
+def _progress(msg):
+    """Write a transient progress line to stderr (never to stdout/output.txt)."""
+    if not PROGRESS:
+        return
+    try:
+        if not sys.stderr.isatty():
+            return
+        sys.stderr.write(msg)
+        sys.stderr.flush()
+    except Exception:
+        pass
+
+
+def _progress_newline():
+    if not PROGRESS:
+        return
+    try:
+        if sys.stderr.isatty():
+            sys.stderr.write('\n')
+            sys.stderr.flush()
+    except Exception:
+        pass
 
 
 def read(p):
@@ -3915,6 +4026,9 @@ def read_directives(text):
     nodump = False
     dump_mode = None
     push = False
+    commit_if = None
+    next_step = None
+    roadmap = []
     idx = 0
     while idx < len(lines):
         s = lines[idx].strip()
@@ -3951,9 +4065,19 @@ def read_directives(text):
         if m: dump_mode = m.group(1).lower(); idx += 1; continue
         if s in ('#@PUSH:', '#@PUSH'):
             push = True; idx += 1; continue
-        break
+        m = re.match(r'^#@COMMIT_IF:\s*(\S+)', s)
+        if m: commit_if = m.group(1).lower(); idx += 1; continue
+        m = re.match(r'^#@NEXT:\s*(.+)$', s)
+        if m: next_step = m.group(1).strip(); idx += 1; continue
+        m = re.match(r'^#@ROADMAP:\s*(.+)$', s)
+        if m:
+            roadmap = [x.strip() for x in m.group(1).split('|') if x.strip()]
+            idx += 1; continue
+        # Unknown #@ directive — skip, don't break.
+        idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
             commit_msg, tag_name, nodump, dump_mode, push,
+            commit_if, next_step, roadmap,
             '\n'.join(lines[idx:]))
 
 
@@ -3973,6 +4097,94 @@ def need_to_args(need_args):
     return list(need_args)
 
 
+def eval_condition(text):
+    """Evaluate an #@IF / #@ELIF condition. Returns True/False.
+
+    Supported forms:
+      exists <path>              - file or directory exists
+      missing <path>             - path does not exist
+      contains <path> <text>     - file exists and contains the text
+    """
+    text = text.strip()
+    parts = text.split(None, 1)
+    if not parts:
+        return False
+    op = parts[0].lower()
+    rest = parts[1].strip() if len(parts) > 1 else ''
+    if op == 'exists':
+        return bool(rest) and Path(rest).exists()
+    if op == 'missing':
+        return bool(rest) and not Path(rest).exists()
+    if op == 'contains':
+        sp = rest.split(None, 1)
+        if len(sp) < 2:
+            return False
+        p = Path(sp[0])
+        needle = sp[1].strip().strip('"\'')
+        if not p.exists():
+            return False
+        try:
+            return needle in read(p)
+        except Exception:
+            return False
+    return False
+
+
+def apply_conditions(text):
+    """Filter out lines inside inactive #@IF / #@ELSE blocks.
+
+    Syntax:
+      #@IF: <cond>
+      ...
+      #@ELIF: <cond>
+      ...
+      #@ELSE:
+      ...
+      #@ENDIF:
+
+    Nesting is supported. Unknown lines pass through unchanged.
+    """
+    lines = text.split('\n')
+    out = []
+    stack = []  # each: {'taken': bool, 'active': bool}
+    for line in lines:
+        s = line.strip()
+        m = re.match(r'^#@IF:\s*(.+)$', s)
+        if m:
+            cond = eval_condition(m.group(1))
+            parent = all(f['active'] for f in stack) if stack else True
+            stack.append({'taken': cond, 'active': parent and cond})
+            continue
+        m = re.match(r'^#@ELIF:\s*(.+)$', s)
+        if m:
+            if not stack:
+                continue
+            top = stack[-1]
+            parent = all(f['active'] for f in stack[:-1]) if len(stack) > 1 else True
+            if top['taken']:
+                top['active'] = False
+            else:
+                cond = eval_condition(m.group(1))
+                top['active'] = parent and cond
+                top['taken'] = top['taken'] or cond
+            continue
+        if s == '#@ELSE:':
+            if not stack:
+                continue
+            top = stack[-1]
+            parent = all(f['active'] for f in stack[:-1]) if len(stack) > 1 else True
+            top['active'] = parent and not top['taken']
+            continue
+        if s == '#@ENDIF:':
+            if stack:
+                stack.pop()
+            continue
+        if stack and not all(f['active'] for f in stack):
+            continue
+        out.append(line)
+    return '\n'.join(out)
+
+
 def read_cmd_directive_only():
     if not INPUT.exists(): return None
     try:
@@ -3980,7 +4192,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -4063,18 +4275,26 @@ def parse(text):
             if lines[i].strip().startswith('<<<EXPECTED_HASH>>>'):
                 i += 1; continue
             if lines[i].rstrip() == FIND:
+                alts = []
+                cur = []
                 i += 1
-                a = []
-                while i < n and lines[i].rstrip() != REPLACE:
-                    a.append(lines[i]); i += 1
-                if i >= n or lines[i].rstrip() != REPLACE: break
+                while i < n and lines[i].rstrip() not in (REPLACE, OR_FIND):
+                    cur.append(lines[i]); i += 1
+                alts.append('\n'.join(strip_fences(cur)))
+                while i < n and lines[i].rstrip() == OR_FIND:
+                    i += 1
+                    cur = []
+                    while i < n and lines[i].rstrip() not in (REPLACE, OR_FIND):
+                        cur.append(lines[i]); i += 1
+                    alts.append('\n'.join(strip_fences(cur)))
+                if i >= n or lines[i].rstrip() != REPLACE:
+                    break
                 i += 1
                 r = []
                 while i < n and lines[i].rstrip() != END:
                     r.append(lines[i]); i += 1
                 if i < n and lines[i].rstrip() == END: i += 1
-                patches.append(('\n'.join(strip_fences(a)),
-                                '\n'.join(strip_fences(r))))
+                patches.append((alts, '\n'.join(strip_fences(r))))
                 continue
             i += 1
         ops.append({'kind': 'file', 'path': path,
@@ -4144,22 +4364,28 @@ def apply_patch(path, patches, out, fail_files=None):
         return 0, len(patches), 0
     raw = read(p); fe = eol(raw); text = lf(raw)
     ok = fail = skip = 0
-    for i, (a, r) in enumerate(patches, 1):
-        al, rl = lf(a), lf(r)
-        if not al:
-            out.append(f"  [FAIL] [{i}/{len(patches)}] empty anchor")
-            fail += 1
-            if fail_files is not None: fail_files.add(path)
-            continue
-        if rl and rl in text and not find_anchor(text, al):
-            out.append(f"  [SKIP] [{i}/{len(patches)}] already applied")
-            skip += 1; continue
-        f = find_anchor(text, al)
-        if not f:
-            first = al.splitlines()[0] if al else ''
-            out.append(f"  [FAIL] [{i}/{len(patches)}] anchor not found")
-            out.append(f"         start: {first[:70]}")
-            s = suggest(text, al)
+    for i, (alts, r) in enumerate(patches, 1):
+        rl = lf(r)
+        n_alts = len(alts)
+        matched = None
+        matched_idx = -1
+        for idx_alt, alt in enumerate(alts):
+            al = lf(alt)
+            if not al:
+                continue
+            f = find_anchor(text, al)
+            if f:
+                matched = f
+                matched_idx = idx_alt
+                break
+        if matched is None:
+            if rl and rl in text:
+                out.append(f"  [SKIP] [{i}/{len(patches)}] already applied")
+                skip += 1; continue
+            out.append(f"  [FAIL] [{i}/{len(patches)}] no anchor matched ({n_alts} alternative(s))")
+            first = alts[0].splitlines()[0] if alts and alts[0] else ''
+            out.append(f"         first anchor: {first[:70]}")
+            s = suggest(text, lf(alts[0])) if alts and alts[0] else None
             if s:
                 rr, blk, sl = s
                 out.append(f"         nearest: {rr*100:.0f}% match, line {sl+1}")
@@ -4169,11 +4395,12 @@ def apply_patch(path, patches, out, fail_files=None):
             fail += 1
             if fail_files is not None: fail_files.add(path)
             continue
-        s_, e_, lvl = f
+        s_, e_, lvl = matched
+        tag = f" (alt {matched_idx+1}/{n_alts})" if n_alts > 1 else ""
         if lvl > 1:
-            out.append(f"  [SOFT] [{i}/{len(patches)}] matched level {lvl}")
+            out.append(f"  [SOFT] [{i}/{len(patches)}] matched level {lvl}{tag}")
         text = text[:s_] + rl + text[e_:]
-        out.append(f"  [OK]   [{i}/{len(patches)}] applied")
+        out.append(f"  [OK]   [{i}/{len(patches)}] applied{tag}")
         ok += 1
     if ok or skip:
         write(p, crlf(text) if fe == '\r\n' else text)
@@ -4243,7 +4470,9 @@ def _git_head():
 
 
 def _update_auto_block(patch_id, seed):
-    ctx = Path("PROJECT_CONTEXT.md")
+    ctx = Path("PROJECT_CONTEXT.en.md")
+    if not ctx.exists():
+        ctx = Path("PROJECT_CONTEXT.md")
     if not ctx.exists(): return
     text = ctx.read_text(encoding="utf-8")
     START, END_MARK = "<!-- AUTO:START -->", "<!-- AUTO:END -->"
@@ -4271,9 +4500,10 @@ def do_apply(patch_id=None):
     rate_msg = _rate_warn_line()
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push,
+     commit_if, next_step, roadmap,
      remaining) = read_directives(content)
     if did is not None: patch_id = did
-    content = remaining
+    content = apply_conditions(remaining)
 
     if patch_id is None:
         idfile = WORK / '.patch_id'
@@ -4301,8 +4531,11 @@ def do_apply(patch_id=None):
 
     ok = fail = skip = 0
     fail_files = set()
-    for op in ops:
+    total_ops = len(ops)
+    for idx_op, op in enumerate(ops, 1):
         kind = op['kind']
+        _label = op.get('path', '') or op.get('desc', '') or kind
+        _progress(f"[P{patch_id}] {idx_op}/{total_ops} {_label[:50]}...\r")
 
         if kind == 'file':
             out.append(f"[P{patch_id}] [EDIT] {op['path']}")
@@ -4430,6 +4663,10 @@ def do_apply(patch_id=None):
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
 
+    if fail == 0:
+        try: _update_auto_block(patch_id, seed)
+        except Exception: pass
+
     if post_cmds and fail == 0:
         for sub_args in post_cmds:
             out.append(""); out.append("=" * 60)
@@ -4449,11 +4686,18 @@ def do_apply(patch_id=None):
             if sub_out:
                 out.append(sub_out)
 
-    if fail == 0:
-        try: _update_auto_block(patch_id, seed)
-        except Exception: pass
+    if commit_if in (None, '', 'all-ok'):
+        should_commit = (fail == 0)
+    elif commit_if == 'any-ok':
+        should_commit = (ok > 0)
+    elif commit_if == 'always':
+        should_commit = True
+    elif commit_if == 'never':
+        should_commit = False
+    else:
+        should_commit = (fail == 0)
 
-    if fail == 0:
+    if should_commit:
         try:
             r0 = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
                                 capture_output=True, text=True)
@@ -4488,7 +4732,7 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[GIT] error: {e}")
 
-    if push and fail == 0:
+    if push and should_commit:
         try:
             r_b = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
                                   capture_output=True, text=True, timeout=5)
@@ -4512,8 +4756,6 @@ def do_apply(patch_id=None):
 
     if fail == 0:
         try:
-            next_step = extract_next(content)
-            roadmap = extract_roadmap(content)
             paths = []
             for op in ops:
                 if op['kind'] in ('file', 'create', 'delete'):
@@ -4526,6 +4768,7 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[CTX] save failed: {e}")
 
+    _progress_newline()
     _rate_warn_write()
     txt = '\n'.join(out)
     write(OUTPUT, txt); print(txt)
@@ -4774,6 +5017,7 @@ def do_errors():
 def do_check_md(files):
     if not files:
         files = [str(p) for p in walk(Path('.')) if p.suffix.lower() == '.md']
+        files = [f for f in files if '_archive' not in Path(f).parts]
     if not files:
         print("[INFO] no markdown files found"); return 0
     issues = 0
@@ -4857,17 +5101,82 @@ def do_check_sections(path_a, path_b):
     return 0 if not (only_a or only_b) else 1
 
 
+def do_slim_context(args):
+    """Emit or write a slimmer copy of PROJECT_CONTEXT.en.md.
+
+    Default drops Sections 26 (examples) and 35 (embedded run.py source).
+    The full document on disk is not modified.
+    """
+    drop = {'26', '35'}
+    out_file = None
+    if '--all' in args:
+        drop = set()
+    if '--drop' in args:
+        i = args.index('--drop')
+        if i + 1 < len(args):
+            drop = {s.strip() for s in args[i + 1].split(',') if s.strip()}
+    if '--to' in args:
+        i = args.index('--to')
+        if i + 1 < len(args):
+            out_file = args[i + 1]
+    doc = Path('PROJECT_CONTEXT.en.md')
+    if not doc.exists():
+        print("[FAIL] PROJECT_CONTEXT.en.md not found")
+        return 1
+    text = read(doc)
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    parts = re.split(r'(^## Section [^\n]+$)', text, flags=re.M)
+    out = [parts[0] if parts else '']
+    dropped = []
+    i = 1
+    while i < len(parts) - 1:
+        header = parts[i]
+        body = parts[i + 1] if i + 1 < len(parts) else ''
+        m = re.search(r'## Section ([\w\-]+)', header)
+        if m and m.group(1) in drop:
+            dropped.append(m.group(1))
+            i += 2
+            continue
+        out.append(header)
+        if body:
+            out.append(body)
+        i += 2
+    result = ''.join(out)
+    orig_lines = text.count('\n')
+    new_lines = result.count('\n')
+    footer = (
+        f"\n<!-- SLIM-CONTEXT: dropped Sections "
+        f"{', '.join(sorted(dropped)) or '(none)'} | "
+        f"{new_lines} lines (was {orig_lines}) -->\n"
+    )
+    payload = result.rstrip() + footer
+    if out_file:
+        p = Path(out_file)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(payload, encoding='utf-8')
+        print(f"[SLIM] wrote {out_file} ({new_lines} lines, dropped: {', '.join(sorted(dropped)) or 'none'})")
+    else:
+        print(payload)
+    return 0
+
+
 def do_capabilities():
     print(f"run.py v{VERSION}")
-    print("FLAGS: --version --init --capabilities --status --tree --hash "
+    print("FLAGS: --version --init --bootstrap --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
-          "--check-md --check-sections "
+          "--check-md --check-sections --slim-context "
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
+          "--progress --no-progress "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
-    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP #@NEXT #@ROADMAP #@PUSH")
+    print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
+          "#@NEXT #@ROADMAP #@PUSH #@COMMIT_IF")
+    print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
+    print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
+    print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")
     print("FEATURES: MSG-SEED RATE-WARN AUTO-BLOCK AUTODUMP "
           "FUZZY-MATCH SUGGEST HASH-VERIFY GIT-AUTO-COMMIT")
+    print("NOTE: --check-md skips _archive/ by default (unmaintained)")
 
 
 def do_check(args):
@@ -4988,6 +5297,77 @@ def cmd_find_dup(args):
     print(f"[FIND-DUP] {OUTPUT}")
 
 
+def do_bootstrap():
+    """Readiness check + next steps for a new project. Safe to run anytime."""
+    import sys as _sys
+
+    root = Path('.').resolve()
+    print("[BOOTSTRAP] context-forge")
+    print(f"  Project:  {root}")
+
+    py = "%d.%d.%d" % (_sys.version_info[:3],)
+    py_ok = _sys.version_info >= (3, 8)
+    print(f"  Python:   {py}  [{'OK' if py_ok else 'FAIL'} >=3.8]")
+    print(f"  run.py:   v{VERSION}  [OK]")
+
+    work_ok = WORK.exists()
+    print(f"  _work/:   {'present' if work_ok else 'MISSING (run --init)'}")
+
+    cfg_ok = CONFIG.exists()
+    print(f"  config:   {'present' if cfg_ok else 'MISSING (run --init)'}")
+
+    doc = Path('PROJECT_CONTEXT.en.md')
+    if not doc.exists():
+        alt = Path('PROJECT_CONTEXT.md')
+        if alt.exists():
+            doc = alt
+    doc_ok = doc.exists()
+    if doc_ok:
+        print(f"  Document: {doc.name}  [{doc.stat().st_size:,} bytes]")
+    else:
+        print("  Document: MISSING (put PROJECT_CONTEXT.en.md here)")
+
+    gi_ok = Path('.gitignore').exists()
+    print(f"  ignore:   {'.gitignore present' if gi_ok else 'MISSING (run --init)'}")
+
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip() == 'true':
+            rb = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                capture_output=True, text=True, timeout=5)
+            branch = (rb.stdout or '').strip() or '?'
+            print(f"  git:      yes (branch {branch})")
+        else:
+            print("  git:      no (git init to enable auto-commit)")
+    except Exception:
+        print("  git:      not installed")
+
+    sensitive = ['.env', 'credentials.json', 'secrets.yaml', 'secrets.yml',
+                 'id_rsa', 'id_ed25519']
+    present = [s for s in sensitive if Path(s).exists()]
+    if present:
+        print()
+        print(f"  [WARN] sensitive files present: {', '.join(present)}")
+        print(f"         ensure they are in .gitignore before committing")
+
+    print()
+    ready = (py_ok and work_ok and cfg_ok and doc_ok)
+    if ready:
+        print("[BOOTSTRAP] You are ready.")
+        print()
+        print("Next steps:")
+        print("  1. Paste PROJECT_CONTEXT.en.md as the first message in a new AI chat.")
+        print("  2. Say: \"New project. This is the master document. My goal: <one line>.\"")
+        print("  3. The AI sends a patch. Drop it into _work/input.txt.")
+        print("  4. Run: python run.py")
+        print("  5. Send _work/output.txt back to the AI.")
+        return 0
+    print("[BOOTSTRAP] Not ready yet. Run:")
+    print("  python run.py --init")
+    return 1
+
+
 def do_init():
     WORK.mkdir(parents=True, exist_ok=True)
     APPLIED.mkdir(parents=True, exist_ok=True)
@@ -4996,14 +5376,50 @@ def do_init():
     gi = Path('.gitignore')
     if not gi.exists():
         gi.write_text(
-            "_work/input.txt\n_work/output.txt\n_work/applied/\n"
-            "_work/cache.json\n_work/.patch_id\n_work/.last_run\n"
-            "*.pyc\n__pycache__/\n.venv/\nvenv/\nbuild/\ndist/\n"
-            "target/\nnode_modules/\n*.log\n.DS_Store\nThumbs.db\n",
+            "# --- context-forge runtime ---\n"
+            "_work/\n"
+            "\n"
+            "# --- OS noise ---\n"
+            ".DS_Store\nThumbs.db\ndesktop.ini\n"
+            "\n"
+            "# --- Python ---\n"
+            "*.pyc\n*.pyo\n__pycache__/\n.venv/\nvenv/\n"
+            ".pytest_cache/\n.mypy_cache/\n.ruff_cache/\n"
+            "\n"
+            "# --- Node ---\n"
+            "node_modules/\n.pnpm-store/\n.next/\ncoverage/\n"
+            "\n"
+            "# --- Rust ---\n"
+            "target/\n"
+            "\n"
+            "# --- Build output ---\n"
+            "build/\ndist/\nout/\n*.egg-info/\n"
+            "\n"
+            "# --- Logs ---\n"
+            "*.log\nlogs/\ncrash_log.txt\n"
+            "\n"
+            "# --- Secrets (never commit) ---\n"
+            ".env\n.env.*\n!.env.example\n"
+            "*.pem\n*.key\n*.p12\n*.pfx\n"
+            "credentials.json\nsecrets.yaml\nsecrets.yml\n"
+            "id_rsa\nid_ed25519\n.ssh/\n"
+            "\n"
+            "# --- IDE ---\n"
+            ".idea/\n.vscode/\n*.swp\n*.swo\n",
             encoding='utf-8')
-        print("[INIT] .gitignore written")
+        print("[INIT] .gitignore written (extended default)")
     else:
         print("[INIT] .gitignore already exists - skipped")
+
+    sensitive = ['.env', 'credentials.json', 'secrets.yaml', 'secrets.yml',
+                 'id_rsa', 'id_ed25519']
+    present = [s for s in sensitive if Path(s).exists()]
+    if present:
+        print()
+        print("[INIT] WARNING: sensitive files present in project root:")
+        for s in present:
+            print(f"         - {s}")
+        print("[INIT] Ensure they are in .gitignore before any commit.")
     if not CONFIG.exists():
         CONFIG.write_text(json.dumps({
             "build_cmd": None, "test_cmd": None,
@@ -5036,12 +5452,13 @@ def dispatch_capture(args):
 
 
 def dispatch(args):
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
     if not args: return None
     cmd = args[0]
 
     if cmd in ('--version', '-v'):     print(f"run.py v{VERSION}"); return 0
     if cmd == '--init':                 do_init(); return 0
+    if cmd == '--bootstrap':            return do_bootstrap()
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
         _p = WORK / 'ctx_delta.txt'
@@ -5066,6 +5483,13 @@ def dispatch(args):
             return do_check_sections(rest[0], rest[1])
         print("[FAIL] --check-sections needs two paths")
         return 1
+    if cmd == '--slim-context':
+        i = args.index('--slim-context')
+        return do_slim_context(args[i+1:])
+    if cmd == '--no-progress':
+        PROGRESS = False; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--progress':
+        PROGRESS = True; return dispatch(args[1:]) if args[1:] else None
 
     if cmd == '--file':
         i = args.index('--file')
@@ -5112,7 +5536,7 @@ def dispatch(args):
 
 
 def main():
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
         INPUT.write_text('', encoding='utf-8')
@@ -5129,6 +5553,7 @@ def main():
         if '--no-fuzzy' in args: FUZZY = False
         if '--dry-run' in args: DRY_RUN = True
         if '--backup' in args: BACKUP = True
+        if '--no-progress' in args: PROGRESS = False
         return dispatch(args)
 
     if INPUT.read_text(encoding='utf-8').strip():

@@ -5,6 +5,7 @@
 Commands:
   python run.py                 smart: input empty -> dump; input full -> apply
   python run.py --init          first-time setup
+  python run.py --bootstrap     readiness check + next steps for new projects
   python run.py --version       show version
   python run.py --capabilities  what this tool can do (for the AI)
   python run.py --status        tiny summary for new chats
@@ -46,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.3.1"
+VERSION = "1.4.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1382,7 +1383,7 @@ def do_slim_context(args):
 
 def do_capabilities():
     print(f"run.py v{VERSION}")
-    print("FLAGS: --version --init --capabilities --status --tree --hash "
+    print("FLAGS: --version --init --bootstrap --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
@@ -1517,6 +1518,77 @@ def cmd_find_dup(args):
     print(f"[FIND-DUP] {OUTPUT}")
 
 
+def do_bootstrap():
+    """Readiness check + next steps for a new project. Safe to run anytime."""
+    import sys as _sys
+
+    root = Path('.').resolve()
+    print("[BOOTSTRAP] context-forge")
+    print(f"  Project:  {root}")
+
+    py = "%d.%d.%d" % (_sys.version_info[:3],)
+    py_ok = _sys.version_info >= (3, 8)
+    print(f"  Python:   {py}  [{'OK' if py_ok else 'FAIL'} >=3.8]")
+    print(f"  run.py:   v{VERSION}  [OK]")
+
+    work_ok = WORK.exists()
+    print(f"  _work/:   {'present' if work_ok else 'MISSING (run --init)'}")
+
+    cfg_ok = CONFIG.exists()
+    print(f"  config:   {'present' if cfg_ok else 'MISSING (run --init)'}")
+
+    doc = Path('PROJECT_CONTEXT.en.md')
+    if not doc.exists():
+        alt = Path('PROJECT_CONTEXT.md')
+        if alt.exists():
+            doc = alt
+    doc_ok = doc.exists()
+    if doc_ok:
+        print(f"  Document: {doc.name}  [{doc.stat().st_size:,} bytes]")
+    else:
+        print("  Document: MISSING (put PROJECT_CONTEXT.en.md here)")
+
+    gi_ok = Path('.gitignore').exists()
+    print(f"  ignore:   {'.gitignore present' if gi_ok else 'MISSING (run --init)'}")
+
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip() == 'true':
+            rb = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                capture_output=True, text=True, timeout=5)
+            branch = (rb.stdout or '').strip() or '?'
+            print(f"  git:      yes (branch {branch})")
+        else:
+            print("  git:      no (git init to enable auto-commit)")
+    except Exception:
+        print("  git:      not installed")
+
+    sensitive = ['.env', 'credentials.json', 'secrets.yaml', 'secrets.yml',
+                 'id_rsa', 'id_ed25519']
+    present = [s for s in sensitive if Path(s).exists()]
+    if present:
+        print()
+        print(f"  [WARN] sensitive files present: {', '.join(present)}")
+        print(f"         ensure they are in .gitignore before committing")
+
+    print()
+    ready = (py_ok and work_ok and cfg_ok and doc_ok)
+    if ready:
+        print("[BOOTSTRAP] You are ready.")
+        print()
+        print("Next steps:")
+        print("  1. Paste PROJECT_CONTEXT.en.md as the first message in a new AI chat.")
+        print("  2. Say: \"New project. This is the master document. My goal: <one line>.\"")
+        print("  3. The AI sends a patch. Drop it into _work/input.txt.")
+        print("  4. Run: python run.py")
+        print("  5. Send _work/output.txt back to the AI.")
+        return 0
+    print("[BOOTSTRAP] Not ready yet. Run:")
+    print("  python run.py --init")
+    return 1
+
+
 def do_init():
     WORK.mkdir(parents=True, exist_ok=True)
     APPLIED.mkdir(parents=True, exist_ok=True)
@@ -1607,6 +1679,7 @@ def dispatch(args):
 
     if cmd in ('--version', '-v'):     print(f"run.py v{VERSION}"); return 0
     if cmd == '--init':                 do_init(); return 0
+    if cmd == '--bootstrap':            return do_bootstrap()
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
         _p = WORK / 'ctx_delta.txt'

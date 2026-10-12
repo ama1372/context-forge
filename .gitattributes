@@ -1,0 +1,58 @@
+# Normalize line endings across platforms.
+# - Source and docs: LF (matches what context-forge emits)
+# - Windows batch files: CRLF (required by cmd.exe)
+# - Binary files: untouched
+
+* text=auto eol=lf
+
+# Windows-specific
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Markdown and text
+*.md   text eol=lf
+*.txt  text eol=lf
+*.rst  text eol=lf
+
+# Scripts and source
+*.py   text eol=lf
+*.js   text eol=lf
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.jsx  text eol=lf
+*.rs   text eol=lf
+*.go   text eol=lf
+*.rb   text eol=lf
+*.sh   text eol=lf
+
+# Config and data
+*.json text eol=lf
+*.toml text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.ini  text eol=lf
+*.cfg  text eol=lf
+
+# Assets that are text
+*.svg  text eol=lf
+
+# Binary — never touch
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.zip  binary
+*.tar  binary
+*.gz   binary
+*.7z   binary
+*.exe  binary
+*.dll  binary
+*.so   binary
+*.dylib binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary
