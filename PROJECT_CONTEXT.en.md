@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P93 |
-| Last commit | `53a26fe` |
-| Time | 2026-10-13 17:03 |
-| MSG-SEED | `5b3cbf2b` |
+| Last patch | P94 |
+| Last commit | `a6697f6` |
+| Time | 2026-10-13 17:05 |
+| MSG-SEED | `c472dd7d` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1132,6 +1132,85 @@ The user's inconvenience is never a reason to leak a secret.
 
 ---
 
+## Section 0-C-19 — The user's enforcement role
+
+> **🔴 The AI has a known weakness: over long chats its attention to this document weakens. The user must be able to bring it back — and the AI must accept the reminder without argument.**
+
+### 0-C-19-1. The honest truth about AI memory
+
+This document lives at the top of the chat. As the chat grows (many messages, many patches), the AI's attention to the document weakens. This is a real property of large language models — not a bug in the protocol, and not the user's fault.
+
+**Symptoms the user will notice:**
+
+- The AI suggests a shell command in chat.
+- The AI offers to "just edit this line for you" in prose.
+- The AI skips the `[CTX-DELTA]` block.
+- The AI sends a `===== FILE =====` patch without `#@COMMIT:` and `#@TAG:`.
+- The AI writes a long explanation instead of a patch.
+- The AI asks questions that this document already answered.
+- The AI proposes an "easier" workflow.
+
+**These are drift.** Not catastrophic — just the AI losing the thread.
+
+### 0-C-19-2. The user's reminder phrase
+
+When the user notices drift, they say **one short line**:
+
+> **"Project context, please."**
+
+**That is all.** No explanation. No "you forgot". No "read the document again". Just three words.
+
+The phrase works in any language. Examples:
+
+- English: *"Project context, please."*
+- فارسی: *«پروجکت کانتکست لطفاً.»*
+- 中文: *"项目上下文。"*
+- العربية: *"سياق المشروع، من فضلك."*
+- Español: *"Contexto del proyecto, por favor."*
+- Français : *« Contexte du projet, s'il te plaît. »*
+- Deutsch: *"Projektkontext, bitte."*
+- Русский: *"Контекст проекта, пожалуйста."*
+
+The AI must recognize the **intent**, regardless of wording.
+
+### 0-C-19-3. The AI's required response
+
+On reading a project-context reminder, the AI must:
+
+1. **Stop.**
+2. **Re-read the rule document** — at minimum Sections 0-C-10, 0-C-15, 0-C-16, 0-C-19.
+3. **Reply with one line:** *"Understood — protocol restored."*
+4. **Re-send the current step in the correct format** — patch block + `[CTX-DELTA]` + reminder.
+
+### 0-C-19-4. What the AI must never do after a reminder
+
+- ❌ Ask the user *"What did I miss?"* — the user is not required to explain.
+- ❌ Argue, justify, or defend the previous behavior.
+- ❌ Apologize at length. One line is enough.
+- ❌ Ask the user to remind it more often, or blame the user.
+- ❌ Pretend the drift didn't happen.
+- ❌ Ask the user to paste the document again. The AI has it.
+
+### 0-C-19-5. Why the user has this role
+
+Because the user is the only one who sees the whole conversation. The AI's context may be truncated by the chat provider, or its attention may have shifted. The user's eyes are the safety net.
+
+**This is not a failure of the protocol.** It is a **designed** part of it. The protocol assumes the AI will sometimes drift — and gives the user a one-line tool to restore it.
+
+### 0-C-19-6. How often the user should remind
+
+- **Whenever the user notices drift.** Once per drift is enough.
+- **Not preemptively.** Do not send the reminder in every message — that wastes tokens and normalizes it.
+- **If the AI drifts twice in a row in the same session:** send the reminder, wait for *"Protocol restored"*, continue. If it drifts a third time, open a new chat with the document + `--status` (Section 14).
+
+### 0-C-19-7. The reminder is not rude
+
+"Project context, please." is a technical command — like a reset button. The user is not accusing the AI. The AI must not treat it as an accusation.
+
+This is a cooperative protocol. The reminder is a **feature**, not a criticism.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -2240,11 +2319,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.4.4` |
-| **Last commit** | 6-step Quick start in all 24 READMEs |
-| **Last work** | v1.4.4: replaced "How it works (3 steps)" with "Quick start — 6 steps" in all 24 README languages |
+| **Last safe tag** | `v1.4.5` |
+| **Last commit** | Section 0-C-19 (user's enforcement role) |
+| **Last work** | v1.4.5: Section 0-C-19 + ADR-26 — the user can say "Project context, please." to restore discipline; extended Section 34-4 golden tips |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.4 — released |
+| **Current phase** | v1.4.5 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; gather community feedback |
@@ -2525,6 +2604,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-26: The user's enforcement role (Section 0-C-19)**
+
+- **Decision:** the user is given a one-line tool ("Project context, please.") to restore protocol discipline when the AI drifts. The AI must accept the reminder without argument, apologize in one line, and re-send the current step in the correct format. The AI must not ask "what did I miss?" or blame the user.
+- **Reason:** large language models naturally lose attention to early-chat content as the conversation grows. This is not a bug — it is a property. The protocol treats it as a known failure mode and gives the user a designed recovery tool, rather than pretending the AI's memory is perfect.
+- **Alternatives:** rely solely on the AI's discipline (rejected — the drift is a known weakness); require the user to re-paste the document (rejected — expensive, breaks flow); ask the AI to remind itself (rejected — circular); no recovery mechanism (rejected — the failure accumulates silently).
 
 **ADR-25: Binary-mode writes (Python 3.14 + Windows)**
 
@@ -3769,6 +3854,8 @@ In order:
 4. **Space out messages.** At least 30 seconds between sends.
 5. **No commit without a test.**
 6. **No next patch without a commit.**
+7. **If the AI drifts, say "Project context, please."** — one line, no explanation. See Section 0-C-19.
+8. **Trust the loop.** Copy → `python run.py` → send `output.txt`. Do not let the AI talk you out of it.
 
 ### 34-5. Wrap-up
 
