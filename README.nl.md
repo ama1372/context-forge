@@ -59,20 +59,14 @@ Een **enkel document** (`PROJECT_CONTEXT.md`) dat je in elke AI-chat plakt — D
 
 ---
 
-## Hoe het werkt (3 stappen)
+## Snelstart — 6 stappen
 
-### 1. Pak het document
-Download [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) uit deze repo.
-
-### 2. Plak in je AI-chat
-Open een nieuwe chat met DeepSeek (of Claude, ChatGPT, Gemini). Plak het hele document als **eerste bericht**. Schrijf één regel over wat je wilt bouwen.
-
-### 3. Volg de AI
-De AI geeft je `run.py` (een kleine Python-tool). Sla het op. Vanaf dan:
-
-> **Je plakt → voert `python run.py` uit → stuurt de uitvoer terug.**
-
-Dat is de hele workflow. Voor altijd.
+1. **Plaats `PROJECT_CONTEXT.en.md` in de projectroot.**
+2. **(Aanbevolen)** Zet `run.py` in dezelfde map. Niet? Zeg tegen de AI: *"Genereer run.py uit Sectie 35."*
+3. **Eenmalig instellen:** `python run.py --init`
+4. **Open een DeepSeek-chat** (of Claude / ChatGPT / Gemini). Plak het **hele document** als eerste bericht. Zeg: *"Nieuw project. Mijn doel: <één regel>."*
+5. **Loop:** AI stuurt een blok → kopieer naar `_work/input.txt` → voer `python run.py` uit → stuur `_work/output.txt` terug. Herhaal.
+6. **Houd de loop tot je project klaar is.** Laat de AI je er niet uit trekken — geen shell-commando's in de chat, geen snelle scripts. Het antwoord is altijd: *"Zet het in input.txt."*
 
 ---
 

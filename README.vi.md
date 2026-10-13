@@ -59,20 +59,14 @@ Một **tài liệu duy nhất** (`PROJECT_CONTEXT.md`) bạn dán vào bất k�
 
 ---
 
-## Cách hoạt động (3 bước)
+## Bắt đầu nhanh — 6 bước
 
-### 1. Lấy tài liệu
-Tải [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) từ repo này.
-
-### 2. Dán vào chat AI của bạn
-Mở chat mới với DeepSeek (hoặc Claude, ChatGPT, Gemini). Dán toàn bộ tài liệu làm **tin nhắn đầu tiên**. Viết một dòng về điều bạn muốn xây dựng.
-
-### 3. Làm theo AI
-AI đưa bạn `run.py` (một công cụ Python nhỏ). Lưu lại. Từ đó trở đi:
-
-> **Bạn dán → chạy `python run.py` → gửi đầu ra trở lại.**
-
-Đó là toàn bộ quy trình làm việc. Mãi mãi.
+1. **Lưu `PROJECT_CONTEXT.en.md` vào thư mục gốc dự án.**
+2. **(Khuyến nghị)** Lưu `run.py` cùng thư mục. Chưa có? Nói với AI: *"Tạo run.py từ Mục 35."*
+3. **Cấu hình một lần:** `python run.py --init`
+4. **Mở chat DeepSeek** (hoặc Claude / ChatGPT / Gemini). Dán **toàn bộ tài liệu** làm tin nhắn đầu tiên. Nói: *"Dự án mới. Mục tiêu: <một dòng>."*
+5. **Vòng lặp:** AI gửi một khối → sao chép vào `_work/input.txt` → chạy `python run.py` → gửi `_work/output.txt` trả lại. Lặp lại.
+6. **Giữ vòng lặp cho đến khi dự án xong.** Đừng để AI kéo bạn ra — không lệnh shell trong chat, không script nhanh. Câu trả lời luôn là: *"Đặt vào input.txt."*
 
 ---
 

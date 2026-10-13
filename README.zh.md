@@ -59,20 +59,14 @@
 
 ---
 
-## 工作方式 (3 步)
+## 快速开始 — 6 步
 
-### 1. 拿到文档
-从本仓库下载 [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md)。
-
-### 2. 粘贴到你的 AI 聊天
-打开一个新的 DeepSeek(或 Claude、ChatGPT、Gemini)聊天。把整份文档作为**第一条消息**粘贴。写一行你想构建什么。
-
-### 3. 跟着 AI 走
-AI 会把 `run.py`(一个小型 Python 工具)给你。保存它。之后:
-
-> **你粘贴 → 运行 `python run.py` → 把输出发回去。**
-
-这就是整个工作流。永远如此。
+1. **将 `PROJECT_CONTEXT.en.md` 放入项目根目录。**
+2. **（推荐）** 将 `run.py` 放在同一文件夹。没有？告诉 AI：*"从第 35 节引导 run.py。"*
+3. **初始化一次：** `python run.py --init`
+4. **打开 DeepSeek 对话**（或 Claude / ChatGPT / Gemini）。将**整个文档**作为第一条消息粘贴。说：*"新项目。目标：<一行>。"*
+5. **循环：** AI 发送一个块 → 复制到 `_work/input.txt` → 运行 `python run.py` → 将 `_work/output.txt` 发回。重复。
+6. **一直循环到项目完成。** 不要让 AI 把你拉出循环 —— 不在聊天中运行 shell 命令,不用快速脚本。答案始终是:*"放进 input.txt。"*
 
 ---
 

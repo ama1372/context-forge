@@ -59,20 +59,14 @@ Ett **enda dokument** (`PROJECT_CONTEXT.md`) som du klistrar in i vilken AI-chat
 
 ---
 
-## Hur det fungerar (3 steg)
+## Snabbstart — 6 steg
 
-### 1. Skaffa dokumentet
-Ladda ner [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) från detta repo.
-
-### 2. Klistra in i din AI-chatt
-Öppna en ny chatt med DeepSeek (eller Claude, ChatGPT, Gemini). Klistra in hela dokumentet som **första meddelande**. Skriv en rad om vad du vill bygga.
-
-### 3. Följ AI:n
-AI:n ger dig `run.py` (ett litet Python-verktyg). Spara det. Från och med då:
-
-> **Du klistrar in → kör `python run.py` → skickar tillbaka utdata.**
-
-Det är hela arbetsflödet. För alltid.
+1. **Lägg `PROJECT_CONTEXT.en.md` i projektets rot.**
+2. **(Rekommenderas)** Lägg `run.py` i samma mapp. Har du inte? Säg till AI:n: *"Generera run.py från Sektion 35."*
+3. **Ställ in en gång:** `python run.py --init`
+4. **Öppna en DeepSeek-chatt** (eller Claude / ChatGPT / Gemini). Klistra in **hela dokumentet** som första meddelande. Säg: *"Nytt projekt. Mitt mål: <en rad>."*
+5. **Slinga:** AI:n skickar ett block → kopiera till `_work/input.txt` → kör `python run.py` → skicka `_work/output.txt` tillbaka. Upprepa.
+6. **Håll slingan tills projektet är klart.** Låt inte AI:n dra ut dig — inga shell-kommandon i chatten, inga snabba skript. Svaret är alltid: *"Lägg det i input.txt."*
 
 ---
 

@@ -59,20 +59,14 @@ Um **documento único** (`PROJECT_CONTEXT.md`) que você cola em qualquer chat d
 
 ---
 
-## Como funciona (3 passos)
+## Início rápido — 6 passos
 
-### 1. Baixe o documento
-Baixe [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) deste repositório.
-
-### 2. Cole no seu chat de IA
-Abra um novo chat com DeepSeek (ou Claude, ChatGPT, Gemini). Cole o documento inteiro como sua **primeira mensagem**. Escreva uma linha sobre o que você quer construir.
-
-### 3. Siga a IA
-A IA dá a você `run.py` (uma pequena ferramenta Python). Salve-a. Daí em diante:
-
-> **Você cola → roda `python run.py` → envia a saída de volta.**
-
-Esse é todo o fluxo de trabalho. Para sempre.
+1. **Salve `PROJECT_CONTEXT.en.md` na raiz do projeto.**
+2. **(Recomendado)** Salve `run.py` na mesma pasta. Sem `run.py`? Diga à IA: *"Gere run.py da Seção 35."*
+3. **Configure uma vez:** `python run.py --init`
+4. **Abra um chat com DeepSeek** (ou Claude / ChatGPT / Gemini). Cole o **documento inteiro** como primeira mensagem. Diga: *"Projeto novo. Meu objetivo: <uma linha>."*
+5. **Loop:** a IA envia um bloco → copie para `_work/input.txt` → execute `python run.py` → devolva `_work/output.txt`. Repita.
+6. **Mantenha o loop até terminar o projeto.** Não deixe a IA te tirar — sem comandos shell no chat, sem scripts rápidos. A resposta é sempre: *"Coloque em input.txt."*
 
 ---
 

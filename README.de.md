@@ -59,20 +59,14 @@ Ein **einzelnes Dokument** (`PROJECT_CONTEXT.md`), das du in jeden KI-Chat einf�
 
 ---
 
-## So funktioniert es (3 Schritte)
+## Schnellstart — 6 Schritte
 
-### 1. Hol dir das Dokument
-Lade [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) aus diesem Repo herunter.
-
-### 2. Füge es in deinen KI-Chat ein
-Öffne einen neuen Chat mit DeepSeek (oder Claude, ChatGPT, Gemini). Füge das ganze Dokument als **erste Nachricht** ein. Schreibe eine Zeile, was du bauen willst.
-
-### 3. Folge der KI
-Die KI gibt dir `run.py` (ein kleines Python-Werkzeug). Speichere es. Von da an:
-
-> **Du fügst ein → führst `python run.py` aus → sendest die Ausgabe zurück.**
-
-Das ist der ganze Workflow. Für immer.
+1. **Speichere `PROJECT_CONTEXT.en.md` im Projektstammverzeichnis.**
+2. **(Empfohlen)** Speichere `run.py` im selben Ordner. Kein `run.py`? Sag der KI: *"Erzeuge run.py aus Abschnitt 35."*
+3. **Einmal einrichten:** `python run.py --init`
+4. **Öffne einen DeepSeek-Chat** (oder Claude / ChatGPT / Gemini). Füge das **ganze Dokument** als erste Nachricht ein. Sag: *"Neues Projekt. Mein Ziel: <eine Zeile>."*
+5. **Schleife:** KI sendet einen Block → kopiere in `_work/input.txt` → führe `python run.py` aus → sende `_work/output.txt` zurück. Wiederhole.
+6. **Halte die Schleife, bis dein Projekt fertig ist.** Lass die KI dich nicht rausziehen — keine Shell-Befehle im Chat, keine Schnellskripte. Die Antwort ist immer: *"Leg es in input.txt."*
 
 ---
 

@@ -59,20 +59,14 @@ Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJE
 
 ---
 
-## Nasıl çalışır (3 adım)
+## Hızlı başlangıç — 6 adım
 
-### 1. Belgeyi al
-Bu depodan [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) dosyasını indir.
-
-### 2. Yapay zekâ sohbetine yapıştır
-DeepSeek (veya Claude, ChatGPT, Gemini) ile yeni bir sohbet aç. Tüm belgeyi **ilk mesaj** olarak yapıştır. Ne inşa etmek istediğini bir satırda yaz.
-
-### 3. Yapay zekâyı takip et
-Yapay zekâ sana `run.py` (küçük bir Python aracı) verir. Kaydet. O andan itibaren:
-
-> **Yapıştır → `python run.py` çalıştır → çıktıyı geri gönder.**
-
-Tüm iş akışı bu. Sonsuza kadar.
+1. **`PROJECT_CONTEXT.en.md` dosyasını proje köküne koy.**
+2. **(Önerilen)** `run.py` dosyasını aynı klasöre koy. Yok mu? AI'ya söyle: *"Bölüm 35'ten run.py oluştur."*
+3. **Bir kez kur:** `python run.py --init`
+4. **Bir DeepSeek sohbeti aç** (veya Claude / ChatGPT / Gemini). **Tüm belgeyi** ilk mesaj olarak yapıştır. Söyle: *"Yeni proje. Hedefim: <tek satır>."*
+5. **Döngü:** AI bir blok gönderir → `_work/input.txt`'e kopyala → `python run.py` çalıştır → `_work/output.txt`'i geri gönder. Tekrarla.
+6. **Proje bitene kadar döngüyü sürdür.** AI'nın seni dışarı çekmesine izin verme — sohbette shell komutu yok, hızlı script yok. Cevap her zaman: *"input.txt'e koy."*
 
 ---
 

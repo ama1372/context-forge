@@ -67,20 +67,14 @@ A **single document** (`PROJECT_CONTEXT.en.md`) you paste into any AI chat — D
 
 ---
 
-## How it works (3 steps)
+## Quick start — 6 steps
 
-### 1. Get the document
-Download [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) from this repo.
-
-### 2. Paste it into your AI chat
-Open a new chat with DeepSeek (or Claude, ChatGPT, Gemini). Paste the whole document as your **first message**. Write one line about what you want to build.
-
-### 3. Follow the AI
-The AI gives you `run.py` (a small Python tool). Save it. From then on:
-
-> **You paste → run `python run.py` → send the output back.**
-
-That's the entire workflow. Forever.
+1. **Save `PROJECT_CONTEXT.en.md` in your project root.**
+2. **(Recommended)** Save `run.py` in the same folder. No `run.py`? Ask the AI: *"Bootstrap run.py from Section 35."*
+3. **Set up once:** `python run.py --init`
+4. **Open a DeepSeek chat** (or Claude / ChatGPT / Gemini). Paste the **whole document** as your first message. Say: *"New project. My goal: <one line>."*
+5. **Loop:** AI sends a block → copy into `_work/input.txt` → run `python run.py` → send `_work/output.txt` back. Repeat.
+6. **Keep the loop until your project is done.** Don't let the AI pull you out — no shell commands in chat, no quick scripts. The answer is always: *"Put it in input.txt."*
 
 ---
 

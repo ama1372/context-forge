@@ -59,20 +59,14 @@
 
 ---
 
-## Jak to działa (3 kroki)
+## Szybki start — 6 kroków
 
-### 1. Pobierz dokument
-Pobierz [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) z tego repozytorium.
-
-### 2. Wklej do czatu AI
-Otwórz nowy czat z DeepSeek (lub Claude, ChatGPT, Gemini). Wklej cały dokument jako **pierwszą wiadomość**. Napisz jedną linię, co chcesz zbudować.
-
-### 3. Podążaj za AI
-AI daje ci `run.py` (małe narzędzie Pythona). Zapisz je. Od tego momentu:
-
-> **Wklejasz → uruchamiasz `python run.py` → wysyłasz wynik z powrotem.**
-
-To cały workflow. Na zawsze.
+1. **Umieść `PROJECT_CONTEXT.en.md` w katalogu głównym projektu.**
+2. **(Zalecane)** Umieść `run.py` w tym samym folderze. Nie masz? Powiedz AI: *"Wygeneruj run.py z Sekcji 35."*
+3. **Skonfiguruj raz:** `python run.py --init`
+4. **Otwórz czat DeepSeek** (lub Claude / ChatGPT / Gemini). Wklej **cały dokument** jako pierwszą wiadomość. Powiedz: *"Nowy projekt. Mój cel: <jedna linia>."*
+5. **Pętla:** AI wysyła blok → skopiuj do `_work/input.txt` → uruchom `python run.py` → odeślij `_work/output.txt`. Powtarzaj.
+6. **Trzymaj pętlę aż projekt będzie gotowy.** Nie pozwól AI wyciągnąć się z niej — żadnych poleceń shell w czacie, żadnych szybkich skryptów. Odpowiedź zawsze brzmi: *"Włóż do input.txt."*
 
 ---
 

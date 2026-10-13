@@ -59,20 +59,14 @@ Un **singur document** (`PROJECT_CONTEXT.md`) pe care îl lipești în orice cha
 
 ---
 
-## Cum funcționează (3 pași)
+## Pornire rapidă — 6 pași
 
-### 1. Obține documentul
-Descarcă [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) din acest repo.
-
-### 2. Lipește-l în chat-ul tău AI
-Deschide un chat nou cu DeepSeek (sau Claude, ChatGPT, Gemini). Lipește întregul document ca **prim mesaj**. Scrie o linie despre ce vrei să construiești.
-
-### 3. Urmărește AI-ul
-AI-ul îți dă `run.py` (un mic instrument Python). Salvează-l. De atunci înainte:
-
-> **Lipești → rulezi `python run.py` → trimiți rezultatul înapoi.**
-
-Acesta este întregul flux de lucru. Pentru totdeauna.
+1. **Pune `PROJECT_CONTEXT.en.md` în rădăcina proiectului.**
+2. **(Recomandat)** Pune `run.py` în același folder. Nu ai? Spune-i AI-ului: *"Generează run.py din Secțiunea 35."*
+3. **Configurează o dată:** `python run.py --init`
+4. **Deschide un chat DeepSeek** (sau Claude / ChatGPT / Gemini). Lipește **întregul document** ca prim mesaj. Spune: *"Proiect nou. Scopul meu: <o linie>."*
+5. **Buclă:** AI-ul trimite un bloc → copiază în `_work/input.txt` → rulează `python run.py` → trimite `_work/output.txt` înapoi. Repetă.
+6. **Ține bucla până termini proiectul.** Nu lăsa AI-ul să te scoată — fără comenzi shell în chat, fără scripturi rapide. Răspunsul e mereu: *"Pune-l în input.txt."*
 
 ---
 

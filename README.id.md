@@ -59,20 +59,14 @@ Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.md`) yang kamu tempel ke chat AI ap
 
 ---
 
-## Cara kerjanya (3 langkah)
+## Mulai cepat — 6 langkah
 
-### 1. Dapatkan dokumen
-Unduh [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) dari repo ini.
-
-### 2. Tempel ke chat AI-mu
-Buka chat baru dengan DeepSeek (atau Claude, ChatGPT, Gemini). Tempel seluruh dokumen sebagai **pesan pertama**. Tulis satu baris tentang apa yang ingin kamu bangun.
-
-### 3. Ikuti AI
-AI memberimu `run.py` (alat Python kecil). Simpan. Sejak saat itu:
-
-> **Kamu tempel → jalankan `python run.py` → kirim outputnya kembali.**
-
-Itu seluruh alur kerjanya. Selamanya.
+1. **Simpan `PROJECT_CONTEXT.en.md` di akar proyek.**
+2. **(Disarankan)** Simpan `run.py` di folder yang sama. Tidak ada? Katakan ke AI: *"Buat run.py dari Bagian 35."*
+3. **Setup sekali:** `python run.py --init`
+4. **Buka chat DeepSeek** (atau Claude / ChatGPT / Gemini). Tempel **seluruh dokumen** sebagai pesan pertama. Katakan: *"Proyek baru. Tujuan saya: <satu baris>."*
+5. **Loop:** AI mengirim blok → salin ke `_work/input.txt` → jalankan `python run.py` → kirim `_work/output.txt` kembali. Ulangi.
+6. **Pertahankan loop sampai proyek selesai.** Jangan biarkan AI menarikmu keluar — tidak ada perintah shell di chat, tidak ada skrip cepat. Jawabannya selalu: *"Taruh di input.txt."*
 
 ---
 

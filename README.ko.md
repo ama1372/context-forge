@@ -59,20 +59,14 @@
 
 ---
 
-## 작동 방식 (3단계)
+## 빠른 시작 — 6단계
 
-### 1. 문서 받기
-이 저장소에서 [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md)를 다운로드하세요.
-
-### 2. AI 채팅에 붙여넣기
-DeepSeek(또는 Claude, ChatGPT, Gemini)로 새 채팅을 열어요. 문서 전체를 **첫 메시지**로 붙여넣어요. 무엇을 만들고 싶은지 한 줄 적어요.
-
-### 3. AI를 따라가기
-AI가 `run.py` (작은 Python 도구)를 줘요. 저장하세요. 그때부터:
-
-> **붙여넣기 → `python run.py` 실행 → 출력을 다시 보내기.**
-
-이게 전체 워크플로우예요. 영원히.
+1. **`PROJECT_CONTEXT.en.md`를 프로젝트 루트에 저장.**
+2. **(권장)** 같은 폴더에 `run.py` 저장. 없다면 AI에게: *"섹션 35에서 run.py를 생성해줘."*
+3. **한 번 설정:** `python run.py --init`
+4. **DeepSeek 채팅 열기** (또는 Claude / ChatGPT / Gemini). **전체 문서**를 첫 메시지로 붙여넣기. 말하기: *"새 프로젝트. 목표: <한 줄>."*
+5. **루프:** AI가 블록 전송 → `_work/input.txt`에 복사 → `python run.py` 실행 → `_work/output.txt` 반환. 반복.
+6. **프로젝트가 끝날 때까지 루프 유지.** AI가 루프 밖으로 끌어내지 못하게 — 채팅에서 shell 명령 금지, 즉석 스크립트 금지. 답은 항상: *"input.txt에 넣어."*
 
 ---
 

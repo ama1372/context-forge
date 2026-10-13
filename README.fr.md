@@ -59,20 +59,14 @@ Un **document unique** (`PROJECT_CONTEXT.md`) que vous collez dans n'importe que
 
 ---
 
-## Comment ça marche (3 étapes)
+## Démarrage rapide — 6 étapes
 
-### 1. Récupérez le document
-Téléchargez [`PROJECT_CONTEXT.en.md`](PROJECT_CONTEXT.en.md) depuis ce dépôt.
-
-### 2. Collez-le dans votre chat IA
-Ouvrez un nouveau chat avec DeepSeek (ou Claude, ChatGPT, Gemini). Collez le document entier comme **premier message**. Écrivez une ligne sur ce que vous voulez construire.
-
-### 3. Suivez l'IA
-L'IA vous donne `run.py` (un petit outil Python). Enregistrez-le. À partir de là :
-
-> **Vous collez → lancez `python run.py` → renvoyez la sortie.**
-
-C'est tout le workflow. Pour toujours.
+1. **Enregistrez `PROJECT_CONTEXT.en.md` à la racine de votre projet.**
+2. **(Recommandé)** Enregistrez `run.py` dans le même dossier. Pas de `run.py` ? Dites à l'IA : *"Génère run.py depuis la Section 35."*
+3. **Configuration unique :** `python run.py --init`
+4. **Ouvrez un chat DeepSeek** (ou Claude / ChatGPT / Gemini). Collez le **document entier** comme premier message. Dites : *"Nouveau projet. Mon objectif : <une ligne>."*
+5. **Boucle :** l'IA envoie un bloc → copiez dans `_work/input.txt` → lancez `python run.py` → renvoyez `_work/output.txt`. Répétez.
+6. **Gardez la boucle jusqu'à la fin du projet.** Ne laissez pas l'IA vous en sortir — pas de commandes shell dans le chat, pas de scripts rapides. La réponse est toujours : *"Mets-le dans input.txt."*
 
 ---
 

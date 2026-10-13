@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P92 |
-| Last commit | `b4a5f74` |
-| Time | 2026-10-13 16:57 |
-| MSG-SEED | `00f491b6` |
+| Last patch | P93 |
+| Last commit | `53a26fe` |
+| Time | 2026-10-13 17:03 |
+| MSG-SEED | `5b3cbf2b` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2240,11 +2240,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.4.3` |
-| **Last commit** | binary-mode writes (Python 3.14 + Windows fix) |
-| **Last work** | v1.4.3: `write()` uses binary mode; all `Path.write_text()` calls replaced; EOL preserved via `read_raw`/`write_preserve_eol`; ADR-25 |
+| **Last safe tag** | `v1.4.4` |
+| **Last commit** | 6-step Quick start in all 24 READMEs |
+| **Last work** | v1.4.4: replaced "How it works (3 steps)" with "Quick start — 6 steps" in all 24 README languages |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.3 — released |
+| **Current phase** | v1.4.4 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; gather community feedback |
