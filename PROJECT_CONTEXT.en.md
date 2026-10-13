@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P95 |
-| Last commit | `4e899be` |
-| Time | 2026-10-13 17:07 |
-| MSG-SEED | `cda8fe17` |
+| Last patch | P97 |
+| Last commit | `bc6b4ac` |
+| Time | 2026-10-13 17:59 |
+| MSG-SEED | `738bb724` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1211,6 +1211,122 @@ This is a cooperative protocol. The reminder is a **feature**, not a criticism.
 
 ---
 
+## Section 0-C-20 — Anti-duplication discipline
+
+> **🔴 The most common AI failure: solving a new problem by writing a new function next to the old one. But duplication is not always wrong — the goal is to avoid the WRONG abstraction, not every repetition.**
+
+### 0-C-20-1. The failure mode this section exists to prevent
+
+An AI is asked to add a feature for "section B". Section A already has a similar function. The AI, preferring speed, writes a **new function** for section B, copy-pasting most of section A's logic.
+
+Result: **two functions doing almost the same thing**. Later, a bug is fixed in A but not B. Later still, section C arrives — a third copy. The project grows. Updates become hell.
+
+**This section exists to prevent that — but without swinging to the opposite error.**
+
+### 0-C-20-2. The balance — three sources, one principle
+
+**Source 1 — Uncle Bob (Clean Code, G5: DRY):** duplication is one of the worst code smells. But he also warns (Clean Architecture, "Accidental Duplication"): *two pieces of code that look alike are not necessarily the same knowledge*.
+
+**Source 2 — Rule of Three (Fowler / Beck):** two instances do not justify abstraction. **Three** do. Abstract at three, not two.
+
+**Source 3 — Wrong Abstraction (Sandi Metz):** *"Duplication is far cheaper than the wrong abstraction."* A premature abstraction bends, then grows conditionals, then becomes incomprehensible. Breaking a wrong abstraction back into copies is usually better than keeping it.
+
+**The principle:** the goal is to **avoid wrong abstractions**, not to eliminate every repetition.
+
+### 0-C-20-3. The rules
+
+**Rule 1 — Two is fine. Three is a signal.**
+The first repetition is acceptable. The second repetition (three copies total) is the trigger to consider abstraction. Do not abstract at two.
+
+**Rule 2 — Ask "same knowledge?" — not "same code?".**
+Before extracting, ask: do these pieces represent **the same knowledge** (same business rule, same invariant)? Or do they merely look alike today? If the answer is "look alike", **do not extract**.
+
+**Rule 3 — Extract only when the concept is shared.**
+If the same knowledge lives in two or more places, extract it into one function. Call it from all sites. This is DRY, made concrete.
+
+**Rule 4 — Replace means delete.**
+When a new function replaces an old one, **delete the old one** in the same patch. No orphans. Git has it.
+
+**Rule 5 — No dead code.**
+Every patch must leave the codebase with zero orphan functions, zero unused files, zero "we'll delete it later".
+
+**Rule 6 — No value-less wrappers.**
+A function that only calls another is a smell — unless it adds real value (validation, transformation, lifecycle). Do not build abstraction on abstraction.
+
+**Rule 7 — The per-section trap (the exact failure mode).**
+For each section, module, or view, do not write a fresh handler. But also: do not force sections into a common handler if they represent different knowledge. **First observe the pattern across three real cases; then decide.**
+
+### 0-C-20-4. How to decide
+
+Before writing a new function, the AI asks:
+
+1. **How many copies already exist?**
+   - 0 → write the new function freely.
+   - 1 → writing the second is fine. Do not extract yet.
+   - 2 → this would be the third. Stop and evaluate.
+2. **Is it the same knowledge?** (same business rule, same invariant)
+   - Yes → extract into one shared function.
+   - No, just similar shape → do NOT extract. Keep the copies.
+3. **Will they evolve together?** (will a change to one always force a change to the other?)
+   - Yes → extract.
+   - No → keep separate. They are different concepts.
+
+If unsure: **do not extract**. Duplication is recoverable; a wrong abstraction is expensive.
+
+### 0-C-20-5. Verification
+
+Before sending a patch that adds or changes functions, run:
+
+    python run.py --find-dup --meaningful
+
+The report lists duplicate function names and duplicate lines. It is a **signal**, not a verdict. If the report shows new duplicates, the AI evaluates: are they the same knowledge (extract) or coincidental shapes (keep)?
+
+Add it as a `#@POST:` in the patch:
+
+    #@POST: find-dup --meaningful
+
+### 0-C-20-6. If the AI already duplicated — or already over-abstracted
+
+**Case A — duplicates exist and represent the same knowledge:**
+1. Stop adding features.
+2. One cleanup patch: extract the shared logic, delete the copies, update all call sites.
+3. `#@COMMIT: 🧹 refactor: extract <name>, remove N duplicates`
+4. Do not mix the refactor with feature work.
+
+**Case B — an abstraction is wrong (Sandi Metz case):**
+1. Stop adding cases to the abstraction.
+2. Inline it back — split into the original copies.
+3. Accept the duplication. It is cheaper than the wrong abstraction.
+4. `#@COMMIT: 🧹 refactor: inline <name>, split into N concepts`
+
+### 0-C-20-7. Smells of wrong abstraction
+
+- A function whose parameters keep growing.
+- Boolean flags that select between different behaviors (`doThing(isAdmin, isActive, isLegacy)`).
+- A `switch`/`if` chain on a type or role inside a "shared" function.
+- A name that cannot describe all its callers (`processItemsAndMaybeEmails`).
+- New behavior added by adding new parameters, not by adding new functions.
+
+If you see any of these: the abstraction is wrong. Inline it.
+
+### 0-C-20-8. What the user can say
+
+- **"DRY, please."** → the AI re-reads this section and checks for same-knowledge duplicates.
+- **"Wrong abstraction."** → the AI re-reads this section and considers inlining.
+
+Both are one-line. The AI stops and re-reads.
+
+### 0-C-20-9. Why this matters
+
+Duplication and wrong abstraction are **both** structural taxes. The first multiplies bug fixes; the second multiplies conditionals. **The protocol's goal is to avoid the second, not to eliminate the first.**
+
+**Uncle Bob's G5 rule + Rule of Three + Sandi Metz's warning = one coherent policy:**
+- Do not duplicate **knowledge**.
+- Do not force **coincidental similarity** into an abstraction.
+- Observe three real cases before deciding.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -2319,11 +2435,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.4.6` |
-| **Last commit** | pro-tip in all 24 READMEs |
-| **Last work** | v1.4.6: added "Project context, please." pro-tip after step 6 in all 24 README languages |
+| **Last safe tag** | `v1.4.7` |
+| **Last commit** | Section 0-C-20 (anti-duplication, Rule of Three) |
+| **Last work** | v1.4.7: Section 0-C-20 — Rule of Three + Wrong Abstraction (Sandi Metz) + Accidental Duplication (Uncle Bob). Section 21-1, 28-1, 29-1 updated. ADR-27. |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.6 — released |
+| **Current phase** | v1.4.7 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; gather community feedback |
@@ -2604,6 +2720,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-27: Anti-duplication discipline — Rule of Three, not "80% similarity" (Section 0-C-20)**
+
+- **Decision:** the protocol forbids duplicating **the same knowledge**, but does not forbid repetition of similar code. The Rule of Three (Fowler/Beck) governs when to abstract: two instances are fine, three trigger evaluation. The deciding question is "same knowledge?" not "same code?". Wrong abstractions (Sandi Metz) must be inlined back — duplication is cheaper than forcing unrelated concepts together. Uncle Bob's "Accidental Duplication" (Clean Architecture, Ch. 7) is cited explicitly. `--find-dup --meaningful` is a signal, not a verdict. Definition of Done (Section 29-1 item 11) requires a duplication decision per patch.
+- **Reason:** an earlier draft of this section proposed an "80% similarity → edit" rule. That rule is not in any clean-code source and is wrong — it would force coincidental similarity into abstraction, producing the exact failure mode Sandi Metz warns against (function grows parameters, boolean flags, type branches). The corrected policy respects both the DRY principle (Uncle Bob, G5) and its counterweight (Wrong Abstraction, Rule of Three).
+- **Alternatives:** an "80% similarity" rule (rejected — invented, not standard, causes wrong abstraction); no anti-duplication rules at all (rejected — the failure mode is real); leave it to linters (rejected — linters see syntactic similarity, not shared knowledge).
 
 **ADR-26: The user's enforcement role (Section 0-C-19)**
 
@@ -2921,9 +3043,11 @@ Mandatory instructions:
 ### 21-1. Base principles
 
 - **SOLID**
-- **DRY** — each piece of logic once.
+- **DRY** — each piece of **knowledge** once. Not every piece of code. See Section 0-C-20.
 - **KISS** — the simplest solution.
 - **YAGNI** — nothing you don't need yet.
+
+**Reinforced by Section 0-C-20 (Anti-duplication):** Rule of Three, Wrong Abstraction warning (Sandi Metz), Accidental Duplication (Uncle Bob). `--find-dup --meaningful` is the signal, not the verdict.
 
 ### 21-2. Error handling
 
@@ -3252,6 +3376,10 @@ A minimal real example (indent = 4 spaces, no nested fences):
 
 | Anti-pattern | Why bad | Alternative |
 |--------------|---------|-------------|
+| **Duplicating the same knowledge** (not just the same shape) | N× bug fixes; drift | Section 0-C-20: extract when same knowledge |
+| **Extracting coincidental similarity** | Wrong abstraction; conditionals grow | Section 0-C-20: keep copies when concepts differ |
+| **Leaving orphan functions after a replace** | Dead code, confusion | Section 0-C-20-3 Rule 4 |
+| **Nested wrappers with no value** | Abstraction debt | Section 0-C-20-3 Rule 6 |
 | Rewriting the whole file | Loses the user's code | FIND/REPLACE only |
 | Anchor from memory | Mismatch errors | Anchor from the real file |
 | Adding an unapproved feature | Out of scope | Ask, then patch |
@@ -3312,6 +3440,7 @@ A task is considered done only when:
 8. User confirmed — not just the AI.
 9. In-code docs updated (docstring, comments).
 10. Registered in CHANGELOG (if the project is large).
+11. **Duplication decision recorded.** If the patch added or changed functions: either (a) no same-knowledge duplication was introduced, or (b) an existing abstraction was inlined because it was wrong (Section 0-C-20-6). Verify with `--find-dup --meaningful` if the patch added functions.
 
 ### 29-2. When is a phase done?
 
