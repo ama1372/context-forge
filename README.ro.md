@@ -68,6 +68,8 @@ Un **singur document** (`PROJECT_CONTEXT.md`) pe care îl lipești în orice cha
 5. **Buclă:** AI-ul trimite un bloc → copiază în `_work/input.txt` → rulează `python run.py` → trimite `_work/output.txt` înapoi. Repetă.
 6. **Ține bucla până termini proiectul.** Nu lăsa AI-ul să te scoată — fără comenzi shell în chat, fără scripturi rapide. Răspunsul e mereu: *"Pune-l în input.txt."*
 
+> **Sfat:** dacă AI-ul deviază - sugerează comenzi shell în chat, sare peste context - spune: **"Contextul proiectului, te rog."**
+
 ---
 
 ## Ce primești

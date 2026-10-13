@@ -68,6 +68,8 @@ Ein **einzelnes Dokument** (`PROJECT_CONTEXT.md`), das du in jeden KI-Chat einf�
 5. **Schleife:** KI sendet einen Block → kopiere in `_work/input.txt` → führe `python run.py` aus → sende `_work/output.txt` zurück. Wiederhole.
 6. **Halte die Schleife, bis dein Projekt fertig ist.** Lass die KI dich nicht rausziehen — keine Shell-Befehle im Chat, keine Schnellskripte. Die Antwort ist immer: *"Leg es in input.txt."*
 
+> **Tipp:** Wenn die KI abdriftet - Shell-Befehle im Chat vorschlägt, den Kontext überspringt - sag: **"Projektkontext, bitte."**
+
 ---
 
 ## Was du bekommst

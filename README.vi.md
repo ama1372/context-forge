@@ -68,6 +68,8 @@ Một **tài liệu duy nhất** (`PROJECT_CONTEXT.md`) bạn dán vào bất k�
 5. **Vòng lặp:** AI gửi một khối → sao chép vào `_work/input.txt` → chạy `python run.py` → gửi `_work/output.txt` trả lại. Lặp lại.
 6. **Giữ vòng lặp cho đến khi dự án xong.** Đừng để AI kéo bạn ra — không lệnh shell trong chat, không script nhanh. Câu trả lời luôn là: *"Đặt vào input.txt."*
 
+> **Mẹo:** nếu AI đi chệch - gợi ý lệnh shell trong chat, bỏ qua ngữ cảnh - hãy nói: **"Ngữ cảnh dự án, làm ơn."**
+
 ---
 
 ## Những gì bạn nhận được

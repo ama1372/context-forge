@@ -68,6 +68,8 @@
 5. **Pętla:** AI wysyła blok → skopiuj do `_work/input.txt` → uruchom `python run.py` → odeślij `_work/output.txt`. Powtarzaj.
 6. **Trzymaj pętlę aż projekt będzie gotowy.** Nie pozwól AI wyciągnąć się z niej — żadnych poleceń shell w czacie, żadnych szybkich skryptów. Odpowiedź zawsze brzmi: *"Włóż do input.txt."*
 
+> **Wskazówka:** jeśli AI zbacza - sugeruje polecenia shell w czacie, pomija kontekst - powiedz: **"Kontekst projektu, proszę."**
+
 ---
 
 ## Co dostajesz

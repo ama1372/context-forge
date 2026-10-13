@@ -68,6 +68,8 @@ Een **enkel document** (`PROJECT_CONTEXT.md`) dat je in elke AI-chat plakt — D
 5. **Loop:** AI stuurt een blok → kopieer naar `_work/input.txt` → voer `python run.py` uit → stuur `_work/output.txt` terug. Herhaal.
 6. **Houd de loop tot je project klaar is.** Laat de AI je er niet uit trekken — geen shell-commando's in de chat, geen snelle scripts. Het antwoord is altijd: *"Zet het in input.txt."*
 
+> **Tip:** als de AI afdwaalt - shell-commando's in de chat voorstelt, context overslaat - zeg: **"Projectcontext, alsjeblieft."**
+
 ---
 
 ## Wat je krijgt

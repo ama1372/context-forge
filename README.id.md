@@ -68,6 +68,8 @@ Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.md`) yang kamu tempel ke chat AI ap
 5. **Loop:** AI mengirim blok → salin ke `_work/input.txt` → jalankan `python run.py` → kirim `_work/output.txt` kembali. Ulangi.
 6. **Pertahankan loop sampai proyek selesai.** Jangan biarkan AI menarikmu keluar — tidak ada perintah shell di chat, tidak ada skrip cepat. Jawabannya selalu: *"Taruh di input.txt."*
 
+> **Tips:** jika AI menyimpang - menyarankan perintah shell di chat, melewati konteks - katakan: **"Konteks proyek, tolong."**
+
 ---
 
 ## Apa yang kamu dapatkan

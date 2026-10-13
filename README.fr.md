@@ -68,6 +68,8 @@ Un **document unique** (`PROJECT_CONTEXT.md`) que vous collez dans n'importe que
 5. **Boucle :** l'IA envoie un bloc → copiez dans `_work/input.txt` → lancez `python run.py` → renvoyez `_work/output.txt`. Répétez.
 6. **Gardez la boucle jusqu'à la fin du projet.** Ne laissez pas l'IA vous en sortir — pas de commandes shell dans le chat, pas de scripts rapides. La réponse est toujours : *"Mets-le dans input.txt."*
 
+> **Astuce :** si l'IA dérive - suggère des commandes shell dans le chat, saute le contexte - dites : **« Contexte du projet, s'il te plaît. »**
+
 ---
 
 ## Ce que vous obtenez

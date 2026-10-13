@@ -68,6 +68,8 @@ Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJE
 5. **Döngü:** AI bir blok gönderir → `_work/input.txt`'e kopyala → `python run.py` çalıştır → `_work/output.txt`'i geri gönder. Tekrarla.
 6. **Proje bitene kadar döngüyü sürdür.** AI'nın seni dışarı çekmesine izin verme — sohbette shell komutu yok, hızlı script yok. Cevap her zaman: *"input.txt'e koy."*
 
+> **İpucu:** AI saparsa - sohbette shell komutları önerirse, bağlamı atlarsa - şöyle de: **"Proje bağlamı, lütfen."**
+
 ---
 
 ## Ne elde edersin

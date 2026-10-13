@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P94 |
-| Last commit | `a6697f6` |
-| Time | 2026-10-13 17:05 |
-| MSG-SEED | `c472dd7d` |
+| Last patch | P95 |
+| Last commit | `4e899be` |
+| Time | 2026-10-13 17:07 |
+| MSG-SEED | `cda8fe17` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2319,11 +2319,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.4.5` |
-| **Last commit** | Section 0-C-19 (user's enforcement role) |
-| **Last work** | v1.4.5: Section 0-C-19 + ADR-26 — the user can say "Project context, please." to restore discipline; extended Section 34-4 golden tips |
+| **Last safe tag** | `v1.4.6` |
+| **Last commit** | pro-tip in all 24 READMEs |
+| **Last work** | v1.4.6: added "Project context, please." pro-tip after step 6 in all 24 README languages |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.5 — released |
+| **Current phase** | v1.4.6 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; gather community feedback |

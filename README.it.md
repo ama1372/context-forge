@@ -68,6 +68,8 @@ Un **documento unico** (`PROJECT_CONTEXT.md`) che incolli in qualsiasi chat IA �
 5. **Loop:** l'IA invia un blocco → copia in `_work/input.txt` → esegui `python run.py` → rimanda `_work/output.txt`. Ripeti.
 6. **Mantieni il loop finché il progetto non è finito.** Non lasciare che l'IA ti tiri fuori — niente comandi shell in chat, niente script rapidi. La risposta è sempre: *"Mettilo in input.txt."*
 
+> **Consiglio:** se l'IA devia - suggerisce comandi shell in chat, salta il contesto - di': **"Contesto del progetto, per favore."**
+
 ---
 
 ## Cosa ottieni

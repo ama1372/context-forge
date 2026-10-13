@@ -68,6 +68,8 @@ Ett **enda dokument** (`PROJECT_CONTEXT.md`) som du klistrar in i vilken AI-chat
 5. **Slinga:** AI:n skickar ett block → kopiera till `_work/input.txt` → kör `python run.py` → skicka `_work/output.txt` tillbaka. Upprepa.
 6. **Håll slingan tills projektet är klart.** Låt inte AI:n dra ut dig — inga shell-kommandon i chatten, inga snabba skript. Svaret är alltid: *"Lägg det i input.txt."*
 
+> **Tips:** om AI:n driver iväg - föreslår shell-kommandon i chatten, hoppar över kontext - säg: **"Projektkontext, tack."**
+
 ---
 
 ## Vad du får
