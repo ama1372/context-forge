@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P99 |
-| Last commit | `ab5a919` |
-| Time | 2026-10-13 22:47 |
-| MSG-SEED | `2fc57b0b` |
+| Last patch | P101 |
+| Last commit | `29516f2` |
+| Time | 2026-10-13 22:52 |
+| MSG-SEED | `91b4b593` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2435,11 +2435,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.4.8` |
-| **Last commit** | LRM bidi marks in RTL READMEs |
-| **Last work** | v1.4.8: added LRM (U+200E) around Latin runs in `README.fa.md`, `README.ar.md`, `README.he.md`; documented in Section 33-6 |
+| **Last safe tag** | `v1.4.9` |
+| **Last commit** | RLM (U+200F) after list markers in RTL READMEs |
+| **Last work** | v1.4.9: RLM after each list marker + at the start of plain RTL paragraphs in `README.fa.md`, `README.ar.md`, `README.he.md`. Fixes GitHub `dir="auto"` misdetecting lines as LTR when they start with a Latin run. Section 33-6 rewritten. |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.8 — released |
+| **Current phase** | v1.4.9 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; gather community feedback |

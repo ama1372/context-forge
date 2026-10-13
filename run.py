@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.4.8"
+VERSION = "1.4.9"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
