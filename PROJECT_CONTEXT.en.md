@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P91 |
-| Last commit | `a5bb411` |
-| Time | 2026-10-13 03:02 |
-| MSG-SEED | `bb9adecb` |
+| Last patch | P92 |
+| Last commit | `b4a5f74` |
+| Time | 2026-10-13 16:57 |
+| MSG-SEED | `00f491b6` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2240,11 +2240,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.4.2` |
-| **Last commit** | `--init` safety + Section 35 re-embed |
-| **Last work** | v1.4.2: `do_init` no longer wipes input.txt; correct filename in messages; Section 35 refreshed |
+| **Last safe tag** | `v1.4.3` |
+| **Last commit** | binary-mode writes (Python 3.14 + Windows fix) |
+| **Last work** | v1.4.3: `write()` uses binary mode; all `Path.write_text()` calls replaced; EOL preserved via `read_raw`/`write_preserve_eol`; ADR-25 |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.2 — released |
+| **Current phase** | v1.4.3 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; gather community feedback |
@@ -2525,6 +2525,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-25: Binary-mode writes (Python 3.14 + Windows)**
+
+- **Decision:** every write in `run.py` goes through `write()` which opens the file in binary mode (`'wb'`) and writes `text.encode('utf-8')`. No `Path.write_text()` calls remain.
+- **Reason:** Python 3.14 + Windows text-mode `write_text` hits `OSError: [Errno 22] Invalid argument` on very large strings (observed on a ~200 KB file in a sibling project). Binary writes are deterministic, cross-platform, avoid implicit `\n` → `\r\n` translation (which could double EOL when the caller already passed `crlf(text)`), and are faster.
+- **Alternatives:** keep text-mode + catch the error (rejected — silent data loss); downgrade Python (rejected — users control their runtime); write in chunks (rejected — doesn't fix the underlying text-mode bug).
 
 **ADR-24: `--init` is non-destructive (Section 5-1, Section 32-2)**
 

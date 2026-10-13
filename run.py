@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.4.2"
+VERSION = "1.4.3"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -131,7 +131,29 @@ def write(p, t):
         print(f"  [DRY] would write {p} ({len(t)} chars)")
         return
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(t, encoding='utf-8')
+    # Binary write: Python 3.14 + Windows text-mode hits EINVAL on very large
+    # strings, and text-mode also translates \n -> \r\n implicitly (double
+    # EOL when the caller already passed crlf(text)). Writing raw UTF-8 bytes
+    # is deterministic, cross-platform, and callers control EOL explicitly.
+    with open(str(p), 'wb') as f:
+        f.write(t.encode('utf-8'))
+
+
+def read_raw(p):
+    """Return (text, original_eol). text is \\n-normalized; eol is '\\n' or '\\r\\n'."""
+    raw = p.read_bytes()
+    eol = '\r\n' if b'\r\n' in raw else '\n'
+    text = raw.decode('utf-8', errors='replace')
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    return text, eol
+
+
+def write_preserve_eol(p, text, eol):
+    """Write text with the given EOL (re-expands \\n if eol=='\\r\\n')."""
+    if eol == '\r\n':
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        text = text.replace('\n', '\r\n')
+    write(p, text)
 
 
 def lf(t):   return t.replace('\r\n', '\n').replace('\r', '\n')
@@ -179,7 +201,7 @@ def load_cache():
 
 def save_cache(c):
     WORK.mkdir(parents=True, exist_ok=True)
-    CACHE.write_text(json.dumps(c, indent=2, ensure_ascii=False), encoding='utf-8')
+    write(CACHE, json.dumps(c, indent=2, ensure_ascii=False))
 
 
 def load_config():
@@ -421,7 +443,7 @@ def read_cmd_directive_only():
         if not removed and re.match(r'^#@CMD:', ln.strip()):
             removed = True; continue
         new_lines.append(ln)
-    INPUT.write_text('\n'.join(new_lines), encoding='utf-8')
+    write(INPUT, '\n'.join(new_lines))
     print(f"[run.py] #@CMD: {' '.join(cmd_args)}")
     return cmd_args
 
@@ -677,8 +699,7 @@ def _rate_warn_line():
 
 def _rate_warn_write():
     WORK.mkdir(parents=True, exist_ok=True)
-    LAST_RUN.write_text(datetime.now().isoformat(timespec='seconds'),
-                        encoding='utf-8')
+    write(LAST_RUN, datetime.now().isoformat(timespec='seconds'))
 
 
 def _git_head():
@@ -695,7 +716,10 @@ def _update_auto_block(patch_id, seed):
     if not ctx.exists():
         ctx = Path("PROJECT_CONTEXT.md")
     if not ctx.exists(): return
-    text = ctx.read_text(encoding="utf-8")
+    try:
+        text, eol = read_raw(ctx)
+    except Exception:
+        return
     START, END_MARK = "<!-- AUTO:START -->", "<!-- AUTO:END -->"
     if START not in text or END_MARK not in text: return
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -713,7 +737,7 @@ def _update_auto_block(patch_id, seed):
     )
     before = text[:text.index(START)]
     after = text[text.index(END_MARK) + len(END_MARK):]
-    ctx.write_text(before + block + after, encoding="utf-8")
+    write_preserve_eol(ctx, before + block + after, eol)
 
 
 def do_apply(patch_id=None):
@@ -875,7 +899,7 @@ def do_apply(patch_id=None):
     if INPUT.exists():
         try: INPUT.rename(arch)
         except Exception: shutil.copy(INPUT, arch)
-    INPUT.write_text('', encoding='utf-8')
+    write(INPUT, '')
     out.append("")
     out.append(f"[ARCH] {arch}")
     if fail == 0:
@@ -1197,7 +1221,7 @@ def _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, roadmap, paths):
     lines.append('[/CTX-DELTA]')
     lines.append('')
     WORK.mkdir(parents=True, exist_ok=True)
-    (WORK / 'ctx_delta.txt').write_text('\n'.join(lines), encoding='utf-8')
+    write(WORK / 'ctx_delta.txt', '\n'.join(lines))
 
 
 def do_file(name, flags=None):
@@ -1372,9 +1396,7 @@ def do_slim_context(args):
     )
     payload = result.rstrip() + footer
     if out_file:
-        p = Path(out_file)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(payload, encoding='utf-8')
+        write(Path(out_file), payload)
         print(f"[SLIM] wrote {out_file} ({new_lines} lines, dropped: {', '.join(sorted(dropped)) or 'none'})")
     else:
         print(payload)
@@ -1593,7 +1615,7 @@ def do_init():
     WORK.mkdir(parents=True, exist_ok=True)
     APPLIED.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
-        INPUT.write_text('', encoding='utf-8')
+        write(INPUT, '')
         print("[INIT] _work/input.txt created")
     else:
         size = INPUT.stat().st_size
@@ -1602,11 +1624,11 @@ def do_init():
         else:
             print("[INIT] _work/input.txt already empty")
     if not OUTPUT.exists():
-        OUTPUT.write_text('', encoding='utf-8')
+        write(OUTPUT, '')
         print("[INIT] _work/output.txt created")
     gi = Path('.gitignore')
     if not gi.exists():
-        gi.write_text(
+        write(gi,
             "# --- context-forge runtime ---\n"
             "_work/\n"
             "\n"
@@ -1636,8 +1658,7 @@ def do_init():
             "id_rsa\nid_ed25519\n.ssh/\n"
             "\n"
             "# --- IDE ---\n"
-            ".idea/\n.vscode/\n*.swp\n*.swo\n",
-            encoding='utf-8')
+            ".idea/\n.vscode/\n*.swp\n*.swo\n")
         print("[INIT] .gitignore written (extended default)")
     else:
         print("[INIT] .gitignore already exists - skipped")
@@ -1652,10 +1673,10 @@ def do_init():
             print(f"         - {s}")
         print("[INIT] Ensure they are in .gitignore before any commit.")
     if not CONFIG.exists():
-        CONFIG.write_text(json.dumps({
+        write(CONFIG, json.dumps({
             "build_cmd": None, "test_cmd": None,
             "build_cwd": ".", "test_cwd": "."
-        }, indent=2), encoding='utf-8')
+        }, indent=2))
         print("[INIT] _work/config.json written (edit build_cmd/test_cmd)")
     print("[INIT] _work/ ready")
     print()
@@ -1771,7 +1792,7 @@ def main():
     global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
-        INPUT.write_text('', encoding='utf-8')
+        write(INPUT, '')
 
     args = sys.argv[1:]
     if not args:
