@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P97 |
-| Last commit | `bc6b4ac` |
-| Time | 2026-10-13 17:59 |
-| MSG-SEED | `738bb724` |
+| Last patch | P99 |
+| Last commit | `ab5a919` |
+| Time | 2026-10-13 22:47 |
+| MSG-SEED | `2fc57b0b` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2435,11 +2435,11 @@ Every AI message has exactly four parts:
 
 | Field | Value |
 |-------|-------|
-| **Last safe tag** | `v1.4.7` |
-| **Last commit** | Section 0-C-20 (anti-duplication, Rule of Three) |
-| **Last work** | v1.4.7: Section 0-C-20 — Rule of Three + Wrong Abstraction (Sandi Metz) + Accidental Duplication (Uncle Bob). Section 21-1, 28-1, 29-1 updated. ADR-27. |
+| **Last safe tag** | `v1.4.8` |
+| **Last commit** | LRM bidi marks in RTL READMEs |
+| **Last work** | v1.4.8: added LRM (U+200E) around Latin runs in `README.fa.md`, `README.ar.md`, `README.he.md`; documented in Section 33-6 |
 | **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.7 — released |
+| **Current phase** | v1.4.8 — released |
 | **Completion** | 100% EN (single self-contained rule doc) |
 | **Last error** | none |
 | **Open issues** | First real test-project; gather community feedback |
