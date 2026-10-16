@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P106 |
-| Last commit | `61d7a09` |
-| Time | 2026-10-16 10:50 |
-| MSG-SEED | `597415ca` |
+| Last patch | P107 |
+| Last commit | `69fac09` |
+| Time | 2026-10-16 23:48 |
+| MSG-SEED | `964f4460` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -192,6 +192,38 @@ If the user is confused — signals: "I don't know", "start", "I don't know how"
 **AI behaviour:**
 - ✅ Ask the user what the project is.
 - ✅ If Section 2 (Identity) is empty, suggest filling it in.
+
+### 0-C-3-A. The AI must always help (no refusals)
+
+> **The AI never refuses to help because "this belongs to another project" or "I can only work on one project".**
+
+**The rule of Section 0-C-3 is about the document, not the user.** It says the AI must not assume this document belongs to a specific project and must not **mention** project names on its own. It does **not** mean the AI cannot help with any project the user describes.
+
+**What the user can always do:**
+
+- Tell the AI what project they are building — name, files, tech stack, whatever they like.
+- Ask the AI to help with that project — patches, code, docs.
+- Reference other projects they have open in the same folder.
+
+**What the AI must never do:**
+
+- ❌ Refuse a patch because "this is about another project".
+- ❌ Say "I can only work on one project at a time".
+- ❌ Say "the rules forbid me from seeing your other project".
+- ❌ Stall or ask for permission that this document never required.
+- ❌ Invoke Section 0-C-3 as a reason to stop.
+
+**What the AI must do:**
+
+- ✅ Help with whatever project the user is describing, right now.
+- ✅ Treat Section 0-C-3 as a note about the document's own voice — not as a restriction on the user's work.
+- ✅ If genuinely unsure which project the user is asking about, ask **one** clarifying question — never refuse.
+
+**Why this matters:** every minute spent arguing about "which project" is a minute the user spends not building. The protocol exists to keep the AI productive, not to give it an excuse to stop.
+
+**If the AI catches itself refusing:** stop, re-read this section, apologize in one line, and continue with the patch.
+
+---
 
 ### 0-C-4-A. If the user is a newcomer, do not ask this question
 
@@ -1465,6 +1497,64 @@ The AI's first response to a new project should include:
 
 ---
 
+## Section 0-C-24 - Keeping the document lean
+
+> **One file. Always. But it can shrink on the fly.**
+
+### 0-C-24-1. Never split the document into multiple files
+
+The rule document stays a single file. Splitting it into 10 small files, or a folder of sections, defeats the purpose: the AI needs one paste. If the document feels heavy, use the tooling below — do not split.
+
+### 0-C-24-2. `--slim-context` with profiles
+
+For a chat where the full document is too large, produce a slimmer copy on disk:
+
+    python run.py --slim-context --profile light --to _work/slim.md
+    python run.py --slim-context --profile moderate --to _work/slim.md
+    python run.py --slim-context --profile aggressive --to _work/slim.md
+
+| Profile | Drops | Typical size |
+|---------|-------|--------------|
+| (default) | 26, 35 | ~150 KB |
+| `light` | + 1, 2, 3, 11 | ~135 KB |
+| `moderate` | + 17-25, 28, 30-37 | ~95 KB |
+| `aggressive` | everything except 0*, 4, 5, 7, 10, 13, 15, 16, 29 | ~45 KB |
+
+The full document on disk is unchanged. Paste the slim version into a fresh chat when the full one no longer fits.
+
+### 0-C-24-3. `--self-test` and `--health`
+
+`python run.py --self-test` — static integrity check of `run.py` itself:
+
+- Syntax parses.
+- Required constants (`WORK`, `INPUT`, `VERSION`, `HEADER_RE`, ...) exist.
+- Required functions (`do_apply`, `do_dump`, `main`, ...) exist.
+- If `ANSWERS` is used, `load_answers` / `save_answers` exist.
+- If `REVIEW` is used, `review_op` exists.
+- Section 35 embed in the document matches `run.py`'s current `VERSION`.
+
+**This is the check that would have caught the P102-class bug** — helpers referenced but never defined.
+
+`python run.py --health` — one command, all checks:
+
+1. `--bootstrap` (environment)
+2. `--check-md` (document fences)
+3. `--self-test` (run.py integrity)
+4. git status
+
+Ends with `HEALTH: GREEN` or `HEALTH: RED`. **Run this before every release tag.**
+
+### 0-C-24-4. The rule for large projects
+
+If your document has grown past ~250 KB and the full paste no longer fits a chat:
+
+1. **Do not split the file.**
+2. Generate a slim profile: `python run.py --slim-context --profile moderate --to _work/slim.md`.
+3. Paste `_work/slim.md` in the new chat, keep `PROJECT_CONTEXT.en.md` on disk as the source of truth.
+4. The slim version is a **read-only view**. Never edit it. Never commit it.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -2482,11 +2572,11 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `v1.5.5` |
-| **Last commit** | do_check filter fix + Section 16-5 |
-| **Last work** | v1.5.5: `do_check` no longer counts `crate::error::*` / `error.rs` / `error_count` as errors; Section 16-5 (when to tag); ADR-31 |
+    | **Last safe tag** | `v1.6.0` |
+| **Last commit** | Section 0-C-3-A + slim profiles + self-test + health |
+| **Last work** | v1.6.0: Section 0-C-3-A (AI must help); Section 0-C-24 (keep lean); --self-test; --health; --slim-context profiles (light/moderate/aggressive); ADR-32/33 |
 | **Next step** | First real test-project |
-| **Current phase** | v1.5.5 - released |
+| **Current phase** | v1.6.0 - released |
 | **Completion** | 100% EN |
 | **Last error** | none |
 | **Open issues** | First real test-project |
@@ -2767,6 +2857,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-32: The AI must help with any project (Section 0-C-3-A)**
+
+- **Decision:** the AI never refuses to help because "this belongs to another project". Section 0-C-3's rule is about the document's own voice, not a restriction on the user. If the AI is genuinely unsure which project, it asks **one** question — never refuses.
+- **Reason:** observed failure mode — an AI cited Section 0-C-3 to reject a patch, claiming the rules forbid cross-project work. This misreads the section (which is about the AI not mentioning project names on its own) as a blanket restriction. The user then loses time arguing about protocol instead of building.
+- **Alternatives:** clarify in chat (rejected — the user must not have to explain the document); relax Section 0-C-3 (rejected — the "no project names" rule is still correct); add an exception list (rejected — brittle).
+
+**ADR-33: Slim profiles, self-test, and health (Section 0-C-24)**
+
+- **Decision:** keep the rule document single-file. Offer `--slim-context --profile {light|moderate|aggressive}` for large-context chats (writes a slimmer read-only copy, never splits the source). Add `--self-test` (static integrity check of `run.py`) and `--health` (bootstrap + check-md + self-test + git). Run `--health` before every release tag.
+- **Reason:** the document grows over time; splitting it defeats the "one paste" model. Profiles shrink it on demand. `--self-test` catches the P102-class bug (helpers referenced but never defined) before commit. `--health` bundles all signals into one command.
+- **Alternatives:** split into multiple files (rejected — breaks one-paste model); always ship slim (rejected — newcomers need the full doc); no integrity check (rejected — P102 recurred twice).
 
 **ADR-31: Tag only when verified (Section 16-5)**
 

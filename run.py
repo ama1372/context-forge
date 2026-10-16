@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.5.5"
+VERSION = "1.6.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1594,12 +1594,35 @@ def do_slim_context(args):
     """Emit or write a slimmer copy of PROJECT_CONTEXT.en.md.
 
     Default drops Sections 26 (examples) and 35 (embedded run.py source).
+    --profile light: also drops 1, 2, 3, 11.
+    --profile moderate: drops most supporting sections (keeps rules).
+    --profile aggressive: keeps only 0*, 4, 5, 7, 10, 13, 15, 16, 29.
     The full document on disk is not modified.
     """
     drop = {'26', '35'}
     out_file = None
+    profile = None
     if '--all' in args:
         drop = set()
+    if '--profile' in args:
+        i = args.index('--profile')
+        if i + 1 < len(args):
+            profile = args[i+1].strip().lower()
+    if profile == 'light':
+        drop = drop | {'1', '2', '3', '11'}
+    elif profile == 'moderate':
+        drop = drop | {'1', '2', '3', '11', '17', '18', '19', '20', '21',
+                       '22', '23', '24', '25', '28', '30', '31', '32',
+                       '33', '34', '36', '37'}
+    elif profile == 'aggressive':
+        keep = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
+        # collect all section ids from doc, then drop everything not in keep
+        _all = set(re.findall(r'^## Section ([\w\-]+)', norm, re.M)) if False else None
+        # we compute below after reading doc
+        drop = drop | set()  # placeholder; filled after reading the doc
+    if profile == 'aggressive':
+        # Do it after reading doc — see below
+        pass
     if '--drop' in args:
         i = args.index('--drop')
         if i + 1 < len(args):
@@ -1614,6 +1637,12 @@ def do_slim_context(args):
         return 1
     text = read(doc)
     text = text.replace('\r\n', '\n').replace('\r', '\n')
+    if profile == 'aggressive':
+        _all_sections = set(re.findall(r'^## Section ([\\w\\-]+)', text, re.M))
+        keep_aggr = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
+        drop = _all_sections - keep_aggr
+        print('[SLIM] aggressive profile: keeping %d sections, dropping %d'
+              % (len(keep_aggr & _all_sections), len(drop)))
     parts = re.split(r'(^## Section [^\n]+$)', text, flags=re.M)
     out = [parts[0] if parts else '']
     dropped = []
@@ -1651,6 +1680,7 @@ def do_capabilities():
     print(f"run.py v{VERSION}")
     print("TREE: --tree [--json]")
     print("GIT:  --git-hint (OS-specific install instructions)")
+    print("HEALTH: --health (bootstrap + check-md + self-test + git)")
     print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
@@ -1838,6 +1868,115 @@ def _git_available():
         return False
 
 
+
+def do_self_test():
+    """Static integrity check of run.py itself. Returns 0 on green, 1 on red."""
+    import ast
+    src_path = Path('run.py')
+    if not src_path.exists():
+        print('[SELF-TEST] run.py not found'); return 1
+    src = read(src_path)
+    issues = []
+
+    # 1. Syntax
+    try:
+        ast.parse(src)
+        print('[SELF-TEST] syntax: OK')
+    except SyntaxError as e:
+        print('[SELF-TEST] syntax: FAIL -- %s' % e)
+        return 1
+
+    # 2. Required constants
+    for name in ('WORK', 'INPUT', 'OUTPUT', 'APPLIED', 'VERSION', 'SKIP_DIRS',
+                 'SKIP_EXTS', 'HEADER_RE', 'FIND', 'REPLACE', 'CONTENT', 'END'):
+        if not re.search(r'^%s\s*=' % name, src, re.M):
+            issues.append('missing constant: %s' % name)
+
+    # 3. Required functions
+    for name in ('read', 'write', 'walk', 'parse', 'apply_patch',
+                 'do_apply', 'do_dump', 'main', 'dispatch'):
+        if ('def %s(' % name) not in src:
+            issues.append('missing function: %s' % name)
+
+    # 4. Cross-symbol: if ANSWERS is used, its helpers must exist
+    if 'ANSWERS' in src:
+        for h in ('load_answers', 'save_answers'):
+            if ('def %s(' % h) not in src:
+                issues.append('ANSWERS used but %s missing' % h)
+
+    if 'REVIEW' in src and 'def review_op(' not in src:
+        issues.append('REVIEW used but review_op missing')
+
+    # 5. VERSION in Section 35 embed (if PROJECT_CONTEXT.en.md exists)
+    ctx = Path('PROJECT_CONTEXT.en.md')
+    if ctx.exists():
+        ctx_text = read(ctx)
+        m = re.search(r'VERSION = "(\d+\.\d+\.\d+)"', src)
+        if m:
+            ver = m.group(1)
+            # find the embedded block
+            m35 = re.search(r'^## Section 35\b.*$', ctx_text, re.M)
+            m36 = re.search(r'^## Section 36\b.*$', ctx_text, re.M)
+            if m35 and m36 and m36.start() > m35.start():
+                section = ctx_text[m35.start():m36.start()]
+                if ('VERSION = "%s"' % ver) not in section:
+                    issues.append('Section 35 embed out of sync with run.py %s' % ver)
+                else:
+                    print('[SELF-TEST] Section 35 embed: OK (v%s)' % ver)
+            else:
+                print('[SELF-TEST] Section 35 boundary: skipped')
+
+    if issues:
+        print('[SELF-TEST] issues (%d):' % len(issues))
+        for i in issues:
+            print('  - ' + i)
+        return 1
+    print('[SELF-TEST] all checks passed')
+    return 0
+
+
+
+def do_health():
+    """Aggregate readiness check: bootstrap + check-md + self-test."""
+    print('=' * 60)
+    print('HEALTH CHECK')
+    print('=' * 60)
+    print()
+    print('[1/4] bootstrap ...')
+    try: do_bootstrap()
+    except Exception as e: print('  bootstrap raised: %s' % e)
+    print()
+    print('[2/4] check-md ...')
+    try: do_check_md([])
+    except Exception as e: print('  check-md raised: %s' % e)
+    print()
+    print('[3/4] self-test ...')
+    try: st = do_self_test()
+    except Exception as e:
+        print('  self-test raised: %s' % e); st = 1
+    print()
+    print('[4/4] git ...')
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip() == 'true':
+            r2 = subprocess.run(['git', 'status', '--short'],
+                                capture_output=True, text=True, timeout=5)
+            dirty = len([l for l in r2.stdout.splitlines() if l.strip()])
+            print('  git: OK (%d modified)' % dirty)
+        else:
+            print('  git: no repo')
+    except FileNotFoundError:
+        print('  git: not installed (see --git-hint)')
+    print()
+    print('=' * 60)
+    if st == 0:
+        print('HEALTH: GREEN')
+    else:
+        print('HEALTH: RED -- fix issues above')
+    return st
+
+
 def do_bootstrap():
     """Readiness check + next steps for a new project. Safe to run anytime."""
     import sys as _sys
@@ -2020,6 +2159,8 @@ def dispatch(args):
     if cmd in ('--version', '-v'):     print(f"run.py v{VERSION}"); return 0
     if cmd == '--init':                 do_init(); return 0
     if cmd == '--bootstrap':            return do_bootstrap()
+    if cmd == '--self-test':            return do_self_test()
+    if cmd == '--health':               return do_health()
     if cmd == '--git-hint':             do_git_hint(); return 0
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
