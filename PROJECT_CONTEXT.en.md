@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P107 |
-| Last commit | `69fac09` |
-| Time | 2026-10-16 23:48 |
-| MSG-SEED | `964f4460` |
+| Last patch | P108 |
+| Last commit | `c772e65` |
+| Time | 2026-10-16 23:51 |
+| MSG-SEED | `fdfbfead` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2572,11 +2572,11 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `v1.6.0` |
-| **Last commit** | Section 0-C-3-A + slim profiles + self-test + health |
-| **Last work** | v1.6.0: Section 0-C-3-A (AI must help); Section 0-C-24 (keep lean); --self-test; --health; --slim-context profiles (light/moderate/aggressive); ADR-32/33 |
+    | **Last safe tag** | `v1.6.1` |
+| **Last commit** | fix self-test false positives + aggressive profile regex + re-embed Section 35 |
+| **Last work** | v1.6.1: self-test handles tuple-unpack constants; aggressive slim profile uses manual section scan; Section 35 re-embedded at v1.6.1 |
 | **Next step** | First real test-project |
-| **Current phase** | v1.6.0 - released |
+| **Current phase** | v1.6.1 - released |
 | **Completion** | 100% EN |
 | **Last error** | none |
 | **Open issues** | First real test-project |
@@ -4243,7 +4243,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.4.2"
+VERSION = "1.6.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -4283,6 +4283,13 @@ FENCE_RE = re.compile(r'^\s*```[a-zA-Z0-9_+\-]*\s*$')
 AUTO_VERIFY = False
 FORCE_APPLY = False
 PROGRESS = True
+
+ANSWERS = {}
+ANSWERS_FILE = WORK / 'answers.json'
+INTERACTIVE = None
+REVIEW = False
+_review_auto_apply = False
+
 
 
 def _progress(msg):
@@ -4327,7 +4334,29 @@ def write(p, t):
         print(f"  [DRY] would write {p} ({len(t)} chars)")
         return
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(t, encoding='utf-8')
+    # Binary write: Python 3.14 + Windows text-mode hits EINVAL on very large
+    # strings, and text-mode also translates \n -> \r\n implicitly (double
+    # EOL when the caller already passed crlf(text)). Writing raw UTF-8 bytes
+    # is deterministic, cross-platform, and callers control EOL explicitly.
+    with open(str(p), 'wb') as f:
+        f.write(t.encode('utf-8'))
+
+
+def read_raw(p):
+    """Return (text, original_eol). text is \\n-normalized; eol is '\\n' or '\\r\\n'."""
+    raw = p.read_bytes()
+    eol = '\r\n' if b'\r\n' in raw else '\n'
+    text = raw.decode('utf-8', errors='replace')
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    return text, eol
+
+
+def write_preserve_eol(p, text, eol):
+    """Write text with the given EOL (re-expands \\n if eol=='\\r\\n')."""
+    if eol == '\r\n':
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        text = text.replace('\n', '\r\n')
+    write(p, text)
 
 
 def lf(t):   return t.replace('\r\n', '\n').replace('\r', '\n')
@@ -4375,7 +4404,7 @@ def load_cache():
 
 def save_cache(c):
     WORK.mkdir(parents=True, exist_ok=True)
-    CACHE.write_text(json.dumps(c, indent=2, ensure_ascii=False), encoding='utf-8')
+    write(CACHE, json.dumps(c, indent=2, ensure_ascii=False))
 
 
 def load_config():
@@ -4446,6 +4475,7 @@ def read_directives(text):
     commit_if = None
     next_step = None
     roadmap = []
+    asks = []
     idx = 0
     while idx < len(lines):
         s = lines[idx].strip()
@@ -4490,11 +4520,23 @@ def read_directives(text):
         if m:
             roadmap = [x.strip() for x in m.group(1).split('|') if x.strip()]
             idx += 1; continue
+        m = re.match(r'^#@ASK:\s*(.+)$', s)
+        if m:
+            body = m.group(1)
+            parts = [p.strip() for p in body.split('|', 2)]
+            if len(parts) >= 2:
+                name = parts[0]
+                question = parts[1]
+                default = ''
+                if len(parts) >= 3 and parts[2].lower().startswith('default='):
+                    default = parts[2][8:].strip()
+                asks.append((name, question, default))
+            idx += 1; continue
         # Unknown #@ directive — skip, don't break.
         idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
             commit_msg, tag_name, nodump, dump_mode, push,
-            commit_if, next_step, roadmap,
+            commit_if, next_step, roadmap, asks,
             '\n'.join(lines[idx:]))
 
 
@@ -4514,7 +4556,7 @@ def need_to_args(need_args):
     return list(need_args)
 
 
-def eval_condition(text):
+def eval_condition(text, answers=None):
     """Evaluate an #@IF / #@ELIF condition. Returns True/False.
 
     Supported forms:
@@ -4523,6 +4565,20 @@ def eval_condition(text):
       contains <path> <text>     - file exists and contains the text
     """
     text = text.strip()
+    if answers is None:
+        answers = ANSWERS
+    m = re.match(r'^answer\(\s*([^)]+?)\s*\)\s*(==|!=)\s*["\']([^"\']*)["\']\s*$', text)
+    if m:
+        name = m.group(1).strip()
+        op_a = m.group(2)
+        expected = m.group(3)
+        actual = answers.get(name, '')
+        return (actual == expected) if op_a == '==' else (actual != expected)
+    m = re.match(r'^answer\(\s*([^)]+?)\s*\)\s*$', text)
+    if m:
+        name = m.group(1).strip()
+        actual = (answers.get(name, '') or '').strip().lower()
+        return actual not in ('', 'no', 'n', 'false', '0', 'off')
     parts = text.split(None, 1)
     if not parts:
         return False
@@ -4547,7 +4603,55 @@ def eval_condition(text):
     return False
 
 
-def apply_conditions(text):
+
+def load_answers():
+    if ANSWERS_FILE.exists():
+        try:
+            return json.loads(ANSWERS_FILE.read_text(encoding='utf-8'))
+        except Exception:
+            return {}
+    return {}
+
+
+def save_answers(a):
+    WORK.mkdir(parents=True, exist_ok=True)
+    write(ANSWERS_FILE, json.dumps(a, indent=2, ensure_ascii=False))
+
+
+def _is_interactive():
+    if INTERACTIVE is True: return True
+    if INTERACTIVE is False: return False
+    try: return sys.stdin.isatty()
+    except Exception: return False
+
+
+def collect_answers(asks, answers, out=None):
+    result = dict(answers)
+    interactive = _is_interactive()
+    for name, question, default in asks:
+        if name in result and result[name] != '':
+            if out is not None:
+                out.append(f"[ASK] {name}: {question} -> cached: {result[name]!r}")
+            continue
+        if interactive:
+            p = question + ((' [' + default + ']') if default else '') + ': '
+            try:
+                sys.stderr.write(p); sys.stderr.flush()
+                r = sys.stdin.readline()
+                a = default if r == '' else (r.rstrip('\n').rstrip('\r') or default)
+            except (EOFError, KeyboardInterrupt):
+                a = default
+            result[name] = a
+            if out is not None:
+                out.append(f"[ASK] {name}: {question} -> {a!r}")
+        else:
+            result[name] = default
+            if out is not None:
+                out.append(f"[ASK] {name}: {question} -> default: {default!r} (non-interactive)")
+    return result
+
+
+def apply_conditions(text, answers=None):
     """Filter out lines inside inactive #@IF / #@ELSE blocks.
 
     Syntax:
@@ -4561,6 +4665,8 @@ def apply_conditions(text):
 
     Nesting is supported. Unknown lines pass through unchanged.
     """
+    if answers is None:
+        answers = ANSWERS
     lines = text.split('\n')
     out = []
     stack = []  # each: {'taken': bool, 'active': bool}
@@ -4568,7 +4674,7 @@ def apply_conditions(text):
         s = line.strip()
         m = re.match(r'^#@IF:\s*(.+)$', s)
         if m:
-            cond = eval_condition(m.group(1))
+            cond = eval_condition(m.group(1), answers)
             parent = all(f['active'] for f in stack) if stack else True
             stack.append({'taken': cond, 'active': parent and cond})
             continue
@@ -4581,7 +4687,7 @@ def apply_conditions(text):
             if top['taken']:
                 top['active'] = False
             else:
-                cond = eval_condition(m.group(1))
+                cond = eval_condition(m.group(1), answers)
                 top['active'] = parent and cond
                 top['taken'] = top['taken'] or cond
             continue
@@ -4609,7 +4715,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -4617,7 +4723,7 @@ def read_cmd_directive_only():
         if not removed and re.match(r'^#@CMD:', ln.strip()):
             removed = True; continue
         new_lines.append(ln)
-    INPUT.write_text('\n'.join(new_lines), encoding='utf-8')
+    write(INPUT, '\n'.join(new_lines))
     print(f"[run.py] #@CMD: {' '.join(cmd_args)}")
     return cmd_args
 
@@ -4873,8 +4979,7 @@ def _rate_warn_line():
 
 def _rate_warn_write():
     WORK.mkdir(parents=True, exist_ok=True)
-    LAST_RUN.write_text(datetime.now().isoformat(timespec='seconds'),
-                        encoding='utf-8')
+    write(LAST_RUN, datetime.now().isoformat(timespec='seconds'))
 
 
 def _git_head():
@@ -4891,7 +4996,10 @@ def _update_auto_block(patch_id, seed):
     if not ctx.exists():
         ctx = Path("PROJECT_CONTEXT.md")
     if not ctx.exists(): return
-    text = ctx.read_text(encoding="utf-8")
+    try:
+        text, eol = read_raw(ctx)
+    except Exception:
+        return
     START, END_MARK = "<!-- AUTO:START -->", "<!-- AUTO:END -->"
     if START not in text or END_MARK not in text: return
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -4909,18 +5017,138 @@ def _update_auto_block(patch_id, seed):
     )
     before = text[:text.index(START)]
     after = text[text.index(END_MARK) + len(END_MARK):]
-    ctx.write_text(before + block + after, encoding="utf-8")
+    write_preserve_eol(ctx, before + block + after, eol)
+
+
+
+def detect_risk(op, project_root):
+    kind = op.get('kind', '')
+    path = op.get('path', '') or op.get('dst', '') or ''
+    risky = (path.startswith('..') or path.startswith('/')
+             or (len(path) > 1 and path[1] == ':'))
+    if kind == 'delete':
+        return 'HIGH', 'deletes a file'
+    if kind == 'move':
+        return ('HIGH', 'outside project') if risky else ('MEDIUM', 'move')
+    if kind == 'cmd':
+        script = (op.get('script') or '').lower()
+        for bad, why in [('git push', 'git push'), ('git remote', 'git remote'),
+                         ('git reset', 'git reset'), ('rm -rf', 'rm -rf'),
+                         ('remove-item -recurse', 'Remove-Item -Recurse'),
+                         ('del /f', 'del /f')]:
+            if bad in script:
+                return 'HIGH', 'cmd: %s' % why
+        return 'LOW', 'cmd'
+    if kind == 'file':
+        for entry in op.get('patches', []):
+            if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+                continue
+            alts, rep = entry
+            first = alts[0] if isinstance(alts, list) and alts else (alts or '')
+            fl = first.count(chr(10)) + 1
+            rl = (rep or '').count(chr(10)) + 1
+            if rl < fl:
+                return 'MEDIUM', 'removes %d lines' % (fl - rl)
+        return ('HIGH', 'outside') if risky else ('LOW', 'edit')
+    if kind in ('create', 'mkdir'):
+        return ('HIGH', 'outside') if risky else ('LOW', kind)
+    return 'LOW', kind
+
+
+def _render_review(op, idx, total, root):
+    risk, why = detect_risk(op, root)
+    kind = op.get('kind', '')
+    NL = chr(10)
+    L = ['=' * 66, 'REVIEW [%d/%d] %s risk=%s (%s)' % (idx, total, kind.upper(), risk, why), '=' * 66]
+    if kind == 'file':
+        L.append('FILE: %s' % op.get('path', ''))
+        for j, entry in enumerate(op.get('patches', []), 1):
+            if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+                continue
+            alts, rep = entry
+            L.append('--- patch %d/%d ---' % (j, len(op['patches'])))
+            first = alts[0] if isinstance(alts, list) and alts else (alts or '')
+            L.append('<<< REMOVE >>>')
+            for ln in first.splitlines():
+                L.append('- ' + ln)
+            if isinstance(alts, list) and len(alts) > 1:
+                L.append('(+%d alt)' % (len(alts) - 1))
+            L.append('<<< ADD >>>')
+            for ln in (rep or '').splitlines():
+                L.append('+ ' + ln)
+    elif kind == 'create':
+        L.append('CREATE: %s' % op.get('path', ''))
+        for ln in (op.get('content') or '').splitlines():
+            L.append('+ ' + ln)
+    elif kind == 'delete':
+        L.append('DELETE: %s' % op.get('path', ''))
+    elif kind == 'move':
+        L.append('MOVE: %s -> %s' % (op.get('src', ''), op.get('dst', '')))
+    elif kind == 'mkdir':
+        L.append('MKDIR: %s' % op.get('path', ''))
+    elif kind == 'cmd':
+        L.append('CMD: %s' % op.get('desc', ''))
+        for ln in (op.get('script') or '').splitlines():
+            L.append('| ' + ln)
+    L.append('')
+    return NL.join(L), risk
+
+
+def _try_open(path):
+    for opener in (['code', str(path)], ['notepad', str(path)],
+                   ['xdg-open', str(path)], ['open', str(path)]):
+        try:
+            subprocess.Popen(opener, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return opener[0]
+        except FileNotFoundError:
+            continue
+        except Exception:
+            continue
+    return None
+
+
+def review_op(op, idx, total, root):
+    txt, risk = _render_review(op, idx, total, root)
+    write(WORK / 'review.diff', txt)
+    opener = _try_open(WORK / 'review.diff')
+    label = (op.get('path') or op.get('desc') or op.get('kind', ''))[:60]
+    sys.stderr.write(chr(10) + '[%d/%d] %s: %s risk=%s' % (idx, total, op['kind'].upper(), label, risk))
+    if opener:
+        sys.stderr.write('  (opened in %s)' % opener)
+    sys.stderr.write(chr(10) + 'Apply? [y]es / [n]o / [a]ll / [q]uit > ')
+    sys.stderr.flush()
+    try:
+        ans = sys.stdin.readline().strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        ans = 'q'
+    if ans in ('y', 'yes', ''): return 'yes'
+    if ans in ('n', 'no'): return 'no'
+    if ans in ('a', 'all'): return 'all'
+    if ans in ('q', 'quit'): return 'quit'
+    return 'no'
 
 
 def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
     rate_msg = _rate_warn_line()
+    global ANSWERS
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push,
-     commit_if, next_step, roadmap,
+     commit_if, next_step, roadmap, asks,
      remaining) = read_directives(content)
     if did is not None: patch_id = did
-    content = apply_conditions(remaining)
+    if asks:
+        try:
+            cached = load_answers()
+            ANSWERS = collect_answers(asks, cached)
+            try: save_answers(ANSWERS)
+            except Exception: pass
+        except Exception:
+            ANSWERS = {}
+    else:
+        try: ANSWERS = load_answers()
+        except Exception: ANSWERS = {}
+    content = apply_conditions(remaining, answers=ANSWERS)
 
     if patch_id is None:
         idfile = WORK / '.patch_id'
@@ -4949,10 +5177,21 @@ def do_apply(patch_id=None):
     ok = fail = skip = 0
     fail_files = set()
     total_ops = len(ops)
+    global _review_auto_apply
     for idx_op, op in enumerate(ops, 1):
         kind = op['kind']
         _label = op.get('path', '') or op.get('desc', '') or kind
         _progress(f"[P{patch_id}] {idx_op}/{total_ops} {_label[:50]}...\r")
+        if REVIEW and not _review_auto_apply:
+            decision = review_op(op, idx_op, total_ops, Path('.').resolve())
+            if decision == 'quit':
+                out.append(f"[REVIEW] quit at {idx_op}/{total_ops}")
+                break
+            if decision == 'all':
+                _review_auto_apply = True
+            elif decision == 'no':
+                out.append(f"[REVIEW] [{idx_op}/{total_ops}] skipped by user")
+                continue
 
         if kind == 'file':
             out.append(f"[P{patch_id}] [EDIT] {op['path']}")
@@ -5071,7 +5310,7 @@ def do_apply(patch_id=None):
     if INPUT.exists():
         try: INPUT.rename(arch)
         except Exception: shutil.copy(INPUT, arch)
-    INPUT.write_text('', encoding='utf-8')
+    write(INPUT, '')
     out.append("")
     out.append(f"[ARCH] {arch}")
     if fail == 0:
@@ -5277,13 +5516,42 @@ def do_status():
     print('\n'.join(out))
 
 
-def do_tree():
+def _tree_lines(rels):
+    tree = {}
+    for rel in rels:
+        parts = rel.split('/')
+        node = tree
+        for part in parts:
+            node = node.setdefault(part, {})
+    lines = []
+
+    def render(node, prefix=''):
+        items = sorted(node.items(),
+                       key=lambda kv: (len(kv[1]) == 0, kv[0].lower()))
+        for i, (name, sub) in enumerate(items):
+            last = (i == len(items) - 1)
+            glyph = '\u2514\u2500\u2500 ' if last else '\u251c\u2500\u2500 '
+            is_dir = bool(sub)
+            lines.append(prefix + glyph + name + ('/' if is_dir else ''))
+            if is_dir:
+                ext = '    ' if last else '\u2502   '
+                render(sub, prefix + ext)
+    render(tree)
+    return lines
+
+
+def do_tree(json_out=False):
     root = Path('.').resolve()
+    files = walk(root)
+    rels = [p.relative_to(root).as_posix() for p in files]
+    if json_out:
+        import json as _json
+        print(_json.dumps({'project': root.name, 'files': rels},
+                          indent=2, ensure_ascii=False))
+        return
     print(f"PROJECT: {root.name}")
-    for p in walk(root):
-        rel = p.relative_to(root)
-        depth = len(rel.parts) - 1
-        print(f"{'  ' * depth}{rel.name}")
+    for ln in _tree_lines(rels):
+        print(ln)
 
 
 def do_hash():
@@ -5393,7 +5661,7 @@ def _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, roadmap, paths):
     lines.append('[/CTX-DELTA]')
     lines.append('')
     WORK.mkdir(parents=True, exist_ok=True)
-    (WORK / 'ctx_delta.txt').write_text('\n'.join(lines), encoding='utf-8')
+    write(WORK / 'ctx_delta.txt', '\n'.join(lines))
 
 
 def do_file(name, flags=None):
@@ -5522,12 +5790,35 @@ def do_slim_context(args):
     """Emit or write a slimmer copy of PROJECT_CONTEXT.en.md.
 
     Default drops Sections 26 (examples) and 35 (embedded run.py source).
+    --profile light: also drops 1, 2, 3, 11.
+    --profile moderate: drops most supporting sections (keeps rules).
+    --profile aggressive: keeps only 0*, 4, 5, 7, 10, 13, 15, 16, 29.
     The full document on disk is not modified.
     """
     drop = {'26', '35'}
     out_file = None
+    profile = None
     if '--all' in args:
         drop = set()
+    if '--profile' in args:
+        i = args.index('--profile')
+        if i + 1 < len(args):
+            profile = args[i+1].strip().lower()
+    if profile == 'light':
+        drop = drop | {'1', '2', '3', '11'}
+    elif profile == 'moderate':
+        drop = drop | {'1', '2', '3', '11', '17', '18', '19', '20', '21',
+                       '22', '23', '24', '25', '28', '30', '31', '32',
+                       '33', '34', '36', '37'}
+    elif profile == 'aggressive':
+        keep = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
+        # collect all section ids from doc, then drop everything not in keep
+        _all = set(re.findall(r'^## Section ([\w\-]+)', norm, re.M)) if False else None
+        # we compute below after reading doc
+        drop = drop | set()  # placeholder; filled after reading the doc
+    if profile == 'aggressive':
+        # Do it after reading doc — see below
+        pass
     if '--drop' in args:
         i = args.index('--drop')
         if i + 1 < len(args):
@@ -5542,6 +5833,16 @@ def do_slim_context(args):
         return 1
     text = read(doc)
     text = text.replace('\r\n', '\n').replace('\r', '\n')
+    if profile == 'aggressive':
+        _all_sections = set()
+        for _l in text.split(chr(10)):
+            if _l.startswith("## Section "):
+                _p = _l.split(None, 3)
+                if len(_p) >= 3: _all_sections.add(_p[2])
+        keep_aggr = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
+        drop = _all_sections - keep_aggr
+        print('[SLIM] aggressive profile: keeping %d sections, dropping %d'
+              % (len(keep_aggr & _all_sections), len(drop)))
     parts = re.split(r'(^## Section [^\n]+$)', text, flags=re.M)
     out = [parts[0] if parts else '']
     dropped = []
@@ -5568,9 +5869,7 @@ def do_slim_context(args):
     )
     payload = result.rstrip() + footer
     if out_file:
-        p = Path(out_file)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(payload, encoding='utf-8')
+        write(Path(out_file), payload)
         print(f"[SLIM] wrote {out_file} ({new_lines} lines, dropped: {', '.join(sorted(dropped)) or 'none'})")
     else:
         print(payload)
@@ -5579,7 +5878,10 @@ def do_slim_context(args):
 
 def do_capabilities():
     print(f"run.py v{VERSION}")
-    print("FLAGS: --version --init --bootstrap --capabilities --status --tree --hash "
+    print("TREE: --tree [--json]")
+    print("GIT:  --git-hint (OS-specific install instructions)")
+    print("HEALTH: --health (bootstrap + check-md + self-test + git)")
+    print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
@@ -5614,10 +5916,23 @@ def do_check(args):
     except Exception as e:
         print(f"[FAIL] {e}"); return 2
     combined = (r.stdout or '') + '\n' + (r.stderr or '')
-    errs = [l for l in combined.splitlines()
-            if 'error' in l.lower() and 'error_count' not in l.lower()]
-    warns = [l for l in combined.splitlines()
-             if 'warning' in l.lower() and 'warning_count' not in l.lower()]
+    # Robust error detection: a real error line STARTS with the keyword
+    # (followed by :, [, whitespace, or end of line). Avoids false positives
+    # from paths/identifiers like `crate::error::Error`, `error.rs`,
+    # `SomeError:` type names in prose, or `error_count`.
+    err_re = re.compile(r'^error(?:\s|:|\[|$)', re.IGNORECASE)
+    warn_re = re.compile(r'^warning(?:\s|:|\[|$)', re.IGNORECASE)
+    errs = []
+    warns = []
+    for ln in combined.splitlines():
+        s = ln.lstrip()
+        low = s.lower()
+        if 'error_count' in low or 'warning_count' in low:
+            continue
+        if err_re.match(s):
+            errs.append(ln)
+        elif warn_re.match(s):
+            warns.append(ln)
     if quiet:
         print("clean" if not errs else f"{len(errs)} errors")
     else:
@@ -5714,6 +6029,154 @@ def cmd_find_dup(args):
     print(f"[FIND-DUP] {OUTPUT}")
 
 
+def do_git_hint():
+    """Print the OS-specific Git install command."""
+    print("[GIT HINT] Git is strongly recommended (auto-commit, auto-tag, rollback).")
+    print()
+    plat = sys.platform
+    if plat.startswith('win'):
+        print("Windows:")
+        print("  winget install --id Git.Git -e --source winget")
+        print("  or download: https://git-scm.com/download/win")
+    elif plat == 'darwin':
+        print("macOS:")
+        print("  brew install git")
+        print("  or: xcode-select --install")
+        print("  or download: https://git-scm.com/download/mac")
+    else:
+        print("Linux:")
+        print("  Debian/Ubuntu:  sudo apt install git")
+        print("  Fedora/RHEL:    sudo dnf install git")
+        print("  Arch:           sudo pacman -S git")
+        print("  (or use your distro's package manager)")
+    print()
+    print("After install:")
+    print("  1. Close and reopen your terminal (or restart the machine).")
+    print("  2. Verify: git --version")
+    print("  3. Re-run: python run.py --bootstrap")
+    print()
+    print("Without Git, patches still apply. You lose: auto-commit, auto-tag,")
+    print("git-based rollback, and #@PUSH:. See Section 0-C-23.")
+
+
+def _git_available():
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
+                           capture_output=True, text=True, timeout=5)
+        return r.returncode == 0 and r.stdout.strip() == 'true'
+    except Exception:
+        return False
+
+
+
+def do_self_test():
+    """Static integrity check of run.py itself. Returns 0 on green, 1 on red."""
+    import ast
+    src_path = Path('run.py')
+    if not src_path.exists():
+        print('[SELF-TEST] run.py not found'); return 1
+    src = read(src_path)
+    issues = []
+
+    # 1. Syntax
+    try:
+        ast.parse(src)
+        print('[SELF-TEST] syntax: OK')
+    except SyntaxError as e:
+        print('[SELF-TEST] syntax: FAIL -- %s' % e)
+        return 1
+
+    # 2. Required constants
+    for name in ('WORK', 'INPUT', 'OUTPUT', 'APPLIED', 'VERSION', 'SKIP_DIRS',
+                 'SKIP_EXTS', 'HEADER_RE', 'FIND', 'REPLACE', 'CONTENT', 'END'):
+        if not re.search(r'^%s\b\s*[,=]' % name, src, re.M):
+            issues.append('missing constant: %s' % name)
+
+    # 3. Required functions
+    for name in ('read', 'write', 'walk', 'parse', 'apply_patch',
+                 'do_apply', 'do_dump', 'main', 'dispatch'):
+        if ('def %s(' % name) not in src:
+            issues.append('missing function: %s' % name)
+
+    # 4. Cross-symbol: if ANSWERS is used, its helpers must exist
+    if 'ANSWERS' in src:
+        for h in ('load_answers', 'save_answers'):
+            if ('def %s(' % h) not in src:
+                issues.append('ANSWERS used but %s missing' % h)
+
+    if 'REVIEW' in src and 'def review_op(' not in src:
+        issues.append('REVIEW used but review_op missing')
+
+    # 5. VERSION in Section 35 embed (if PROJECT_CONTEXT.en.md exists)
+    ctx = Path('PROJECT_CONTEXT.en.md')
+    if ctx.exists():
+        ctx_text = read(ctx)
+        m = re.search(r'VERSION = "(\d+\.\d+\.\d+)"', src)
+        if m:
+            ver = m.group(1)
+            # find the embedded block
+            m35 = re.search(r'^## Section 35\b.*$', ctx_text, re.M)
+            m36 = re.search(r'^## Section 36\b.*$', ctx_text, re.M)
+            if m35 and m36 and m36.start() > m35.start():
+                section = ctx_text[m35.start():m36.start()]
+                if ('VERSION = "%s"' % ver) not in section:
+                    issues.append('Section 35 embed out of sync with run.py %s' % ver)
+                else:
+                    print('[SELF-TEST] Section 35 embed: OK (v%s)' % ver)
+            else:
+                print('[SELF-TEST] Section 35 boundary: skipped')
+
+    if issues:
+        print('[SELF-TEST] issues (%d):' % len(issues))
+        for i in issues:
+            print('  - ' + i)
+        return 1
+    print('[SELF-TEST] all checks passed')
+    return 0
+
+
+
+def do_health():
+    """Aggregate readiness check: bootstrap + check-md + self-test."""
+    print('=' * 60)
+    print('HEALTH CHECK')
+    print('=' * 60)
+    print()
+    print('[1/4] bootstrap ...')
+    try: do_bootstrap()
+    except Exception as e: print('  bootstrap raised: %s' % e)
+    print()
+    print('[2/4] check-md ...')
+    try: do_check_md([])
+    except Exception as e: print('  check-md raised: %s' % e)
+    print()
+    print('[3/4] self-test ...')
+    try: st = do_self_test()
+    except Exception as e:
+        print('  self-test raised: %s' % e); st = 1
+    print()
+    print('[4/4] git ...')
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip() == 'true':
+            r2 = subprocess.run(['git', 'status', '--short'],
+                                capture_output=True, text=True, timeout=5)
+            dirty = len([l for l in r2.stdout.splitlines() if l.strip()])
+            print('  git: OK (%d modified)' % dirty)
+        else:
+            print('  git: no repo')
+    except FileNotFoundError:
+        print('  git: not installed (see --git-hint)')
+    print()
+    print('=' * 60)
+    if st == 0:
+        print('HEALTH: GREEN')
+    else:
+        print('HEALTH: RED -- fix issues above')
+    return st
+
+
 def do_bootstrap():
     """Readiness check + next steps for a new project. Safe to run anytime."""
     import sys as _sys
@@ -5747,6 +6210,7 @@ def do_bootstrap():
     gi_ok = Path('.gitignore').exists()
     print(f"  ignore:   {'.gitignore present' if gi_ok else 'MISSING (run --init)'}")
 
+    git_ok = False
     try:
         r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
                            capture_output=True, text=True, timeout=5)
@@ -5755,10 +6219,14 @@ def do_bootstrap():
                                 capture_output=True, text=True, timeout=5)
             branch = (rb.stdout or '').strip() or '?'
             print(f"  git:      yes (branch {branch})")
+            git_ok = True
         else:
-            print("  git:      no (git init to enable auto-commit)")
+            print("  git:      repo not initialized (run: git init)")
+    except FileNotFoundError:
+        print("  git:      NOT INSTALLED (strongly recommended)")
+        print("            for install instructions: python run.py --git-hint")
     except Exception:
-        print("  git:      not installed")
+        print("  git:      not installed (strongly recommended)")
 
     sensitive = ['.env', 'credentials.json', 'secrets.yaml', 'secrets.yml',
                  'id_rsa', 'id_ed25519']
@@ -5772,6 +6240,11 @@ def do_bootstrap():
     ready = (py_ok and work_ok and cfg_ok and doc_ok)
     if ready:
         print("[BOOTSTRAP] You are ready.")
+        if not git_ok:
+            print()
+            print("  [TIP] Git is not detected. Without it, patches still apply,")
+            print("        but auto-commit, auto-tag, and rollback safety are off.")
+            print("        Run: python run.py --git-hint")
         print()
         print("Next steps:")
         print("  1. Paste PROJECT_CONTEXT.en.md as the first message in a new AI chat.")
@@ -5789,7 +6262,7 @@ def do_init():
     WORK.mkdir(parents=True, exist_ok=True)
     APPLIED.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
-        INPUT.write_text('', encoding='utf-8')
+        write(INPUT, '')
         print("[INIT] _work/input.txt created")
     else:
         size = INPUT.stat().st_size
@@ -5798,11 +6271,11 @@ def do_init():
         else:
             print("[INIT] _work/input.txt already empty")
     if not OUTPUT.exists():
-        OUTPUT.write_text('', encoding='utf-8')
+        write(OUTPUT, '')
         print("[INIT] _work/output.txt created")
     gi = Path('.gitignore')
     if not gi.exists():
-        gi.write_text(
+        write(gi,
             "# --- context-forge runtime ---\n"
             "_work/\n"
             "\n"
@@ -5832,8 +6305,7 @@ def do_init():
             "id_rsa\nid_ed25519\n.ssh/\n"
             "\n"
             "# --- IDE ---\n"
-            ".idea/\n.vscode/\n*.swp\n*.swo\n",
-            encoding='utf-8')
+            ".idea/\n.vscode/\n*.swp\n*.swo\n")
         print("[INIT] .gitignore written (extended default)")
     else:
         print("[INIT] .gitignore already exists - skipped")
@@ -5848,10 +6320,10 @@ def do_init():
             print(f"         - {s}")
         print("[INIT] Ensure they are in .gitignore before any commit.")
     if not CONFIG.exists():
-        CONFIG.write_text(json.dumps({
+        write(CONFIG, json.dumps({
             "build_cmd": None, "test_cmd": None,
             "build_cwd": ".", "test_cwd": "."
-        }, indent=2), encoding='utf-8')
+        }, indent=2))
         print("[INIT] _work/config.json written (edit build_cmd/test_cmd)")
     print("[INIT] _work/ ready")
     print()
@@ -5880,13 +6352,16 @@ def dispatch_capture(args):
 
 
 def dispatch(args):
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW
     if not args: return None
     cmd = args[0]
 
     if cmd in ('--version', '-v'):     print(f"run.py v{VERSION}"); return 0
     if cmd == '--init':                 do_init(); return 0
     if cmd == '--bootstrap':            return do_bootstrap()
+    if cmd == '--self-test':            return do_self_test()
+    if cmd == '--health':               return do_health()
+    if cmd == '--git-hint':             do_git_hint(); return 0
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
         _p = WORK / 'ctx_delta.txt'
@@ -5897,7 +6372,9 @@ def dispatch(args):
         return 0
     if cmd == '--diff':                 do_diff(); return 0
     if cmd in ('--status', '-s'):       do_status(); return 0
-    if cmd in ('--tree', '-t'):         do_tree(); return 0
+    if cmd in ('--tree', '-t'):
+        do_tree(json_out=('--json' in args))
+        return 0
     if cmd == '--hash':                 do_hash(); return 0
     if cmd in ('--git', '-g'):          do_git(); return 0
     if cmd == '--errors':               do_errors(); return 0
@@ -5916,6 +6393,40 @@ def dispatch(args):
         return do_slim_context(args[i+1:])
     if cmd == '--no-progress':
         PROGRESS = False; return dispatch(args[1:]) if args[1:] else None
+
+    if cmd == '--review':
+        REVIEW = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--answers':
+        a = load_answers()
+        if not a:
+            print('[INFO] no stored answers (run a patch with #@ASK: to create some)')
+            return 0
+        import json as _json
+        print(_json.dumps(a, indent=2, ensure_ascii=False))
+        return 0
+    if cmd == '--answer':
+        i = args.index('--answer')
+        rest = args[i+1:]
+        if not rest or '=' not in rest[0]:
+            print('[FAIL] --answer needs name=value')
+            return 1
+        name, value = rest[0].split('=', 1)
+        a = load_answers()
+        a[name.strip()] = value
+        save_answers(a)
+        print('[ANSWER] set %s = %r' % (name.strip(), value))
+        return 0
+    if cmd == '--clear-answers':
+        if ANSWERS_FILE.exists():
+            ANSWERS_FILE.unlink()
+            print('[ANSWER] cleared')
+        else:
+            print('[ANSWER] no answers file')
+        return 0
+    if cmd == '--no-interactive':
+        INTERACTIVE = False; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--interactive':
+        INTERACTIVE = True; return dispatch(args[1:]) if args[1:] else None
     if cmd == '--progress':
         PROGRESS = True; return dispatch(args[1:]) if args[1:] else None
 
@@ -5964,10 +6475,10 @@ def dispatch(args):
 
 
 def main():
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
-        INPUT.write_text('', encoding='utf-8')
+        write(INPUT, '')
 
     args = sys.argv[1:]
     if not args:

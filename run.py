@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1638,7 +1638,11 @@ def do_slim_context(args):
     text = read(doc)
     text = text.replace('\r\n', '\n').replace('\r', '\n')
     if profile == 'aggressive':
-        _all_sections = set(re.findall(r'^## Section ([\\w\\-]+)', text, re.M))
+        _all_sections = set()
+        for _l in text.split(chr(10)):
+            if _l.startswith("## Section "):
+                _p = _l.split(None, 3)
+                if len(_p) >= 3: _all_sections.add(_p[2])
         keep_aggr = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
         drop = _all_sections - keep_aggr
         print('[SLIM] aggressive profile: keeping %d sections, dropping %d'
@@ -1889,7 +1893,7 @@ def do_self_test():
     # 2. Required constants
     for name in ('WORK', 'INPUT', 'OUTPUT', 'APPLIED', 'VERSION', 'SKIP_DIRS',
                  'SKIP_EXTS', 'HEADER_RE', 'FIND', 'REPLACE', 'CONTENT', 'END'):
-        if not re.search(r'^%s\s*=' % name, src, re.M):
+        if not re.search(r'^%s\b\s*[,=]' % name, src, re.M):
             issues.append('missing constant: %s' % name)
 
     # 3. Required functions
