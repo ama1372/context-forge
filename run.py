@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.4.9"
+VERSION = "1.5.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -87,6 +87,13 @@ FENCE_RE = re.compile(r'^\s*```[a-zA-Z0-9_+\-]*\s*$')
 AUTO_VERIFY = False
 FORCE_APPLY = False
 PROGRESS = True
+
+ANSWERS = {}
+ANSWERS_FILE = WORK / 'answers.json'
+INTERACTIVE = None
+REVIEW = False
+_review_auto_apply = False
+
 
 
 def _progress(msg):
@@ -272,6 +279,7 @@ def read_directives(text):
     commit_if = None
     next_step = None
     roadmap = []
+    asks = []
     idx = 0
     while idx < len(lines):
         s = lines[idx].strip()
@@ -316,11 +324,23 @@ def read_directives(text):
         if m:
             roadmap = [x.strip() for x in m.group(1).split('|') if x.strip()]
             idx += 1; continue
+        m = re.match(r'^#@ASK:\s*(.+)$', s)
+        if m:
+            body = m.group(1)
+            parts = [p.strip() for p in body.split('|', 2)]
+            if len(parts) >= 2:
+                name = parts[0]
+                question = parts[1]
+                default = ''
+                if len(parts) >= 3 and parts[2].lower().startswith('default='):
+                    default = parts[2][8:].strip()
+                asks.append((name, question, default))
+            idx += 1; continue
         # Unknown #@ directive — skip, don't break.
         idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
             commit_msg, tag_name, nodump, dump_mode, push,
-            commit_if, next_step, roadmap,
+            commit_if, next_step, roadmap, asks,
             '\n'.join(lines[idx:]))
 
 
@@ -340,7 +360,7 @@ def need_to_args(need_args):
     return list(need_args)
 
 
-def eval_condition(text):
+def eval_condition(text, answers=None):
     """Evaluate an #@IF / #@ELIF condition. Returns True/False.
 
     Supported forms:
@@ -349,6 +369,20 @@ def eval_condition(text):
       contains <path> <text>     - file exists and contains the text
     """
     text = text.strip()
+    if answers is None:
+        answers = ANSWERS
+    m = re.match(r'^answer\(\s*([^)]+?)\s*\)\s*(==|!=)\s*["\']([^"\']*)["\']\s*$', text)
+    if m:
+        name = m.group(1).strip()
+        op_a = m.group(2)
+        expected = m.group(3)
+        actual = answers.get(name, '')
+        return (actual == expected) if op_a == '==' else (actual != expected)
+    m = re.match(r'^answer\(\s*([^)]+?)\s*\)\s*$', text)
+    if m:
+        name = m.group(1).strip()
+        actual = (answers.get(name, '') or '').strip().lower()
+        return actual not in ('', 'no', 'n', 'false', '0', 'off')
     parts = text.split(None, 1)
     if not parts:
         return False
@@ -373,7 +407,55 @@ def eval_condition(text):
     return False
 
 
-def apply_conditions(text):
+
+def load_answers():
+    if ANSWERS_FILE.exists():
+        try:
+            return json.loads(ANSWERS_FILE.read_text(encoding='utf-8'))
+        except Exception:
+            return {}
+    return {}
+
+
+def save_answers(a):
+    WORK.mkdir(parents=True, exist_ok=True)
+    write(ANSWERS_FILE, json.dumps(a, indent=2, ensure_ascii=False))
+
+
+def _is_interactive():
+    if INTERACTIVE is True: return True
+    if INTERACTIVE is False: return False
+    try: return sys.stdin.isatty()
+    except Exception: return False
+
+
+def collect_answers(asks, answers, out=None):
+    result = dict(answers)
+    interactive = _is_interactive()
+    for name, question, default in asks:
+        if name in result and result[name] != '':
+            if out is not None:
+                out.append(f"[ASK] {name}: {question} -> cached: {result[name]!r}")
+            continue
+        if interactive:
+            p = question + ((' [' + default + ']') if default else '') + ': '
+            try:
+                sys.stderr.write(p); sys.stderr.flush()
+                r = sys.stdin.readline()
+                a = default if r == '' else (r.rstrip('\n').rstrip('\r') or default)
+            except (EOFError, KeyboardInterrupt):
+                a = default
+            result[name] = a
+            if out is not None:
+                out.append(f"[ASK] {name}: {question} -> {a!r}")
+        else:
+            result[name] = default
+            if out is not None:
+                out.append(f"[ASK] {name}: {question} -> default: {default!r} (non-interactive)")
+    return result
+
+
+def apply_conditions(text, answers=None):
     """Filter out lines inside inactive #@IF / #@ELSE blocks.
 
     Syntax:
@@ -387,6 +469,8 @@ def apply_conditions(text):
 
     Nesting is supported. Unknown lines pass through unchanged.
     """
+    if answers is None:
+        answers = ANSWERS
     lines = text.split('\n')
     out = []
     stack = []  # each: {'taken': bool, 'active': bool}
@@ -394,7 +478,7 @@ def apply_conditions(text):
         s = line.strip()
         m = re.match(r'^#@IF:\s*(.+)$', s)
         if m:
-            cond = eval_condition(m.group(1))
+            cond = eval_condition(m.group(1), answers)
             parent = all(f['active'] for f in stack) if stack else True
             stack.append({'taken': cond, 'active': parent and cond})
             continue
@@ -407,7 +491,7 @@ def apply_conditions(text):
             if top['taken']:
                 top['active'] = False
             else:
-                cond = eval_condition(m.group(1))
+                cond = eval_condition(m.group(1), answers)
                 top['active'] = parent and cond
                 top['taken'] = top['taken'] or cond
             continue
@@ -435,7 +519,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -740,15 +824,135 @@ def _update_auto_block(patch_id, seed):
     write_preserve_eol(ctx, before + block + after, eol)
 
 
+
+def detect_risk(op, project_root):
+    kind = op.get('kind', '')
+    path = op.get('path', '') or op.get('dst', '') or ''
+    risky = (path.startswith('..') or path.startswith('/')
+             or (len(path) > 1 and path[1] == ':'))
+    if kind == 'delete':
+        return 'HIGH', 'deletes a file'
+    if kind == 'move':
+        return ('HIGH', 'outside project') if risky else ('MEDIUM', 'move')
+    if kind == 'cmd':
+        script = (op.get('script') or '').lower()
+        for bad, why in [('git push', 'git push'), ('git remote', 'git remote'),
+                         ('git reset', 'git reset'), ('rm -rf', 'rm -rf'),
+                         ('remove-item -recurse', 'Remove-Item -Recurse'),
+                         ('del /f', 'del /f')]:
+            if bad in script:
+                return 'HIGH', 'cmd: %s' % why
+        return 'LOW', 'cmd'
+    if kind == 'file':
+        for entry in op.get('patches', []):
+            if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+                continue
+            alts, rep = entry
+            first = alts[0] if isinstance(alts, list) and alts else (alts or '')
+            fl = first.count(chr(10)) + 1
+            rl = (rep or '').count(chr(10)) + 1
+            if rl < fl:
+                return 'MEDIUM', 'removes %d lines' % (fl - rl)
+        return ('HIGH', 'outside') if risky else ('LOW', 'edit')
+    if kind in ('create', 'mkdir'):
+        return ('HIGH', 'outside') if risky else ('LOW', kind)
+    return 'LOW', kind
+
+
+def _render_review(op, idx, total, root):
+    risk, why = detect_risk(op, root)
+    kind = op.get('kind', '')
+    NL = chr(10)
+    L = ['=' * 66, 'REVIEW [%d/%d] %s risk=%s (%s)' % (idx, total, kind.upper(), risk, why), '=' * 66]
+    if kind == 'file':
+        L.append('FILE: %s' % op.get('path', ''))
+        for j, entry in enumerate(op.get('patches', []), 1):
+            if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+                continue
+            alts, rep = entry
+            L.append('--- patch %d/%d ---' % (j, len(op['patches'])))
+            first = alts[0] if isinstance(alts, list) and alts else (alts or '')
+            L.append('<<< REMOVE >>>')
+            for ln in first.splitlines():
+                L.append('- ' + ln)
+            if isinstance(alts, list) and len(alts) > 1:
+                L.append('(+%d alt)' % (len(alts) - 1))
+            L.append('<<< ADD >>>')
+            for ln in (rep or '').splitlines():
+                L.append('+ ' + ln)
+    elif kind == 'create':
+        L.append('CREATE: %s' % op.get('path', ''))
+        for ln in (op.get('content') or '').splitlines():
+            L.append('+ ' + ln)
+    elif kind == 'delete':
+        L.append('DELETE: %s' % op.get('path', ''))
+    elif kind == 'move':
+        L.append('MOVE: %s -> %s' % (op.get('src', ''), op.get('dst', '')))
+    elif kind == 'mkdir':
+        L.append('MKDIR: %s' % op.get('path', ''))
+    elif kind == 'cmd':
+        L.append('CMD: %s' % op.get('desc', ''))
+        for ln in (op.get('script') or '').splitlines():
+            L.append('| ' + ln)
+    L.append('')
+    return NL.join(L), risk
+
+
+def _try_open(path):
+    for opener in (['code', str(path)], ['notepad', str(path)],
+                   ['xdg-open', str(path)], ['open', str(path)]):
+        try:
+            subprocess.Popen(opener, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return opener[0]
+        except FileNotFoundError:
+            continue
+        except Exception:
+            continue
+    return None
+
+
+def review_op(op, idx, total, root):
+    txt, risk = _render_review(op, idx, total, root)
+    write(WORK / 'review.diff', txt)
+    opener = _try_open(WORK / 'review.diff')
+    label = (op.get('path') or op.get('desc') or op.get('kind', ''))[:60]
+    sys.stderr.write(chr(10) + '[%d/%d] %s: %s risk=%s' % (idx, total, op['kind'].upper(), label, risk))
+    if opener:
+        sys.stderr.write('  (opened in %s)' % opener)
+    sys.stderr.write(chr(10) + 'Apply? [y]es / [n]o / [a]ll / [q]uit > ')
+    sys.stderr.flush()
+    try:
+        ans = sys.stdin.readline().strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        ans = 'q'
+    if ans in ('y', 'yes', ''): return 'yes'
+    if ans in ('n', 'no'): return 'no'
+    if ans in ('a', 'all'): return 'all'
+    if ans in ('q', 'quit'): return 'quit'
+    return 'no'
+
+
 def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
     rate_msg = _rate_warn_line()
+    global ANSWERS
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push,
-     commit_if, next_step, roadmap,
+     commit_if, next_step, roadmap, asks,
      remaining) = read_directives(content)
     if did is not None: patch_id = did
-    content = apply_conditions(remaining)
+    if asks:
+        try:
+            cached = load_answers()
+            ANSWERS = collect_answers(asks, cached)
+            try: save_answers(ANSWERS)
+            except Exception: pass
+        except Exception:
+            ANSWERS = {}
+    else:
+        try: ANSWERS = load_answers()
+        except Exception: ANSWERS = {}
+    content = apply_conditions(remaining, answers=ANSWERS)
 
     if patch_id is None:
         idfile = WORK / '.patch_id'
@@ -777,10 +981,21 @@ def do_apply(patch_id=None):
     ok = fail = skip = 0
     fail_files = set()
     total_ops = len(ops)
+    global _review_auto_apply
     for idx_op, op in enumerate(ops, 1):
         kind = op['kind']
         _label = op.get('path', '') or op.get('desc', '') or kind
         _progress(f"[P{patch_id}] {idx_op}/{total_ops} {_label[:50]}...\r")
+        if REVIEW and not _review_auto_apply:
+            decision = review_op(op, idx_op, total_ops, Path('.').resolve())
+            if decision == 'quit':
+                out.append(f"[REVIEW] quit at {idx_op}/{total_ops}")
+                break
+            if decision == 'all':
+                _review_auto_apply = True
+            elif decision == 'no':
+                out.append(f"[REVIEW] [{idx_op}/{total_ops}] skipped by user")
+                continue
 
         if kind == 'file':
             out.append(f"[P{patch_id}] [EDIT] {op['path']}")
@@ -1105,13 +1320,42 @@ def do_status():
     print('\n'.join(out))
 
 
-def do_tree():
+def _tree_lines(rels):
+    tree = {}
+    for rel in rels:
+        parts = rel.split('/')
+        node = tree
+        for part in parts:
+            node = node.setdefault(part, {})
+    lines = []
+
+    def render(node, prefix=''):
+        items = sorted(node.items(),
+                       key=lambda kv: (len(kv[1]) == 0, kv[0].lower()))
+        for i, (name, sub) in enumerate(items):
+            last = (i == len(items) - 1)
+            glyph = '\u2514\u2500\u2500 ' if last else '\u251c\u2500\u2500 '
+            is_dir = bool(sub)
+            lines.append(prefix + glyph + name + ('/' if is_dir else ''))
+            if is_dir:
+                ext = '    ' if last else '\u2502   '
+                render(sub, prefix + ext)
+    render(tree)
+    return lines
+
+
+def do_tree(json_out=False):
     root = Path('.').resolve()
+    files = walk(root)
+    rels = [p.relative_to(root).as_posix() for p in files]
+    if json_out:
+        import json as _json
+        print(_json.dumps({'project': root.name, 'files': rels},
+                          indent=2, ensure_ascii=False))
+        return
     print(f"PROJECT: {root.name}")
-    for p in walk(root):
-        rel = p.relative_to(root)
-        depth = len(rel.parts) - 1
-        print(f"{'  ' * depth}{rel.name}")
+    for ln in _tree_lines(rels):
+        print(ln)
 
 
 def do_hash():
@@ -1405,6 +1649,7 @@ def do_slim_context(args):
 
 def do_capabilities():
     print(f"run.py v{VERSION}")
+    print("TREE: --tree [--json]")
     print("FLAGS: --version --init --bootstrap --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
@@ -1705,7 +1950,7 @@ def dispatch_capture(args):
 
 
 def dispatch(args):
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW
     if not args: return None
     cmd = args[0]
 
@@ -1722,7 +1967,9 @@ def dispatch(args):
         return 0
     if cmd == '--diff':                 do_diff(); return 0
     if cmd in ('--status', '-s'):       do_status(); return 0
-    if cmd in ('--tree', '-t'):         do_tree(); return 0
+    if cmd in ('--tree', '-t'):
+        do_tree(json_out=('--json' in args))
+        return 0
     if cmd == '--hash':                 do_hash(); return 0
     if cmd in ('--git', '-g'):          do_git(); return 0
     if cmd == '--errors':               do_errors(); return 0
@@ -1741,6 +1988,40 @@ def dispatch(args):
         return do_slim_context(args[i+1:])
     if cmd == '--no-progress':
         PROGRESS = False; return dispatch(args[1:]) if args[1:] else None
+
+    if cmd == '--review':
+        REVIEW = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--answers':
+        a = load_answers()
+        if not a:
+            print('[INFO] no stored answers (run a patch with #@ASK: to create some)')
+            return 0
+        import json as _json
+        print(_json.dumps(a, indent=2, ensure_ascii=False))
+        return 0
+    if cmd == '--answer':
+        i = args.index('--answer')
+        rest = args[i+1:]
+        if not rest or '=' not in rest[0]:
+            print('[FAIL] --answer needs name=value')
+            return 1
+        name, value = rest[0].split('=', 1)
+        a = load_answers()
+        a[name.strip()] = value
+        save_answers(a)
+        print('[ANSWER] set %s = %r' % (name.strip(), value))
+        return 0
+    if cmd == '--clear-answers':
+        if ANSWERS_FILE.exists():
+            ANSWERS_FILE.unlink()
+            print('[ANSWER] cleared')
+        else:
+            print('[ANSWER] no answers file')
+        return 0
+    if cmd == '--no-interactive':
+        INTERACTIVE = False; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--interactive':
+        INTERACTIVE = True; return dispatch(args[1:]) if args[1:] else None
     if cmd == '--progress':
         PROGRESS = True; return dispatch(args[1:]) if args[1:] else None
 
@@ -1789,7 +2070,7 @@ def dispatch(args):
 
 
 def main():
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
         write(INPUT, '')

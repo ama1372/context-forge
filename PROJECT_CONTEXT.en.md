@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P101 |
-| Last commit | `29516f2` |
-| Time | 2026-10-13 22:52 |
-| MSG-SEED | `91b4b593` |
+| Last patch | P103 |
+| Last commit | `27546e6` |
+| Time | 2026-10-16 08:29 |
+| MSG-SEED | `082a8566` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1327,6 +1327,85 @@ Duplication and wrong abstraction are **both** structural taxes. The first multi
 
 ---
 
+## Section 0-C-21 - Interactive choices (#@ASK:)
+
+> **The AI must not guess user preferences. Use #@ASK:.**
+
+### 0-C-21-1. The failure mode
+
+The AI writes a CMD block that runs `npm install`. The user has `pnpm`. The AI had no way to know - it guessed. The patch ran the wrong command.
+
+### 0-C-21-2. The directive
+
+    #@ASK: pkg_manager | Package manager? (npm / yarn / pnpm) | default=npm
+
+Format: `#@ASK: <name> | <question> | default=<value>`
+
+Answers are stored in `_work/answers.json`, cached across runs. On a tty the user is prompted; in CI the default is used. Answers appear in `output.txt` as `[ASK] ...` lines.
+
+### 0-C-21-3. Using answers
+
+    #@ASK: pkg_manager | Package manager? (npm / yarn / pnpm) | default=npm
+
+    ===== CMD: npm install =====
+    <<<RUN>>>
+    npm install
+    <<<END>>>
+
+**Forms:** `answer(name)`, `answer(name) == "val"`, `answer(name) != "val"`.
+
+### 0-C-21-4. Managing answers
+
+| Command | Effect |
+|---------|--------|
+| `python run.py --answers` | show stored answers |
+| `python run.py --answer name=value` | set one answer (skip prompt) |
+| `python run.py --clear-answers` | delete all |
+| `python run.py --no-interactive` | use defaults, never prompt |
+| `python run.py --interactive` | force prompting even off-tty |
+
+### 0-C-21-5. When to use it
+
+If the AI cannot determine the answer by reading files, it must `#@ASK:`. Never guess a package manager, a port, a preference.
+
+---
+
+## Section 0-C-22 - Review mode (paranoid check)
+
+> **For users who do not fully trust the AI: run `python run.py --review` to approve every operation one at a time.**
+
+### 0-C-22-1. What it does
+
+For each operation, `--review`:
+
+1. Renders it to `_work/review.diff` (plain-text diff-like view).
+2. Detects risk: `LOW` / `MEDIUM` / `HIGH`.
+3. Opens `_work/review.diff` in the editor (`code`, `notepad`, `xdg-open`, `open` - whichever exists).
+4. Prompts in terminal: `Apply? [y]es / [n]o / [a]ll / [q]uit >`
+
+- `y` - apply this, continue.
+- `n` - skip this, continue.
+- `a` - apply this and all remaining, no more prompts.
+- `q` - stop here.
+
+### 0-C-22-2. Risk levels
+
+| Level | Triggered by |
+|-------|--------------|
+| `HIGH` | Delete a file; move/create/edit outside project; dangerous CMD (`git push`, `git remote`, `git reset`, `rm -rf`, `Remove-Item -Recurse`, `del /f`) |
+| `MEDIUM` | Move inside project; patch that removes more lines than it adds |
+| `LOW` | Normal edit, create, mkdir, benign CMD |
+
+### 0-C-22-3. When to use it
+
+- Do not yet trust the AI.
+- Patch touches unfamiliar territory.
+- AI suggested something risky.
+
+Without `--review`, patches apply as before. `--review` is opt-in. Combine with `--dry-run` for preview-only.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -2344,105 +2423,14 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `step-XX-ok` |
-    | **Last work** | <previous> |
-    | **Next step** | <previous> |
-    <<<REPLACE>>>
-    ### 13-1. Session Tracker
-    | Field | Value |
-    |-------|-------|
-    | **Last safe tag** | `step-YY-ok` |
-    | **Last work** | <new> |
-    | **Next step** | <new> |
-    <<<END>>>
-
-### 10-4. If you forget
-
-The new AI doesn't know where we are, the user must re-explain from scratch, wasted time.
-
-### 10-5. Golden rule
-
-> **Every AI message = one code patch + one context patch.**
-> If the context patch is missing, the message is incomplete.
-
-### 10-6. CTX-DELTA, the anti-amnesia mechanism
-
-Real problem: even with strong emphasis, the AI forgets to update the context in the message.
-
-Solution: at the end of every message, the AI must write this block:
-
-    [CTX-DELTA]
-    TAG: step-XX-ok
-    WORK: <one line describing what was done>
-    NEXT: <one line describing the next step>
-    ROADMAP:
-      1. <step after the next>
-      2. <step after that>
-      3. <...>
-    FILES: <list of changed files>
-    [/CTX-DELTA]
-
-**Hard rules:**
-
-- Always at the end of the message.
-- **Always include NEXT**, never leave it blank.
-- **Always include ROADMAP**, at least 2 future steps. Even if the project is ending, write `ROADMAP: (none, release complete)`.
-- Always list FILES, even if empty, write `FILES: (none)`.
-- Big change: also update the context paragraphs.
-- Small change: CTX-DELTA alone is enough.
-
-**Why ROADMAP is mandatory:** the next chat may open with only this block. If it contains only `NEXT`, the AI after the next message loses the trail again. With a 3-step ROADMAP, three consecutive chats can bootstrap cleanly without ever asking the user "where were we?". This is the whole point of the anti-amnesia design, it must survive more than one message.
-
-**What the AI must never do:**
-
-- Never write `NEXT: (unspecified)`, if you don't know, guess a plausible next step and mark it with `?`.
-- Never skip ROADMAP because "it's just a small patch".
-- Never put the ROADMAP in prose instead of the block, `run.py` reads the block, not your prose.
-
-**Benefits:**
-
-- If the AI forgets the main context, this block is a lifesaver.
-- The user sees at a glance whether the AI is working properly.
-- In a new chat, CTX-DELTA alone can bootstrap continuation.
-- `run.py` saves this block automatically to `_work/ctx_delta.txt` after every successful apply, so the user can retrieve it with `python run.py --ctx` at any time.
-
-### 10-7. Complete AI message pattern
-
-Every AI message has exactly four parts:
-
-1. **One-line summary.**
-2. **One `input.txt` block**, starting with `#@COMMIT:` and `#@TAG:`, then optionally `#@PUSH:`, `#@NEXT:`, `#@ROADMAP:`, `#@POST:`, `#@NEED:`, then the patch blocks.
-3. **`[CTX-DELTA]` block**, with TAG, WORK, NEXT, ROADMAP, FILES.
-4. **End-of-message reminder**, "If there was an error: ...".
-
-**That is it. Nothing else.**
-
-- No test command outside the block (it goes in `#@POST:`).
-- No commit command outside the block (it goes in `#@COMMIT:`).
-- No push command outside the block (it goes in `#@PUSH:`).
-- No "check these after apply" list.
-- No post-apply checklist the user must run manually.
-- Optional one-line hints allowed, clearly marked optional.
-
-**History note:** before run.py v1.0+, "test" and "commit" were separate shell commands in chat. That is superseded. The directives inside `input.txt` carry the entire workflow.
-
-## Section 13 - Session Tracker
-
-> **Note:** This section is for your real project. **Send the document as a template, this section is filled in** with the project's real state.
-> If using the document as a template (new project), **clear this section** and fill it in again.
-
-### 13-1. Session Tracker
-
-| Field | Value |
-|-------|-------|
-| **Last safe tag** | `v1.4.9` |
-| **Last commit** | RLM (U+200F) after list markers in RTL READMEs |
-| **Last work** | v1.4.9: RLM after each list marker + at the start of plain RTL paragraphs in `README.fa.md`, `README.ar.md`, `README.he.md`. Fixes GitHub `dir="auto"` misdetecting lines as LTR when they start with a Latin run. Section 33-6 rewritten. |
-| **Next step** | First real test-project — end-to-end cycle with a small CLI |
-| **Current phase** | v1.4.9 — released |
-| **Completion** | 100% EN (single self-contained rule doc) |
+    | **Last safe tag** | `v1.5.2` |
+| **Last commit** | comprehensive v1.5.2 (ASK + review + tree + defensive) |
+| **Last work** | v1.5.2: restored run.py helpers; `#@ASK:` interactive choices; `--review` with risk levels; real `--tree`; defensive `do_apply` |
+| **Next step** | First real test-project |
+| **Current phase** | v1.5.2 - released |
+| **Completion** | 100% EN |
 | **Last error** | none |
-| **Open issues** | First real test-project; gather community feedback |
+| **Open issues** | First real test-project |
 
 ### 13-2. Update
 
@@ -2720,6 +2708,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-28: Interactive choices via `#@ASK:` (Section 0-C-21)**
+
+- **Decision:** add a `#@ASK:` directive that prompts the user before applying patches. Answers are stored in `_work/answers.json`, cached across runs, and exposed to `#@IF:` conditions via `answer(name)`. Non-interactive runs use defaults.
+- **Reason:** some patches need user preferences the AI cannot determine from disk. Guessing breaks real projects (wrong `npm` vs `pnpm`); asking in chat violates Section 0-C-10.
+- **Alternatives:** guess (rejected - wrong); ask in chat (rejected - breaks discipline); detect from disk (rejected - preferences are not on disk).
+
+**ADR-29: `--review` - paranoid per-operation approval (Section 0-C-22)**
+
+- **Decision:** add `python run.py --review` that renders each operation into `_work/review.diff`, opens it in the user's editor, and prompts `y`/`n`/`a`/`q`. Risk levels (LOW/MEDIUM/HIGH) are derived from the operation.
+- **Reason:** users who do not yet trust the AI need a way to see each change and approve it. Rejecting the whole patch is too coarse; approving blind is too risky.
+- **Alternatives:** always apply (rejected - blind trust); reject wholesale (rejected - too coarse).
 
 **ADR-27: Anti-duplication discipline — Rule of Three, not "80% similarity" (Section 0-C-20)**
 
