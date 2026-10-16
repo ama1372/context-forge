@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1643,10 +1643,13 @@ def do_slim_context(args):
             if _l.startswith("## Section "):
                 _p = _l.split(None, 3)
                 if len(_p) >= 3: _all_sections.add(_p[2])
-        keep_aggr = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
-        drop = _all_sections - keep_aggr
+        keep_prefixes = ['0', '4', '5', '6', '7', '8', '9', '10',
+                     '12', '13', '15', '16', '29']
+        _kept_set = {s for s in _all_sections
+                 if any(s == p or s.startswith(p + '-') for p in keep_prefixes)}
+        drop = _all_sections - _kept_set
         print('[SLIM] aggressive profile: keeping %d sections, dropping %d'
-              % (len(keep_aggr & _all_sections), len(drop)))
+              % (len(_kept_set), len(drop)))
     parts = re.split(r'(^## Section [^\n]+$)', text, flags=re.M)
     out = [parts[0] if parts else '']
     dropped = []
@@ -1893,7 +1896,7 @@ def do_self_test():
     # 2. Required constants
     for name in ('WORK', 'INPUT', 'OUTPUT', 'APPLIED', 'VERSION', 'SKIP_DIRS',
                  'SKIP_EXTS', 'HEADER_RE', 'FIND', 'REPLACE', 'CONTENT', 'END'):
-        if not re.search(r'^%s\b\s*[,=]' % name, src, re.M):
+        if not re.search(r'(?:^|,)\s*' + re.escape(name) + r'\s*[,=]', src, re.M):
             issues.append('missing constant: %s' % name)
 
     # 3. Required functions

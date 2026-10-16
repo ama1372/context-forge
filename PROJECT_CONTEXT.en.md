@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P108 |
-| Last commit | `c772e65` |
-| Time | 2026-10-16 23:51 |
-| MSG-SEED | `fdfbfead` |
+| Last patch | P110 |
+| Last commit | `8ddb6ef` |
+| Time | 2026-10-16 23:59 |
+| MSG-SEED | `a09c6400` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2572,11 +2572,11 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `v1.6.1` |
-| **Last commit** | fix self-test false positives + aggressive profile regex + re-embed Section 35 |
-| **Last work** | v1.6.1: self-test handles tuple-unpack constants; aggressive slim profile uses manual section scan; Section 35 re-embedded at v1.6.1 |
+    | **Last safe tag** | `v1.6.2` |
+| **Last commit** | fix self-test tuple regex + aggressive keep-list |
+| **Last work** | v1.6.2: self-test tuple-unpack constants detected mid-line; aggressive profile keeps all critical rules (0*, 4-9, 10, 12, 13, 15, 16, 29) via prefix match |
 | **Next step** | First real test-project |
-| **Current phase** | v1.6.1 - released |
+| **Current phase** | v1.6.2 - released |
 | **Completion** | 100% EN |
 | **Last error** | none |
 | **Open issues** | First real test-project |
@@ -4243,7 +4243,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -5839,10 +5839,13 @@ def do_slim_context(args):
             if _l.startswith("## Section "):
                 _p = _l.split(None, 3)
                 if len(_p) >= 3: _all_sections.add(_p[2])
-        keep_aggr = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
-        drop = _all_sections - keep_aggr
+        keep_prefixes = ['0', '4', '5', '6', '7', '8', '9', '10',
+                     '12', '13', '15', '16', '29']
+        _kept_set = {s for s in _all_sections
+                 if any(s == p or s.startswith(p + '-') for p in keep_prefixes)}
+        drop = _all_sections - _kept_set
         print('[SLIM] aggressive profile: keeping %d sections, dropping %d'
-              % (len(keep_aggr & _all_sections), len(drop)))
+              % (len(_kept_set), len(drop)))
     parts = re.split(r'(^## Section [^\n]+$)', text, flags=re.M)
     out = [parts[0] if parts else '']
     dropped = []
@@ -6089,7 +6092,7 @@ def do_self_test():
     # 2. Required constants
     for name in ('WORK', 'INPUT', 'OUTPUT', 'APPLIED', 'VERSION', 'SKIP_DIRS',
                  'SKIP_EXTS', 'HEADER_RE', 'FIND', 'REPLACE', 'CONTENT', 'END'):
-        if not re.search(r'^%s\b\s*[,=]' % name, src, re.M):
+        if not re.search(r'(?:^|,)\s*' + re.escape(name) + r'\s*[,=]', src, re.M):
             issues.append('missing constant: %s' % name)
 
     # 3. Required functions
