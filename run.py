@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.5.4"
+VERSION = "1.5.5"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1686,10 +1686,23 @@ def do_check(args):
     except Exception as e:
         print(f"[FAIL] {e}"); return 2
     combined = (r.stdout or '') + '\n' + (r.stderr or '')
-    errs = [l for l in combined.splitlines()
-            if 'error' in l.lower() and 'error_count' not in l.lower()]
-    warns = [l for l in combined.splitlines()
-             if 'warning' in l.lower() and 'warning_count' not in l.lower()]
+    # Robust error detection: a real error line STARTS with the keyword
+    # (followed by :, [, whitespace, or end of line). Avoids false positives
+    # from paths/identifiers like `crate::error::Error`, `error.rs`,
+    # `SomeError:` type names in prose, or `error_count`.
+    err_re = re.compile(r'^error(?:\s|:|\[|$)', re.IGNORECASE)
+    warn_re = re.compile(r'^warning(?:\s|:|\[|$)', re.IGNORECASE)
+    errs = []
+    warns = []
+    for ln in combined.splitlines():
+        s = ln.lstrip()
+        low = s.lower()
+        if 'error_count' in low or 'warning_count' in low:
+            continue
+        if err_re.match(s):
+            errs.append(ln)
+        elif warn_re.match(s):
+            warns.append(ln)
     if quiet:
         print("clean" if not errs else f"{len(errs)} errors")
     else:

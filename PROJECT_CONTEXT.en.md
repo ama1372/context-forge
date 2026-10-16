@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P105 |
-| Last commit | `bd9b7ea` |
-| Time | 2026-10-16 08:36 |
-| MSG-SEED | `c8f24cc9` |
+| Last patch | P106 |
+| Last commit | `61d7a09` |
+| Time | 2026-10-16 10:50 |
+| MSG-SEED | `597415ca` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2482,11 +2482,11 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `v1.5.4` |
-| **Last commit** | beginner walkthrough in all 24 READMEs |
-| **Last work** | v1.5.4: `Complete beginner's walkthrough` section added — full in English + Persian, compact in the other 22 |
+    | **Last safe tag** | `v1.5.5` |
+| **Last commit** | do_check filter fix + Section 16-5 |
+| **Last work** | v1.5.5: `do_check` no longer counts `crate::error::*` / `error.rs` / `error_count` as errors; Section 16-5 (when to tag); ADR-31 |
 | **Next step** | First real test-project |
-| **Current phase** | v1.5.4 - released |
+| **Current phase** | v1.5.5 - released |
 | **Completion** | 100% EN |
 | **Last error** | none |
 | **Open issues** | First real test-project |
@@ -2768,6 +2768,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
 
+**ADR-31: Tag only when verified (Section 16-5)**
+
+- **Decision:** tags are milestones, not save points. A tag is added only when the state is verified (usually via `#@POST: verify` or `run.py check`). Commits happen freely; tags happen deliberately. A patch that has never been tested is committed but not tagged. If a previously untested commit turns out stable, a later patch may tag it retroactively — a tag-only patch is valid.
+- **Reason:** tags are what `git reset --hard <tag>` targets. If tags are unreliable, rollback is a roulette, not a safety net. Tagging "preemptively" (before verification) destroys the integrity of the safe-point list. Commits and tags serve different purposes: commits are a fine-grained log, tags are coarse-grained verified milestones.
+- **Alternatives:** tag every commit (rejected — tags lose meaning); never tag (rejected — loses rollback safety); tag on user request only (rejected — the user may not know when a state is verified).
+
 **ADR-30: Git is recommended, not required (Section 0-C-23)**
 
 - **Decision:** the protocol does not require Git. It detects it, warns if absent, and points to `python run.py --git-hint` for OS-specific install instructions. The AI does not auto-install Git; if the user asks, the AI puts the install command in a `===== CMD: =====` block for the user to run.
@@ -2968,6 +2974,23 @@ git reset --hard safe-before-XX
 ```
 
 ---
+
+### 16-5. When to tag (and when not to)
+
+> **Tag only when the state is verified. A tag means "this is a safe point".**
+
+**Rules:**
+
+1. **Commit freely, tag cautiously.** Commit every successful patch (auto-commit does this). But a tag is a promise — only add it when the state is verified.
+2. **A patch that has never been tested gets no tag.** Commit it (so it is not lost), but do not tag.
+3. **If you later discover the previous commit was stable after all:** in the **next** patch, tag the previous commit before doing new work. This is fine and standard. A tag-only patch (no other change) is valid.
+4. **Never tag "preemptively".** Do not tag `step-42-ok` before step 42 is actually verified. If something breaks, you would roll back to a tag that itself is broken — rolling back to a broken state is worse than no tag at all.
+5. **`#@TAG:` in `input.txt` only runs when `FAIL: 0`.** This is enforced by `run.py` — a failed patch never creates a tag. So the AI can include `#@TAG:` in every patch; it will only fire when the patch is green.
+6. **Combine with tests:** the safest pattern is `#@POST: verify` + `#@TAG: step-NN-ok`. The tag appears only if the patch applied and the test passed.
+
+**Why this matters:** a tag is what `git reset --hard <tag>` returns to. If tags are unreliable, rollback becomes a roulette, not a safety net. The value of tagging comes from its integrity.
+
+**Mental model:** commits are a log (many, fine-grained). Tags are milestones (few, verified). Do not conflate them.
 
 ## Section 17 — Testing
 
