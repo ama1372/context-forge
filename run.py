@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.5.2"
+VERSION = "1.5.3"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1650,7 +1650,8 @@ def do_slim_context(args):
 def do_capabilities():
     print(f"run.py v{VERSION}")
     print("TREE: --tree [--json]")
-    print("FLAGS: --version --init --bootstrap --capabilities --status --tree --hash "
+    print("GIT:  --git-hint (OS-specific install instructions)")
+    print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
@@ -1785,6 +1786,45 @@ def cmd_find_dup(args):
     print(f"[FIND-DUP] {OUTPUT}")
 
 
+def do_git_hint():
+    """Print the OS-specific Git install command."""
+    print("[GIT HINT] Git is strongly recommended (auto-commit, auto-tag, rollback).")
+    print()
+    plat = sys.platform
+    if plat.startswith('win'):
+        print("Windows:")
+        print("  winget install --id Git.Git -e --source winget")
+        print("  or download: https://git-scm.com/download/win")
+    elif plat == 'darwin':
+        print("macOS:")
+        print("  brew install git")
+        print("  or: xcode-select --install")
+        print("  or download: https://git-scm.com/download/mac")
+    else:
+        print("Linux:")
+        print("  Debian/Ubuntu:  sudo apt install git")
+        print("  Fedora/RHEL:    sudo dnf install git")
+        print("  Arch:           sudo pacman -S git")
+        print("  (or use your distro's package manager)")
+    print()
+    print("After install:")
+    print("  1. Close and reopen your terminal (or restart the machine).")
+    print("  2. Verify: git --version")
+    print("  3. Re-run: python run.py --bootstrap")
+    print()
+    print("Without Git, patches still apply. You lose: auto-commit, auto-tag,")
+    print("git-based rollback, and #@PUSH:. See Section 0-C-23.")
+
+
+def _git_available():
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
+                           capture_output=True, text=True, timeout=5)
+        return r.returncode == 0 and r.stdout.strip() == 'true'
+    except Exception:
+        return False
+
+
 def do_bootstrap():
     """Readiness check + next steps for a new project. Safe to run anytime."""
     import sys as _sys
@@ -1818,6 +1858,7 @@ def do_bootstrap():
     gi_ok = Path('.gitignore').exists()
     print(f"  ignore:   {'.gitignore present' if gi_ok else 'MISSING (run --init)'}")
 
+    git_ok = False
     try:
         r = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
                            capture_output=True, text=True, timeout=5)
@@ -1826,10 +1867,14 @@ def do_bootstrap():
                                 capture_output=True, text=True, timeout=5)
             branch = (rb.stdout or '').strip() or '?'
             print(f"  git:      yes (branch {branch})")
+            git_ok = True
         else:
-            print("  git:      no (git init to enable auto-commit)")
+            print("  git:      repo not initialized (run: git init)")
+    except FileNotFoundError:
+        print("  git:      NOT INSTALLED (strongly recommended)")
+        print("            for install instructions: python run.py --git-hint")
     except Exception:
-        print("  git:      not installed")
+        print("  git:      not installed (strongly recommended)")
 
     sensitive = ['.env', 'credentials.json', 'secrets.yaml', 'secrets.yml',
                  'id_rsa', 'id_ed25519']
@@ -1843,6 +1888,11 @@ def do_bootstrap():
     ready = (py_ok and work_ok and cfg_ok and doc_ok)
     if ready:
         print("[BOOTSTRAP] You are ready.")
+        if not git_ok:
+            print()
+            print("  [TIP] Git is not detected. Without it, patches still apply,")
+            print("        but auto-commit, auto-tag, and rollback safety are off.")
+            print("        Run: python run.py --git-hint")
         print()
         print("Next steps:")
         print("  1. Paste PROJECT_CONTEXT.en.md as the first message in a new AI chat.")
@@ -1957,6 +2007,7 @@ def dispatch(args):
     if cmd in ('--version', '-v'):     print(f"run.py v{VERSION}"); return 0
     if cmd == '--init':                 do_init(); return 0
     if cmd == '--bootstrap':            return do_bootstrap()
+    if cmd == '--git-hint':             do_git_hint(); return 0
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
         _p = WORK / 'ctx_delta.txt'

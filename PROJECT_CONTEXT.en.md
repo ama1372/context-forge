@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P103 |
-| Last commit | `27546e6` |
-| Time | 2026-10-16 08:29 |
-| MSG-SEED | `082a8566` |
+| Last patch | P104 |
+| Last commit | `e87e15a` |
+| Time | 2026-10-16 08:33 |
+| MSG-SEED | `c38bf5f9` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1406,6 +1406,65 @@ Without `--review`, patches apply as before. `--review` is opt-in. Combine with 
 
 ---
 
+## Section 0-C-23 — Git is strongly recommended
+
+> **Python is required. Git is strongly recommended, but not required.**
+
+### 0-C-23-1. What works without Git
+
+- All patches apply.
+- All files are written.
+- `output.txt` is produced.
+- `#@ASK:`, `#@IF:`, `--review`, `--tree`, `--check-md`, `--file`, `--slim-context` — all work.
+- The AI's loop (`input.txt` → `python run.py` → `output.txt`) works.
+
+### 0-C-23-2. What is lost without Git
+
+- **Auto-commit** — no `[GIT] commit:` line in `output.txt`.
+- **Auto-tag** — no `[GIT] tag:` line.
+- **Rollback safety** — no `git reset --hard <tag>` to undo a bad patch.
+- **History** — no log of what changed when.
+- **`#@PUSH:`** — pushing to a remote requires Git.
+- **`_work/ctx_delta.txt`** — the git hash line is empty.
+
+### 0-C-23-3. How to know if Git is missing
+
+`python run.py --bootstrap` reports:
+
+    git:      NOT INSTALLED (strongly recommended)
+              for install instructions: python run.py --git-hint
+
+### 0-C-23-4. Install instructions
+
+`python run.py --git-hint` prints the exact command for your OS:
+
+- **Windows:** `winget install --id Git.Git -e --source winget`
+- **macOS:** `brew install git` or `xcode-select --install`
+- **Linux:** `sudo apt install git` (Debian), `sudo dnf install git` (Fedora), `sudo pacman -S git` (Arch)
+
+After installing, close and reopen the terminal, then re-run `python run.py --bootstrap`.
+
+### 0-C-23-5. Why the AI must not auto-install Git
+
+- **Admin privileges** — most installs require sudo/UAC; the AI cannot grant them.
+- **Platform-specific** — the right command depends on OS and package manager; guessing risks a broken install.
+- **Security** — running an installer on the user's machine is a serious action. The AI should not do it without explicit, informed consent.
+- **Silent failure** — a half-installed Git is worse than no Git.
+
+**The AI's job:** report that Git is missing, point to `--git-hint`, and let the user install. If the user asks the AI to install Git, the AI puts the install command in a `===== CMD: =====` block for the user to run — the user still owns the action.
+
+### 0-C-23-6. First-patch checklist for a new project
+
+The AI's first response to a new project should include:
+
+1. The three bootstrap steps (Section 0-C-16).
+2. If `--bootstrap` reported Git missing: a one-line note pointing to `python run.py --git-hint`.
+3. Then the first feature patch.
+
+**Do not block** the project on Git. Mention it, proceed.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -2423,11 +2482,11 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `v1.5.2` |
-| **Last commit** | comprehensive v1.5.2 (ASK + review + tree + defensive) |
-| **Last work** | v1.5.2: restored run.py helpers; `#@ASK:` interactive choices; `--review` with risk levels; real `--tree`; defensive `do_apply` |
+    | **Last safe tag** | `v1.5.3` |
+| **Last commit** | Git detection + install hints |
+| **Last work** | v1.5.3: `--git-hint` (OS-specific install commands); `--bootstrap` warns when Git is missing; Section 0-C-23; ADR-30; Section 32-1 update |
 | **Next step** | First real test-project |
-| **Current phase** | v1.5.2 - released |
+| **Current phase** | v1.5.3 - released |
 | **Completion** | 100% EN |
 | **Last error** | none |
 | **Open issues** | First real test-project |
@@ -2708,6 +2767,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI creates a file only if it has a clear lifecycle (source, runtime, output, config). If the file is not source/config/docs, the same `input.txt` must also update `.gitignore`. Never `git add -f` a `.gitignore`-excluded file.
 - **Reason:** the observed failure mode — temporary scripts (e.g. `_work/*.py`) accidentally tracked in git. The fix in this project took multiple patches; the rule prevents recurrence.
 - **Alternatives:** rely on the user to fix `.gitignore` later (rejected — by then the file is already in history); never create files (rejected — impossible for a dev tool).
+
+**ADR-30: Git is recommended, not required (Section 0-C-23)**
+
+- **Decision:** the protocol does not require Git. It detects it, warns if absent, and points to `python run.py --git-hint` for OS-specific install instructions. The AI does not auto-install Git; if the user asks, the AI puts the install command in a `===== CMD: =====` block for the user to run.
+- **Reason:** Git is needed for auto-commit, auto-tag, rollback safety, and `#@PUSH:`. But some environments lack Git (containers, minimal OS installs, locked-down machines). Blocking the protocol on Git would exclude those. Auto-installing would require admin, be platform-specific, and risk silent failure.
+- **Alternatives:** auto-install (rejected — admin, security, platform-specific); require Git (rejected — excludes valid environments); ignore Git (rejected — users miss rollback safety).
 
 **ADR-28: Interactive choices via `#@ASK:` (Section 0-C-21)**
 
@@ -3694,9 +3759,8 @@ After success: `git stash drop`. After failure: `git stash pop`.
 
 - An empty folder (new project) or an existing project
 - An AI (DeepSeek is recommended — it executes anchor/replace most precisely)
-- A runner for the tool:
-  - **Python 3.8 or newer** (default — the reference tool is `run.py`), **or**
-  - **The project's own language toolchain** (Rust, Node, Go, etc.) — if the AI rewrites the tool (Section 0-C-13)
+- **Python 3.8 or newer** (required — the reference tool is `run.py`), **or** the project's own language toolchain (Rust, Node, Go, etc.) if the AI rewrites the tool (Section 0-C-13)
+- **Git** — strongly recommended. Without it, patches still apply, but auto-commit, auto-tag, and rollback safety are off. See Section 0-C-23. Check with `python run.py --bootstrap`; install with `python run.py --git-hint`.
 
 ### 32-2. Steps
 
