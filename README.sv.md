@@ -72,6 +72,20 @@ Ett **enda dokument** (`PROJECT_CONTEXT.md`) som du klistrar in i vilken AI-chat
 
 ---
 
+
+## Fullständig nybörjarguide (sammanfattning)
+
+1. Installera **Python 3.10+** från python.org (Windows: markera "Add to PATH").
+2. (Valfritt) Installera **VS Code**.
+3. Ladda ner `PROJECT_CONTEXT.en.md` och `run.py`, lägg i samma mapp, öppna i VS Code.
+4. Terminal: `python run.py` → mappen `_work/` skapas.
+5. I DeepSeek, klistra in `PROJECT_CONTEXT.en.md` som första meddelande, säg ditt mål.
+6. **Slinga:** AI skickar ett block → kopiera till `_work/input.txt` → kör `python run.py` → skicka `_work/output.txt` tillbaka.
+7. Var 10–20 meddelande, påminn AI:n om ditt projekt.
+8. Om AI:n driver iväg, säg: **"Projektkontext, tack."**
+
+Full version (engelska): se `README.md`.
+
 ## Vad du får
 
 | Före | Efter |

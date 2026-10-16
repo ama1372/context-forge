@@ -72,6 +72,20 @@
 
 ---
 
+
+## 초보자 완전 가이드 (요약)
+
+1. python.org에서 **Python 3.10+** 설치 (Windows에서는 "Add to PATH" 선택).
+2. (선택) **VS Code** 설치.
+3. `PROJECT_CONTEXT.en.md`와 `run.py`를 다운로드하여 같은 폴더에 두고 VS Code에서 연다.
+4. 터미널에서: `python run.py` → `_work/` 폴더 생성.
+5. DeepSeek에 `PROJECT_CONTEXT.en.md`를 첫 메시지로 붙여넣고 목표를 말한다.
+6. **루프:** AI가 블록 전송 → `_work/input.txt`에 복사 → `python run.py` 실행 → `_work/output.txt` 반환.
+7. 10–20 메시지마다 AI에게 프로젝트를 상기시킨다.
+8. AI가 이탈하면: **"프로젝트 컨텍스트 주세요."**
+
+전체 버전(영어): `README.md` 참조.
+
 ## 무엇을 얻게 되나요
 
 | 이전 | 이후 |

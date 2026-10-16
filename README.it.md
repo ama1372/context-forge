@@ -72,6 +72,20 @@ Un **documento unico** (`PROJECT_CONTEXT.md`) che incolli in qualsiasi chat IA �
 
 ---
 
+
+## Guida completa per principianti (riassunto)
+
+1. Installa **Python 3.10+** da python.org (su Windows, spunta "Add to PATH").
+2. (Opzionale) Installa **VS Code**.
+3. Scarica `PROJECT_CONTEXT.en.md` e `run.py`, mettili in una cartella, aprila in VS Code.
+4. Terminale: `python run.py` → viene creata la cartella `_work/`.
+5. In DeepSeek, incolla `PROJECT_CONTEXT.en.md` come primo messaggio, di' il tuo obiettivo.
+6. **Loop:** l'IA invia un blocco → copia in `_work/input.txt` → esegui `python run.py` → rimanda `_work/output.txt`.
+7. Ogni 10–20 messaggi ricorda all'IA il tuo progetto.
+8. Se l'IA devia, di': **"Contesto del progetto, per favore."**
+
+Versione completa (inglese): vedi `README.md`.
+
 ## Cosa ottieni
 
 | Prima | Dopo |

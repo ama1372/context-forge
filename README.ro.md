@@ -72,6 +72,20 @@ Un **singur document** (`PROJECT_CONTEXT.md`) pe care îl lipești în orice cha
 
 ---
 
+
+## Ghid complet pentru începători (rezumat)
+
+1. Instalează **Python 3.10+** de pe python.org (Windows: bifează "Add to PATH").
+2. (Opțional) Instalează **VS Code**.
+3. Descarcă `PROJECT_CONTEXT.en.md` și `run.py`, pune-le într-un folder, deschide-l în VS Code.
+4. Terminal: `python run.py` → se creează folderul `_work/`.
+5. În DeepSeek, lipește `PROJECT_CONTEXT.en.md` ca prim mesaj, spune-ți obiectivul.
+6. **Buclă:** AI trimite un bloc → copiază în `_work/input.txt` → rulează `python run.py` → trimite `_work/output.txt` înapoi.
+7. La fiecare 10–20 mesaje, reamintește AI-ului proiectul tău.
+8. Dacă AI-ul deviază, spune: **"Contextul proiectului, te rog."**
+
+Versiune completă (engleză): vezi `README.md`.
+
 ## Ce primești
 
 | Înainte | După |

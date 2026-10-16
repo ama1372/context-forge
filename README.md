@@ -80,6 +80,91 @@ A **single document** (`PROJECT_CONTEXT.en.md`) you paste into any AI chat — D
 
 ---
 
+
+## Complete beginner's walkthrough
+
+> **You don't need to know programming. Just follow these steps exactly.**
+
+**1. Install Python 3.10+**
+
+Get it from [python.org/downloads](https://www.python.org/downloads/). On Windows, tick **Add Python to PATH** during install — without it, nothing works.
+
+**2. Install VS Code (optional, recommended)**
+
+Get it from [code.visualstudio.com](https://code.visualstudio.com/). Free editor. Notepad works too, but VS Code makes this easier.
+
+**3. Create a folder, drop two files in it**
+
+Download from this repo:
+
+- `PROJECT_CONTEXT.en.md` — the rule document
+- `run.py` — the tool
+
+Put **both in one folder** (e.g. `my-project`). Open that folder in VS Code (File → Open Folder).
+
+**4. Open the terminal**
+
+In VS Code: `Ctrl + `` (below the Esc key). A panel opens at the bottom. Type:
+
+    python run.py
+
+Press Enter. A folder named `_work` appears. **That's it.**
+
+**5. `_work/` — where everything happens**
+
+After the command, `_work/` contains two files:
+
+- `input.txt` — you **paste** whatever the AI gives you here
+- `output.txt` — the **result** lands here; send this **back to the AI**
+
+From this point on, you only ever touch these two files. Nothing else.
+
+**6. Open a new chat with DeepSeek**
+
+Paste the whole `PROJECT_CONTEXT.en.md` as the **first message**. Then write one line:
+
+> "My goal: build a <program / website / tool> that <does what>."
+
+**7. The main loop**
+
+The AI gives you a code block. You:
+
+1. Click **Copy** (AI has a copy button on code boxes).
+2. Paste into `_work/input.txt`.
+3. In the terminal: `python run.py`
+4. `_work/output.txt` fills with info.
+5. Send the **whole** `output.txt` back to the AI.
+
+Repeat forever. The AI sends the next block, you paste, run, send back.
+
+**8. During the project — a few tips**
+
+- **Every 10–20 messages,** remind the AI what your project is and its parts — "My goal is X, with parts A, B, C."
+- **Every few messages,** remind the AI to **keep `PROJECT_CONTEXT` updated** (because the chat may hit DeepSeek's rate limit at any moment). If it's updated, you hand it to a new chat and continue without re-explaining.
+- **Never install anything by hand.** If the AI says "install npm" or "run this shell command", reply: "Put it in `input.txt`." The AI must solve **everything** through `input.txt`.
+- **For exe or build steps,** the AI handles it through `input.txt`. No manual setup.
+
+**9. If DeepSeek forgets**
+
+DeepSeek drifts in long chats. If you see:
+
+- shell commands in chat,
+- no context block,
+- the protocol slipping —
+
+**say three words:**
+
+> **"Project context, please."**
+
+The AI must stop, re-read the document, and continue in the correct format.
+
+**10. What a pro does**
+
+Experienced users write the **entire project spec in the first message** — full details, several hundred lines. If you're new, you don't need this — you can build step by step through the chat. But the more complete the spec, the faster and more accurate the result.
+
+---
+
+
 ## What you get
 
 | Before | After |

@@ -72,6 +72,20 @@
 
 ---
 
+
+## 初学者完整指南（简版）
+
+1. 从 python.org 安装 **Python 3.10+**（Windows 上勾选 "Add to PATH"）。
+2. （可选）安装 **VS Code**。
+3. 下载 `PROJECT_CONTEXT.en.md` 和 `run.py`，放进同一个文件夹，在 VS Code 中打开。
+4. 在终端运行：`python run.py` → 会创建 `_work/` 文件夹。
+5. 在 DeepSeek 新对话中粘贴整个 `PROJECT_CONTEXT.en.md`，说你的目标。
+6. **循环：** AI 发一个代码块 → 复制到 `_work/input.txt` → 运行 `python run.py` → 把 `_work/output.txt` 发回给 AI。
+7. 每隔 10–20 条消息提醒 AI 你的项目内容。
+8. 若 AI 偏离，说：**"项目上下文。"**
+
+完整版（英文）：见 `README.md`。
+
 ## 你会得到什么
 
 | 之前 | 之后 |

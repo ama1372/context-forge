@@ -72,6 +72,20 @@
 
 ---
 
+
+## Kompletny przewodnik dla początkujących (skrót)
+
+1. Zainstaluj **Python 3.10+** z python.org (Windows: zaznacz "Add to PATH").
+2. (Opcjonalnie) Zainstaluj **VS Code**.
+3. Pobierz `PROJECT_CONTEXT.en.md` i `run.py`, umieść w jednym folderze, otwórz w VS Code.
+4. Terminal: `python run.py` → tworzy się folder `_work/`.
+5. W DeepSeek wklej `PROJECT_CONTEXT.en.md` jako pierwszą wiadomość, podaj cel.
+6. **Pętla:** AI wysyła blok → skopiuj do `_work/input.txt` → uruchom `python run.py` → odeślij `_work/output.txt`.
+7. Co 10–20 wiadomości przypominaj AI o projekcie.
+8. Jeśli AI zbacza, powiedz: **"Kontekst projektu, proszę."**
+
+Pełna wersja (angielski): zobacz `README.md`.
+
 ## Co dostajesz
 
 | Przed | Po |

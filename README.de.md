@@ -72,6 +72,20 @@ Ein **einzelnes Dokument** (`PROJECT_CONTEXT.md`), das du in jeden KI-Chat einf�
 
 ---
 
+
+## Komplette Anfänger-Anleitung (Kurzfassung)
+
+1. **Python 3.10+** von python.org installieren (Windows: "Add to PATH" wählen).
+2. (Optional) **VS Code** installieren.
+3. `PROJECT_CONTEXT.en.md` und `run.py` herunterladen, in einen Ordner legen, in VS Code öffnen.
+4. Terminal: `python run.py` → Ordner `_work/` wird erstellt.
+5. In DeepSeek `PROJECT_CONTEXT.en.md` als erste Nachricht einfügen, Ziel nennen.
+6. **Schleife:** KI sendet Block → in `_work/input.txt` einfügen → `python run.py` → `_work/output.txt` zurücksenden.
+7. Alle 10–20 Nachrichten die KI an das Projekt erinnern.
+8. Bei Drift: **"Projektkontext, bitte."**
+
+Vollversion (Englisch): siehe `README.md`.
+
 ## Was du bekommst
 
 | Vorher | Nachher |

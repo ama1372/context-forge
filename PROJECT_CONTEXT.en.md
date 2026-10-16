@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P104 |
-| Last commit | `e87e15a` |
-| Time | 2026-10-16 08:33 |
-| MSG-SEED | `c38bf5f9` |
+| Last patch | P105 |
+| Last commit | `bd9b7ea` |
+| Time | 2026-10-16 08:36 |
+| MSG-SEED | `c8f24cc9` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2482,11 +2482,11 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `v1.5.3` |
-| **Last commit** | Git detection + install hints |
-| **Last work** | v1.5.3: `--git-hint` (OS-specific install commands); `--bootstrap` warns when Git is missing; Section 0-C-23; ADR-30; Section 32-1 update |
+    | **Last safe tag** | `v1.5.4` |
+| **Last commit** | beginner walkthrough in all 24 READMEs |
+| **Last work** | v1.5.4: `Complete beginner's walkthrough` section added — full in English + Persian, compact in the other 22 |
 | **Next step** | First real test-project |
-| **Current phase** | v1.5.3 - released |
+| **Current phase** | v1.5.4 - released |
 | **Completion** | 100% EN |
 | **Last error** | none |
 | **Open issues** | First real test-project |

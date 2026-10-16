@@ -72,6 +72,20 @@ Un **document unique** (`PROJECT_CONTEXT.md`) que vous collez dans n'importe que
 
 ---
 
+
+## Guide complet du débutant (résumé)
+
+1. Installez **Python 3.10+** depuis python.org (sur Windows, cochez "Add to PATH").
+2. (Optionnel) Installez **VS Code**.
+3. Téléchargez `PROJECT_CONTEXT.en.md` et `run.py`, mettez-les dans un dossier, ouvrez-le dans VS Code.
+4. Terminal : `python run.py` → le dossier `_work/` est créé.
+5. Dans DeepSeek, collez `PROJECT_CONTEXT.en.md` en premier message, dites votre objectif.
+6. **Boucle :** l'IA envoie un bloc → copiez dans `_work/input.txt` → lancez `python run.py` → renvoyez `_work/output.txt`.
+7. Tous les 10–20 messages, rappelez votre projet à l'IA.
+8. Si l'IA dérive, dites : **« Contexte du projet, s'il te plaît. »**
+
+Version complète (anglais) : voir `README.md`.
+
 ## Ce que vous obtenez
 
 | Avant | Après |

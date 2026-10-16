@@ -72,6 +72,20 @@ Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJE
 
 ---
 
+
+## Yeni başlayanlar için tam rehber (özet)
+
+1. python.org'dan **Python 3.10+** kurun (Windows'ta "Add to PATH" işaretleyin).
+2. (İsteğe bağlı) **VS Code** kurun.
+3. `PROJECT_CONTEXT.en.md` ve `run.py`'yi indirin, bir klasöre koyun, VS Code'da açın.
+4. Terminal: `python run.py` → `_work/` klasörü oluşur.
+5. DeepSeek'te `PROJECT_CONTEXT.en.md`'yi ilk mesaj olarak yapıştırın, hedefinizi söyleyin.
+6. **Döngü:** AI blok gönderir → `_work/input.txt`'e yapıştırın → `python run.py` çalıştırın → `_work/output.txt`'i geri gönderin.
+7. Her 10–20 mesajda AI'ya projenizi hatırlatın.
+8. AI saparsa: **"Proje bağlamı, lütfen."**
+
+Tam sürüm (İngilizce): `README.md`'ye bakın.
+
 ## Ne elde edersin
 
 | Önce | Sonra |

@@ -72,6 +72,20 @@
 
 ---
 
+
+## 初心者向け完全ガイド（要約）
+
+1. python.org から **Python 3.10+** をインストール（Windows では "Add to PATH" を有効に）。
+2. （任意）**VS Code** をインストール。
+3. `PROJECT_CONTEXT.en.md` と `run.py` をダウンロードし、同じフォルダに置いて VS Code で開く。
+4. ターミナルで: `python run.py` → `_work/` フォルダが作成される。
+5. DeepSeek で `PROJECT_CONTEXT.en.md` を最初のメッセージとして貼り付け、目標を伝える。
+6. **ループ:** AI がブロックを送信 → `_work/input.txt` にコピー → `python run.py` を実行 → `_work/output.txt` を返送。
+7. 10–20 メッセージごとに AI にプロジェクトを思い出させる。
+8. AI が逸脱したら: **「プロジェクトコンテキストを。」**
+
+完全版（英語）: `README.md` を参照。
+
 ## 得られるもの
 
 | 前 | 後 |

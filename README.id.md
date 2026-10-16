@@ -72,6 +72,20 @@ Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.md`) yang kamu tempel ke chat AI ap
 
 ---
 
+
+## Panduan lengkap pemula (ringkas)
+
+1. Instal **Python 3.10+** dari python.org (di Windows, centang "Add to PATH").
+2. (Opsional) Instal **VS Code**.
+3. Unduh `PROJECT_CONTEXT.en.md` dan `run.py`, taruh di satu folder, buka di VS Code.
+4. Terminal: `python run.py` → folder `_work/` dibuat.
+5. Di DeepSeek, tempel `PROJECT_CONTEXT.en.md` sebagai pesan pertama, sebutkan tujuanmu.
+6. **Loop:** AI mengirim blok → salin ke `_work/input.txt` → jalankan `python run.py` → kirim `_work/output.txt` kembali.
+7. Setiap 10–20 pesan, ingatkan AI tentang proyekmu.
+8. Jika AI menyimpang, katakan: **"Konteks proyek, tolong."**
+
+Versi lengkap (Inggris): lihat `README.md`.
+
 ## Apa yang kamu dapatkan
 
 | Sebelum | Sesudah |

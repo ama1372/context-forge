@@ -72,6 +72,20 @@ Một **tài liệu duy nhất** (`PROJECT_CONTEXT.md`) bạn dán vào bất k�
 
 ---
 
+
+## Hướng dẫn đầy đủ cho người mới (tóm tắt)
+
+1. Cài **Python 3.10+** từ python.org (Windows: chọn "Add to PATH").
+2. (Tùy chọn) Cài **VS Code**.
+3. Tải `PROJECT_CONTEXT.en.md` và `run.py`, đặt vào một thư mục, mở trong VS Code.
+4. Terminal: `python run.py` → thư mục `_work/` được tạo.
+5. Trong DeepSeek, dán `PROJECT_CONTEXT.en.md` làm tin nhắn đầu tiên, nêu mục tiêu.
+6. **Vòng lặp:** AI gửi khối → sao chép vào `_work/input.txt` → chạy `python run.py` → gửi `_work/output.txt` trở lại.
+7. Mỗi 10–20 tin nhắn, nhắc AI về dự án.
+8. Nếu AI lệch, nói: **"Ngữ cảnh dự án, làm ơn."**
+
+Phiên bản đầy đủ (tiếng Anh): xem `README.md`.
+
 ## Những gì bạn nhận được
 
 | Trước | Sau |

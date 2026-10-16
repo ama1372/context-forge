@@ -72,6 +72,20 @@ Un **documento único** (`PROJECT_CONTEXT.md`) que pegas en cualquier chat de IA
 
 ---
 
+
+## Guía completa para principiantes (resumen)
+
+1. Instala **Python 3.10+** desde python.org (en Windows, marca "Add to PATH").
+2. (Opcional) Instala **VS Code**.
+3. Descarga `PROJECT_CONTEXT.en.md` y `run.py`, ponlos en una carpeta y ábrela en VS Code.
+4. En la terminal: `python run.py` → se crea la carpeta `_work/`.
+5. En DeepSeek, pega `PROJECT_CONTEXT.en.md` como primer mensaje y di tu objetivo.
+6. **Bucle:** la IA envía un bloque → cópialo a `_work/input.txt` → ejecuta `python run.py` → envía `_work/output.txt` de vuelta.
+7. Cada 10–20 mensajes, recuérdale a la IA tu proyecto.
+8. Si la IA se desvía, di: **"Contexto del proyecto, por favor."**
+
+Versión completa (inglés): ver `README.md`.
+
 ## Qué obtienes
 
 | Antes | Después |

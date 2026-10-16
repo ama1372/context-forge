@@ -72,6 +72,20 @@ Een **enkel document** (`PROJECT_CONTEXT.md`) dat je in elke AI-chat plakt — D
 
 ---
 
+
+## Complete beginnershandleiding (samenvatting)
+
+1. Installeer **Python 3.10+** van python.org (Windows: vink "Add to PATH" aan).
+2. (Optioneel) Installeer **VS Code**.
+3. Download `PROJECT_CONTEXT.en.md` en `run.py`, zet in één map, open in VS Code.
+4. Terminal: `python run.py` → map `_work/` wordt aangemaakt.
+5. In DeepSeek, plak `PROJECT_CONTEXT.en.md` als eerste bericht, noem je doel.
+6. **Loop:** AI stuurt een blok → kopieer naar `_work/input.txt` → voer `python run.py` uit → stuur `_work/output.txt` terug.
+7. Elke 10–20 berichten, herinner de AI aan je project.
+8. Als de AI afdwaalt, zeg: **"Projectcontext, alsjeblieft."**
+
+Volledige versie (Engels): zie `README.md`.
+
 ## Wat je krijgt
 
 | Voor | Na |
