@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P110 |
-| Last commit | `8ddb6ef` |
-| Time | 2026-10-16 23:59 |
-| MSG-SEED | `a09c6400` |
+| Last patch | P111 |
+| Last commit | `0047249` |
+| Time | 2026-10-20 09:04 |
+| MSG-SEED | `13883a85` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1555,6 +1555,235 @@ If your document has grown past ~250 KB and the full paste no longer fits a chat
 
 ---
 
+## Section 0-C-25 — Mid-project questions (do not stall)
+
+> **A question is not a stop. Answer it, then continue the project.**
+
+### 0-C-25-1. The failure mode
+
+The user asks a side question mid-project: "how does CSS z-index work?", "should I use SQLite or Postgres?", "what does `git stash` do?".
+
+The AI answers the question well. Then stops.
+
+The project does not advance. The next step (which was in the last `CTX-DELTA` `NEXT:`) is forgotten. The user has to say "continue" — one more message, more tokens, more time.
+
+### 0-C-25-2. The rule
+
+When the user asks a question AND the project has an active `NEXT` (in the last `[CTX-DELTA]` or the Session Tracker):
+
+1. **Answer the question** in 2–5 lines. Direct. No preamble.
+2. **Then include the next patch** (the one from `NEXT:`) in the same message — with `#@COMMIT:`, `#@TAG:`, the patch blocks, `[CTX-DELTA]`.
+
+**One message = answer + patch.** Not two messages.
+
+### 0-C-25-3. The exception — when the question genuinely blocks
+
+Sometimes the answer determines the next step. Examples:
+
+- "Should I use SQLite or Postgres?" — the schema, queries, and deploy all depend on this.
+- "Do you want the login on a separate page or a modal?" — two different patches.
+- "Is this a bug or a feature?" — a fix or a spec change.
+
+In this case:
+
+1. **Answer the question.**
+2. **Explicitly say:** *"Waiting for your decision before continuing with <the next step>."*
+3. **Do NOT include a patch.** The patch depends on the answer.
+4. **Do NOT ask extra questions.** One decision, one sentence.
+
+### 0-C-25-4. How to tell the difference
+
+Ask yourself: **"Can the next patch proceed regardless of the answer?"**
+
+- **Yes** → answer + patch in one message.
+- **No** → answer + wait (with an explicit line).
+
+**When in doubt, choose "answer + wait".** A wrongly-included patch is worse than a delayed one.
+
+### 0-C-25-5. What the AI must never do
+
+- ❌ Answer a question and stop, when the answer does not block the next step.
+- ❌ Answer a question and include a patch that depends on a not-yet-given answer.
+- ❌ Ask "should I continue?" — the answer is always yes, unless the question blocks.
+- ❌ Include a placeholder patch ("we'll fill this in later").
+- ❌ Turn the answer into a lecture. 2–5 lines is enough.
+
+### 0-C-25-6. What the user should see
+
+**Case 1 — answer does not block:**
+```
+<2-5 line answer>
+
+(input.txt block with the next patch)
+```
+
+**Case 2 — answer blocks:**
+```
+<2-5 line answer>
+
+Waiting for your decision before continuing with <next step>.
+```
+
+Nothing else.
+
+---
+
+## Section 0-C-26 — Persona review mode
+
+> **Trigger word: "persona" (or "پرسونا" / "کاربر واقعی"). Opt-in only.**
+
+### 0-C-26-1. What it is
+
+When the user says "persona" (or one of its aliases), the AI temporarily stops being a coder and becomes a **stand-in for the project's end users**. It walks through the product as 2–4 different types of users would — finding bugs, friction, confusion, missing features, and psychological gaps. It returns a report, then a numbered list of suggested patches. The user picks which to act on.
+
+**It is not the default.** It happens only when the user says the keyword. After the review, the AI returns to normal patching.
+
+### 0-C-26-2. What the AI must do
+
+1. **Acknowledge in one line.** "Persona mode — reviewing as an end user."
+
+2. **Pick 2–4 personas** — inferred from the project, never asked.
+   - **CLI tool:** first-time user, daily user, script caller.
+   - **Web app:** mobile visitor, desktop visitor, screen-reader user, power user.
+   - **Library:** doc reader, first-time caller, power user, contributor.
+   - **Desktop app:** first-run user, daily user, user with keyboard only, user with high-DPI screen.
+
+3. **Walk the core flow for each persona.**
+   - **Onboarding:** what does the user see first? Is it clear what to do?
+   - **Core action:** can they do the main thing? How many steps? Any ambiguity?
+   - **Edge cases:** empty input, wrong input, slow network, back button, error, interruption, accidental delete.
+   - **Exit:** how do they know they're done? How do they leave?
+
+4. **Report findings by category:**
+
+   - 🔴 **Blockers** — user cannot complete the task at all
+   - 🟠 **Friction** — user completes but struggles (extra steps, unclear labels, re-entering data)
+   - 🟡 **Polish** — user notices but proceeds (typos, awkward spacing, unclear icons, inconsistent casing)
+   - 💡 **Ideas** — user wishes for something that isn't there (shortcut, undo, autosave, dark mode, export)
+   - 🧠 **Psychological** — emotional responses: delight, confusion, anxiety, imposter syndrome, "is this broken?", "am I safe?"
+
+5. **Think at scale — "thousands of users", not one.**
+   - A user with a screen reader.
+   - A user on a 3G connection.
+   - A user with ADHD or anxiety.
+   - A user whose first language is not English.
+   - A user on Windows 7 / iOS 12 / an old browser.
+   - A user with one hand, or one eye, or a tremor.
+   - A user who has not slept.
+   - A user who is angry because the last app failed them.
+   - **Every persona variant reveals a failure mode the default user never sees.**
+
+6. **End with a numbered suggestion list, prioritized.**
+
+   ```
+   Suggested patches (prioritized):
+   1. [🔴] Add "forgot password" flow — users cannot recover.
+   2. [🟠] Reduce signup from 5 fields to 3 — first 3 fields are enough to start.
+   3. [💡] Add "undo" on delete — users delete by accident.
+   4. [🧠] Add "your progress is saved" message — reduces anxiety on long forms.
+   ```
+
+7. **Ask: which to act on?**
+   - Wait for the user to select ("1, 3, 4" or "all" or "none").
+   - Then produce those patches — one at a time via `input.txt`, per the normal protocol.
+
+### 0-C-26-3. What the AI must never do
+
+- ❌ Auto-trigger persona mode without the keyword.
+- ❌ Review from the AI's own perspective (what is technically clean). It must be from the **user's** perspective.
+- ❌ Ask "who are your users?" — infer from the project.
+- ❌ Produce one persona only ("the typical user"). At least **3 different personas**.
+- ❌ Suggest patches without a numbered list the user can pick from.
+- ❌ Write code during the report. The report is separate from the patching phase.
+- ❌ Use developer jargon. Speak in user language: "button" not "component", "page" not "route", "message" not "HTTP 400".
+- ❌ Produce a report that is a wall of text. Structure with categories and short lines.
+- ❌ Do another persona review immediately after one — one pass is enough. The user can ask again later.
+
+### 0-C-26-4. How to exit persona mode
+
+After the report and suggestion list, the AI exits persona mode automatically. The next user message is normal patching.
+
+If the user says "1, 3, 4" — the AI produces those patches, one at a time via `input.txt`, with normal `#@COMMIT:` / `#@TAG:` / `[CTX-DELTA]`.
+
+If the user says "persona again" — the AI may do a second pass, but is encouraged to ask "which personas to focus on this time?" to avoid repeating the same findings.
+
+### 0-C-26-5. When to use it
+
+- **Before a release** — find last-mile issues.
+- **After a major feature** — did it land with users, or only with the AI?
+- **When the project feels "complete but off"** — something isn't clicking, and you can't name it.
+- **When you are the only developer** — the AI is your spare set of eyes.
+- **Before showing to investors, friends, or beta testers** — first impressions matter.
+
+### 0-C-26-6. When NOT to use it
+
+- **Mid-patch** — the project is in flux. Wait until stable.
+- **Before any feature exists** — nothing to review.
+- **Every message** — it is expensive in tokens. Use it as a deliberate step.
+- **As a substitute for testing** — personas find patterns; tests find concrete bugs. You need both.
+- **As a substitute for user interviews** — personas are the AI's imagination of users, not real users. Still valuable, but not a replacement.
+
+### 0-C-26-7. Why this exists
+
+Developers see their own code. Users see the product. The gap between those views is where bugs, frustration, and abandonment live. The AI, given the persona keyword, can walk the product like a user — but only if explicitly told to. Otherwise it optimizes for "the code works", not "the user succeeds".
+
+### 0-C-26-8. Trigger words (any language)
+
+| Language | Trigger |
+|----------|---------|
+| English | **"persona"** or **"end-user review"** or **"become the user"** |
+| فارسی | **«پرسونا»** or **«کاربر واقعی»** or **«من جای کاربر»** |
+| العربية | **"شخصية المستخدم"** or **"راجع كمستخدم"** |
+| Français | **« persona »** or **« deviens l'utilisateur »** |
+| Español | **"persona"** or **"como usuario"** |
+| Deutsch | **"Persona"** or **"als Nutzer"** |
+
+The AI must recognize the **intent**, not the exact wording.
+
+### 0-C-26-9. Example
+
+User says: **"persona"**
+
+AI replies:
+```
+Persona mode — reviewing as an end user.
+
+I see 3 personas for this CLI tool:
+
+A. First-time user — just installed, runs `mytool --help`
+B. Daily user — runs `mytool run <input>` many times a day
+C. Script caller — calls `mytool` from a shell script
+
+Findings for A (First-time user):
+- 🔴 `--help` shows 12 flags, no examples. User doesn't know where to start.
+- 🟠 No `mytool init` command. User has to read docs to create first config.
+- 🟡 Typo in help text: "specifiy" → "specify".
+
+Findings for B (Daily user):
+- 🟠 Re-running `mytool run` re-reads everything. No cache.
+- 🧠 No success message. User wonders "did it work?"
+
+Findings for C (Script caller):
+- 🔴 Exit codes are always 0. Scripts can't detect failure.
+- 🟠 Errors go to stdout, same as success. Scripts can't separate.
+
+Suggested patches (prioritized):
+1. [🔴] Exit code 1 on failure — scripts need this.
+2. [🔴] Add 3 examples at top of `--help`.
+3. [🟠] Split stdout/stderr.
+4. [🟠] Add `mytool init` command.
+5. [🟠] Cache reads within a session.
+6. [🧠] Add a `✓ done` message on success.
+
+Which to act on? (e.g. "1, 2, 6", or "all", or "none")
+```
+
+User: **"1, 2, 6"**
+
+AI: (produces patch 1 via input.txt with commit/tag, then waits for the next output.)
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -2572,11 +2801,11 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `v1.6.2` |
-| **Last commit** | fix self-test tuple regex + aggressive keep-list |
-| **Last work** | v1.6.2: self-test tuple-unpack constants detected mid-line; aggressive profile keeps all critical rules (0*, 4-9, 10, 12, 13, 15, 16, 29) via prefix match |
+    | **Last safe tag** | `v1.7.0` |
+| **Last commit** | Section 0-C-25 (questions don't stall) + 0-C-26 (persona review) |
+| **Last work** | v1.7.0: mid-project questions now answer + patch in one message; persona review mode (trigger: "persona" / "پرسونا") with multi-persona walkthrough; ADR-34/35 |
 | **Next step** | First real test-project |
-| **Current phase** | v1.6.2 - released |
+| **Current phase** | v1.7.0 - released |
 | **Completion** | 100% EN |
 | **Last error** | none |
 | **Open issues** | First real test-project |
@@ -2863,6 +3092,18 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** the AI never refuses to help because "this belongs to another project". Section 0-C-3's rule is about the document's own voice, not a restriction on the user. If the AI is genuinely unsure which project, it asks **one** question — never refuses.
 - **Reason:** observed failure mode — an AI cited Section 0-C-3 to reject a patch, claiming the rules forbid cross-project work. This misreads the section (which is about the AI not mentioning project names on its own) as a blanket restriction. The user then loses time arguing about protocol instead of building.
 - **Alternatives:** clarify in chat (rejected — the user must not have to explain the document); relax Section 0-C-3 (rejected — the "no project names" rule is still correct); add an exception list (rejected — brittle).
+
+**ADR-34: Mid-project questions do not stall (Section 0-C-25)**
+
+- **Decision:** when the user asks a mid-project question and the project has an active `NEXT`, the AI answers in 2–5 lines and includes the next patch in the same message. Exception: if the answer determines the next step (genuine block), the AI answers and explicitly says it is waiting. When in doubt, answer + wait.
+- **Reason:** observed failure mode — a side question pulls the AI into a prose-only reply, the next patch is forgotten, the project stalls, and the user spends a message to say "continue". Every message is tokens and time. The exception preserves the case where the patch genuinely depends on the answer.
+- **Alternatives:** always answer + patch (rejected — applies wrong patches when the answer blocks); always answer + wait (rejected — stalls on non-blocking questions); ask "should I continue?" (rejected — the answer is always yes unless the question blocks).
+
+**ADR-35: Persona review mode (Section 0-C-26)**
+
+- **Decision:** a `persona` keyword (multi-language) puts the AI into end-user review mode for one pass. The AI picks 2–4 personas inferred from the project, walks the core flow for each, reports findings by category (Blockers / Friction / Polish / Ideas / Psychological), thinks at scale ("thousands of users"), and ends with a numbered suggestion list the user can select from. It never auto-triggers, never asks "who are your users?", never produces patches during the report, and never uses developer jargon.
+- **Reason:** developers see their own code, users see the product. The gap between those views is where bugs live. A one-shot persona pass — with the AI standing in for multiple user types — finds issues that feature-by-feature code review misses. But it must be opt-in: auto-triggering wastes tokens and dulls the user's attention. A numbered suggestion list lets the user decide what to act on, preserving control.
+- **Alternatives:** auto-persona on every message (rejected — expensive, diluted); user manually writes user stories (rejected — the AI can do it faster, and the user does not know their own blind spots); skip personas (rejected — the failure mode is real, especially for solo developers).
 
 **ADR-33: Slim profiles, self-test, and health (Section 0-C-24)**
 
@@ -4174,6 +4415,7 @@ In order:
 6. **No next patch without a commit.**
 7. **If the AI drifts, say "Project context, please."** — one line, no explanation. See Section 0-C-19.
 8. **Trust the loop.** Copy → `python run.py` → send `output.txt`. Do not let the AI talk you out of it.
+9. **To have the AI think like an end user, say "persona".** It will review the product from 2–4 user types, find blockers, friction, and gaps, and suggest patches. See Section 0-C-26.
 
 ### 34-5. Wrap-up
 
@@ -4243,7 +4485,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.6.2"
+VERSION = "1.7.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
