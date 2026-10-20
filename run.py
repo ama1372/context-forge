@@ -47,7 +47,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1059,12 +1059,17 @@ def do_apply(patch_id=None):
             if re.search(r'python\s+run\.py', script, re.IGNORECASE):
                 out.append("  [WARN] CMD calls python run.py (nested) - skipped")
                 continue
+            timeout_sec = _resolve_timeout('cmd')
+            if timeout_sec is None:
+                out.append("  [TIMEOUT] no limit (--forever)")
+            else:
+                out.append(f"  [TIMEOUT] {timeout_sec}s")
             try:
                 r = subprocess.run(
                     ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
                      '-Command', script],
                     capture_output=True, text=True, encoding='utf-8',
-                    errors='replace', timeout=900)
+                    errors='replace', timeout=timeout_sec)
                 for ln in (r.stdout or '').rstrip().splitlines():
                     out.append(f"  | {ln}")
                 for ln in (r.stderr or '').rstrip().splitlines():
@@ -1074,7 +1079,14 @@ def do_apply(patch_id=None):
                 else:
                     out.append(f"  [FAIL] exit {r.returncode}"); fail += 1
             except subprocess.TimeoutExpired:
-                out.append("  [FAIL] timeout 900s"); fail += 1
+                out.append(f"  [FAIL] timeout after {timeout_sec}s")
+                out.append("  [TIP]  To run manually in PowerShell (no timeout):")
+                for ln in script.splitlines():
+                    out.append("         " + ln)
+                out.append("  [TIP]  Or retry with:")
+                out.append("         python run.py --long     # 4-hour timeout")
+                out.append("         python run.py --forever  # no timeout")
+                fail += 1
             except Exception as e:
                 out.append(f"  [FAIL] {e}"); fail += 1
 
@@ -1712,12 +1724,16 @@ def do_check(args):
         print('       example: {"build_cmd": ["cargo","check"], "build_cwd": "src-tauri"}')
         return 1
     quiet = any(a in ('quiet', '--q', '-q') for a in args)
+    timeout_sec = _resolve_timeout('check')
     try:
         r = subprocess.run(cfg['build_cmd'], cwd=cfg.get('build_cwd', '.'),
                            capture_output=True, text=True,
-                           encoding='utf-8', errors='replace', timeout=600)
+                           encoding='utf-8', errors='replace', timeout=timeout_sec)
     except subprocess.TimeoutExpired:
-        print("[FAIL] build timeout (600s)"); return 2
+        print(f"[FAIL] build timeout ({timeout_sec}s)")
+        print("[TIP]  Retry: python run.py check --long   (4 hours)")
+        print("[TIP]  Or:    python run.py check --forever  (no limit)")
+        return 2
     except FileNotFoundError:
         print(f"[FAIL] command not found: {cfg['build_cmd'][0]}"); return 2
     except Exception as e:
@@ -1758,13 +1774,17 @@ def do_verify(args):
         print("[INFO] no test_cmd in _work/config.json")
         print('       example: {"test_cmd": ["cargo","test"], "test_cwd": "src-tauri"}')
         return 1
+    timeout_sec = _resolve_timeout('verify')
     try:
         r = subprocess.run(cfg['test_cmd'] + list(args),
                            cwd=cfg.get('test_cwd', '.'),
                            capture_output=True, text=True,
-                           encoding='utf-8', errors='replace', timeout=900)
+                           encoding='utf-8', errors='replace', timeout=timeout_sec)
     except subprocess.TimeoutExpired:
-        print("[FAIL] test timeout (900s)"); return 2
+        print(f"[FAIL] test timeout ({timeout_sec}s)")
+        print("[TIP]  Retry: python run.py verify --long   (4 hours)")
+        print("[TIP]  Or:    python run.py verify --forever  (no limit)")
+        return 2
     except FileNotFoundError:
         print(f"[FAIL] command not found: {cfg['test_cmd'][0]}"); return 2
     except Exception as e:
@@ -2159,7 +2179,7 @@ def dispatch_capture(args):
 
 
 def dispatch(args):
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     if not args: return None
     cmd = args[0]
 
@@ -2261,6 +2281,10 @@ def dispatch(args):
         DRY_RUN = True; return dispatch(args[1:]) if args[1:] else None
     if cmd == '--backup':
         BACKUP = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--long':
+        TIMEOUT_LONG = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--forever':
+        TIMEOUT_FOREVER = True; return dispatch(args[1:]) if args[1:] else None
 
     if cmd == 'dump':    do_dump(full=('--full' in args or '-f' in args)); return 0
     if cmd == 'apply':
@@ -2282,7 +2306,7 @@ def dispatch(args):
 
 
 def main():
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
         write(INPUT, '')

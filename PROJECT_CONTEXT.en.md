@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P111 |
-| Last commit | `0047249` |
-| Time | 2026-10-20 09:04 |
-| MSG-SEED | `13883a85` |
+| Last patch | P112 |
+| Last commit | `6e946d7` |
+| Time | 2026-10-20 20:13 |
+| MSG-SEED | `5aa58298` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1784,6 +1784,77 @@ AI: (produces patch 1 via input.txt with commit/tag, then waits for the next out
 
 ---
 
+## Section 0-C-27 — Long-running commands (builds, tests, migrations)
+
+> **Some commands take more than a few minutes. Default timeout is 1 hour. For anything longer, use --long or --forever.**
+
+### 0-C-27-1. Defaults and overrides
+
+CMD blocks (Section 7-5), `#@POST: check`, and `#@POST: verify` run with a timeout:
+
+- **Default:** 3600 seconds (1 hour).
+- **Per-category:** set `cmd_timeout`, `check_timeout`, `verify_timeout` in `_work/config.json`.
+- **Flags:** `--long` (4 hours), `--forever` (no limit) — apply to every command this run.
+
+    python run.py --long       # 4-hour timeout, all commands
+    python run.py --forever    # no timeout at all
+
+### 0-C-27-2. When the default is not enough
+
+| Command | Typical | Recommendation |
+|---------|---------|----------------|
+| `cargo check` | seconds | default |
+| `cargo build` (debug) | 1–5 min | default |
+| `cargo build --release` | 20–45 min | `--long` |
+| `npm run build` (webpack/vite) | 5–30 min | `--long` for large projects |
+| `tsc -b` | 5–30 min | `--long` |
+| E2E suite | 30+ min | `--long` |
+| DB migration (large) | variable | `--forever` |
+
+### 0-C-27-3. When a CMD times out
+
+`run.py` reports:
+
+    [FAIL] timeout after 3600s
+    [TIP]  To run manually in PowerShell (no timeout):
+           cargo build --release
+    [TIP]  Or retry with:
+           python run.py --long     # 4-hour timeout
+           python run.py --forever  # no timeout
+
+Copy the command, run it in PowerShell directly. Then re-run `python run.py` to continue.
+
+**The patch is not lost.** `input.txt` is archived in `_work/applied/` before the CMD runs. Retry with `--long`, or run manually.
+
+### 0-C-27-4. The AI's responsibility
+
+When the AI writes a CMD block whose runtime may exceed the current default, it **must** note it:
+
+    ===== CMD: cargo build --release (may take 30+ min — use --long) =====
+    <<<RUN>>>
+    cargo build --release
+    <<<END>>>
+
+Or mention it in the message: *"This build may take 20+ minutes. Run with `python run.py --long`."*
+
+**The AI must never silently delegate a long build to the default timeout.**
+
+### 0-C-27-5. What NOT to do
+
+- Do not use `--forever` for interactive commands (`vim`, `nano`, prompts) — they will never finish.
+- Do not use `--forever` for network-dependent commands without a wall-clock plan.
+- Do not add `--forever` as an `#@` directive — it is a per-run flag chosen by the user.
+
+### 0-C-27-6. Current limitation — no live streaming
+
+The output appears in `output.txt` only when the command finishes. For a 30-minute build, the user sees nothing for 30 minutes.
+
+**Workaround:** run the build manually in PowerShell for live output, then re-run `python run.py`.
+
+**Not yet implemented:** live streaming of subprocess output. Candidate for a future version.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -2801,11 +2872,11 @@ Every message with a real change:
     ### 13-1. Session Tracker
     | Field | Value |
     |-------|-------|
-    | **Last safe tag** | `v1.7.0` |
-| **Last commit** | Section 0-C-25 (questions don't stall) + 0-C-26 (persona review) |
-| **Last work** | v1.7.0: mid-project questions now answer + patch in one message; persona review mode (trigger: "persona" / "پرسونا") with multi-persona walkthrough; ADR-34/35 |
+    | **Last safe tag** | `v1.7.1` |
+| **Last commit** | long-running command support |
+| **Last work** | v1.7.1: default timeout 1 hour; `--long` (4h) / `--forever`; per-category override via `_work/config.json`; TIP on timeout with manual PowerShell command; Section 0-C-27; ADR-36 |
 | **Next step** | First real test-project |
-| **Current phase** | v1.7.0 - released |
+| **Current phase** | v1.7.1 - released |
 | **Completion** | 100% EN |
 | **Last error** | none |
 | **Open issues** | First real test-project |
@@ -3098,6 +3169,12 @@ If the document is short (under 2000 lines), keep history and decisions here. If
 - **Decision:** when the user asks a mid-project question and the project has an active `NEXT`, the AI answers in 2–5 lines and includes the next patch in the same message. Exception: if the answer determines the next step (genuine block), the AI answers and explicitly says it is waiting. When in doubt, answer + wait.
 - **Reason:** observed failure mode — a side question pulls the AI into a prose-only reply, the next patch is forgotten, the project stalls, and the user spends a message to say "continue". Every message is tokens and time. The exception preserves the case where the patch genuinely depends on the answer.
 - **Alternatives:** always answer + patch (rejected — applies wrong patches when the answer blocks); always answer + wait (rejected — stalls on non-blocking questions); ask "should I continue?" (rejected — the answer is always yes unless the question blocks).
+
+**ADR-36: Long commands — generous defaults, opt-in extensions (Section 0-C-27)**
+
+- **Decision:** raise the default timeout from 900/600 seconds to 3600 seconds for CMD, `check`, and `verify`. Add `--long` (4 hours) and `--forever` (no limit) flags, both applying to every command in the run. Allow per-category override via `_work/config.json` (`cmd_timeout`, `check_timeout`, `verify_timeout`). On timeout, print the exact command for manual PowerShell execution plus retry flags.
+- **Reason:** observed real-world failure — a 1-hour build timed out at 15 minutes, wasting 15 minutes and forcing the user to run the build manually anyway. Defaults must match real build costs. A generous default costs nothing when commands are fast; a tight default fails when commands are slow. Making the extension opt-in preserves control — the AI cannot silently extend the timeout.
+- **Alternatives:** keep 15 minutes (rejected — fails on real builds); no timeout (rejected — a hung command blocks forever); per-CMD inline timeout directive (rejected — more surface, harder to remember); auto-detect build durations from history (rejected — the AI cannot know the user's hardware).
 
 **ADR-35: Persona review mode (Section 0-C-26)**
 
@@ -4485,7 +4562,7 @@ import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -5497,12 +5574,17 @@ def do_apply(patch_id=None):
             if re.search(r'python\s+run\.py', script, re.IGNORECASE):
                 out.append("  [WARN] CMD calls python run.py (nested) - skipped")
                 continue
+            timeout_sec = _resolve_timeout('cmd')
+            if timeout_sec is None:
+                out.append("  [TIMEOUT] no limit (--forever)")
+            else:
+                out.append(f"  [TIMEOUT] {timeout_sec}s")
             try:
                 r = subprocess.run(
                     ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
                      '-Command', script],
                     capture_output=True, text=True, encoding='utf-8',
-                    errors='replace', timeout=900)
+                    errors='replace', timeout=timeout_sec)
                 for ln in (r.stdout or '').rstrip().splitlines():
                     out.append(f"  | {ln}")
                 for ln in (r.stderr or '').rstrip().splitlines():
@@ -5512,7 +5594,14 @@ def do_apply(patch_id=None):
                 else:
                     out.append(f"  [FAIL] exit {r.returncode}"); fail += 1
             except subprocess.TimeoutExpired:
-                out.append("  [FAIL] timeout 900s"); fail += 1
+                out.append(f"  [FAIL] timeout after {timeout_sec}s")
+                out.append("  [TIP]  To run manually in PowerShell (no timeout):")
+                for ln in script.splitlines():
+                    out.append("         " + ln)
+                out.append("  [TIP]  Or retry with:")
+                out.append("         python run.py --long     # 4-hour timeout")
+                out.append("         python run.py --forever  # no timeout")
+                fail += 1
             except Exception as e:
                 out.append(f"  [FAIL] {e}"); fail += 1
 
@@ -6150,12 +6239,16 @@ def do_check(args):
         print('       example: {"build_cmd": ["cargo","check"], "build_cwd": "src-tauri"}')
         return 1
     quiet = any(a in ('quiet', '--q', '-q') for a in args)
+    timeout_sec = _resolve_timeout('check')
     try:
         r = subprocess.run(cfg['build_cmd'], cwd=cfg.get('build_cwd', '.'),
                            capture_output=True, text=True,
-                           encoding='utf-8', errors='replace', timeout=600)
+                           encoding='utf-8', errors='replace', timeout=timeout_sec)
     except subprocess.TimeoutExpired:
-        print("[FAIL] build timeout (600s)"); return 2
+        print(f"[FAIL] build timeout ({timeout_sec}s)")
+        print("[TIP]  Retry: python run.py check --long   (4 hours)")
+        print("[TIP]  Or:    python run.py check --forever  (no limit)")
+        return 2
     except FileNotFoundError:
         print(f"[FAIL] command not found: {cfg['build_cmd'][0]}"); return 2
     except Exception as e:
@@ -6196,13 +6289,17 @@ def do_verify(args):
         print("[INFO] no test_cmd in _work/config.json")
         print('       example: {"test_cmd": ["cargo","test"], "test_cwd": "src-tauri"}')
         return 1
+    timeout_sec = _resolve_timeout('verify')
     try:
         r = subprocess.run(cfg['test_cmd'] + list(args),
                            cwd=cfg.get('test_cwd', '.'),
                            capture_output=True, text=True,
-                           encoding='utf-8', errors='replace', timeout=900)
+                           encoding='utf-8', errors='replace', timeout=timeout_sec)
     except subprocess.TimeoutExpired:
-        print("[FAIL] test timeout (900s)"); return 2
+        print(f"[FAIL] test timeout ({timeout_sec}s)")
+        print("[TIP]  Retry: python run.py verify --long   (4 hours)")
+        print("[TIP]  Or:    python run.py verify --forever  (no limit)")
+        return 2
     except FileNotFoundError:
         print(f"[FAIL] command not found: {cfg['test_cmd'][0]}"); return 2
     except Exception as e:
@@ -6597,7 +6694,7 @@ def dispatch_capture(args):
 
 
 def dispatch(args):
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     if not args: return None
     cmd = args[0]
 
@@ -6699,6 +6796,10 @@ def dispatch(args):
         DRY_RUN = True; return dispatch(args[1:]) if args[1:] else None
     if cmd == '--backup':
         BACKUP = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--long':
+        TIMEOUT_LONG = True; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--forever':
+        TIMEOUT_FOREVER = True; return dispatch(args[1:]) if args[1:] else None
 
     if cmd == 'dump':    do_dump(full=('--full' in args or '-f' in args)); return 0
     if cmd == 'apply':
@@ -6720,7 +6821,7 @@ def dispatch(args):
 
 
 def main():
-    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW
+    global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
         write(INPUT, '')
