@@ -48,7 +48,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.8.2"
+VERSION = "1.8.3"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1035,7 +1035,31 @@ def _git_head():
         return '-'
 
 
-def _update_auto_block(patch_id, seed):
+def _check_tracked_secrets():
+    """Return list of sensitive files tracked by git. None if not a repo."""
+    try:
+        r = subprocess.run(['git', 'ls-files'],
+                           capture_output=True, text=True, timeout=10)
+        if r.returncode != 0:
+            return None
+        tracked = r.stdout.splitlines()
+    except Exception:
+        return None
+    hits = []
+    for f in tracked:
+        name = f.replace('\\', '/').split('/')[-1]
+        if name in SKIP_SECRET_NAMES:
+            hits.append(f)
+        elif name.startswith(SKIP_SECRET_PREFIXES) and name != SECRET_EXAMPLE:
+            hits.append(f)
+        elif '.' in name:
+            ext = '.' + name.rsplit('.', 1)[1].lower()
+            if ext in SKIP_SECRET_EXTS:
+                hits.append(f)
+    return hits
+
+
+def _update_auto_block(patch_id, seed, tag_name=None):
     ctx = Path("PROJECT_CONTEXT.en.md")
     if not ctx.exists():
         ctx = Path("PROJECT_CONTEXT.md")
@@ -1047,14 +1071,16 @@ def _update_auto_block(patch_id, seed):
     START, END_MARK = "<!-- AUTO:START -->", "<!-- AUTO:END -->"
     if START not in text or END_MARK not in text: return
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
-    h = _git_head()
+    # Use tag name (stable, known before commit) instead of commit hash
+    # (unknown until after commit). Avoids the "one commit behind" lag.
+    tag_label = tag_name or '-'
     block = (
         f"{START}\n"
         f"## Last patch (auto - do not edit)\n\n"
         f"| Field | Value |\n"
         f"|-------|-------|\n"
         f"| Last patch | P{patch_id} |\n"
-        f"| Last commit | `{h}` |\n"
+        f"| Last tag | `{tag_label}` |\n"
         f"| Time | {ts} |\n"
         f"| MSG-SEED | `{seed}` |\n"
         f"{END_MARK}"
@@ -1382,6 +1408,12 @@ def do_apply(patch_id=None):
     out.append(""); out.append("=" * 60)
     out.append(f"PATCH_ID: {patch_id}  |  OK: {ok}  |  SKIP: {skip}  |  FAIL: {fail}")
 
+    try:
+        write(WORK / '.last_patch_status',
+              f"LAST: P{patch_id}  OK:{ok}  SKIP:{skip}  FAIL:{fail}")
+    except Exception:
+        pass
+
     APPLIED.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime('%Y%m%d-%H%M%S')
     arch = APPLIED / f'P{patch_id:04d}-{ts}.txt'
@@ -1418,6 +1450,15 @@ def do_apply(patch_id=None):
             sub_out = dispatch_capture(real_args)
             if sub_out:
                 out.append(sub_out)
+
+    # Update the auto-block BEFORE the commit so it lands in the same commit
+    # as the code change. This keeps PROJECT_CONTEXT.en.md from appearing as
+    # "modified" in every --status call after a patch.
+    if fail == 0 and not post_failed:
+        try:
+            _update_auto_block(patch_id, seed, tag_name)
+        except Exception:
+            pass
 
     # POST failures block the commit (except with #@COMMIT_IF: always/never).
     # This makes the promise in ADR-31 / Section 16-5 real: POST verify + TAG
@@ -1470,33 +1511,40 @@ def do_apply(patch_id=None):
             out.append(""); out.append(f"[GIT] error: {e}")
 
     if push and should_commit:
-        try:
-            r_b = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                                  capture_output=True, text=True, timeout=5)
-            branch = (r_b.stdout or '').strip() or 'main'
-            r_p = subprocess.run(['git', 'push', '--quiet', 'origin', branch],
-                                  capture_output=True, text=True, timeout=120)
-            out.append("")
-            if r_p.returncode == 0:
-                out.append(f"[GIT] pushed: origin {branch}")
-            else:
-                out.append(f"[GIT] push failed: {(r_p.stderr or '').strip()[:200]}")
-            if tag_name:
-                r_pt = subprocess.run(['git', 'push', '--quiet', 'origin', tag_name],
-                                       capture_output=True, text=True, timeout=120)
-                if r_pt.returncode == 0:
-                    out.append(f"[GIT] pushed tag: {tag_name}")
+        hits = _check_tracked_secrets()
+        out.append("")
+        if hits is None:
+            out.append("[GIT] push skipped - not a git repo")
+        elif hits:
+            out.append("[GIT] PUSH REFUSED - sensitive files are tracked by git:")
+            for h in hits[:10]:
+                out.append(f"  {h}")
+            if len(hits) > 10:
+                out.append(f"  ... +{len(hits)-10} more")
+            out.append("[GIT] Fix: git rm --cached <file>; ensure .gitignore has it; commit; retry")
+        else:
+            try:
+                r_b = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                                      capture_output=True, text=True, timeout=5)
+                branch = (r_b.stdout or '').strip() or 'main'
+                r_p = subprocess.run(['git', 'push', '--quiet', 'origin', branch],
+                                      capture_output=True, text=True, timeout=120)
+                if r_p.returncode == 0:
+                    out.append(f"[GIT] pushed: origin {branch}")
                 else:
-                    out.append(f"[GIT] push tag failed: {(r_pt.stderr or '').strip()[:200]}")
-        except Exception as e:
-            out.append(""); out.append(f"[GIT] push error: {e}")
-
-    # Auto-block update runs AFTER commit, so "Last commit" is the new HEAD,
-    # not its parent. If no commit happened, it still writes the current HEAD.
-    # Skipped on POST failure: no new commit means no new state to record.
-    if fail == 0 and not post_failed:
-        try: _update_auto_block(patch_id, seed)
-        except Exception: pass
+                    err = (r_p.stderr or '').strip()
+                    out.append(f"[GIT] push failed: {err[:200]}")
+                    if 'does not appear' in err or 'no upstream' in err or 'no such remote' in err:
+                        out.append("[GIT] Hint: git remote add origin <github-url>")
+                if tag_name:
+                    r_pt = subprocess.run(['git', 'push', '--quiet', 'origin', tag_name],
+                                           capture_output=True, text=True, timeout=120)
+                    if r_pt.returncode == 0:
+                        out.append(f"[GIT] pushed tag: {tag_name}")
+                    else:
+                        out.append(f"[GIT] push tag failed: {(r_pt.stderr or '').strip()[:200]}")
+            except Exception as e:
+                out.append(f"[GIT] push error: {e}")
 
     if fail == 0 and not post_failed:
         try:
@@ -1619,11 +1667,15 @@ def do_status():
             for f in files[:20]: out.append(f"  {f}")
     except Exception: pass
     out.append(f"TOTAL FILES: {len(walk(root))}")
-    if OUTPUT.exists():
+    # Last patch status comes from a dedicated file, NOT from output.txt.
+    # Reading output.txt here was circular: AUTO STATUS appends to output.txt,
+    # which contains old FAIL lines, which then get echoed again on next run.
+    status_file = WORK / '.last_patch_status'
+    if status_file.exists():
         try:
-            for ln in read(OUTPUT).splitlines()[:40]:
-                if 'FAIL' in ln:
-                    out.append(ln.strip()); break
+            st = status_file.read_text(encoding='utf-8').strip()
+            if st and 'FAIL: 0' not in st:
+                out.append(st)
         except Exception: pass
     print('\n'.join(out))
 
