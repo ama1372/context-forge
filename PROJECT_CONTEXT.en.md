@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P112 |
-| Last commit | `6e946d7` |
-| Time | 2026-10-20 20:13 |
-| MSG-SEED | `5aa58298` |
+| Last patch | P119 |
+| Last commit | `be66e2c` |
+| Time | 2026-10-21 14:24 |
+| MSG-SEED | `465de19f` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -4559,10 +4559,11 @@ Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.md section 2.
 """
 
 import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
+import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.7.1"
+VERSION = "1.8.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -4603,12 +4604,208 @@ AUTO_VERIFY = False
 FORCE_APPLY = False
 PROGRESS = True
 
+TIMEOUT_LONG = False
+TIMEOUT_FOREVER = False
+
+_STATUS_TITLE = ''
+_STATUS_LINES = []
+_STATUS_ACTIVE = False
+_STATUS_DRAWN = 0
+_STATUS_LAST_RENDER = 0.0
+_STATUS_THROTTLE = 0.05
+_STATUS_MAX = 4
+_STATUS_HISTORY = 8
+_STATUS_COLORS = {
+    'title':  '\033[1;36m',
+    'info':   '\033[36m',
+    'ok':     '\033[32m',
+    'fail':   '\033[31m',
+    'warn':   '\033[33m',
+    'soft':   '\033[35m',
+    'output': '\033[37m',
+}
+_RESET = '\033[0m'
+_DIM   = '\033[2m'
+
 ANSWERS = {}
 ANSWERS_FILE = WORK / 'answers.json'
 INTERACTIVE = None
 REVIEW = False
 _review_auto_apply = False
 
+
+
+def _resolve_timeout(kind='cmd'):
+    """Return timeout seconds for CMD/check/verify. None = no limit (--forever)."""
+    if TIMEOUT_FOREVER:
+        return None
+    if TIMEOUT_LONG:
+        return 14400  # 4 hours
+    try:
+        cfg = load_config()
+        val = cfg.get('%s_timeout' % kind)
+        if val is not None:
+            return int(val)
+    except Exception:
+        pass
+    return 3600  # 1 hour default
+
+
+def _enable_windows_ansi():
+    """Enable VT processing on Windows 10+ conhost. No-op elsewhere."""
+    if not sys.platform.startswith('win'):
+        return
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        h = k.GetStdHandle(-12)
+        k.SetConsoleMode(h, 7)
+    except Exception:
+        pass
+
+
+def _status_supported():
+    return PROGRESS and sys.stderr.isatty()
+
+
+def _status_begin(title):
+    global _STATUS_TITLE, _STATUS_LINES, _STATUS_ACTIVE, _STATUS_DRAWN
+    if not _status_supported():
+        return
+    _STATUS_TITLE = title
+    _STATUS_LINES = []
+    _STATUS_ACTIVE = True
+    _STATUS_DRAWN = 0
+    _status_render(force=True)
+
+
+def _status_set_title(text):
+    global _STATUS_TITLE
+    if not _STATUS_ACTIVE:
+        return
+    _STATUS_TITLE = text
+    _status_render(force=True)
+
+
+def _status_add(text, level='info'):
+    if not _STATUS_ACTIVE:
+        return
+    t = (text or '').rstrip('\r\n')
+    if len(t) > 100:
+        t = t[:97] + '...'
+    _STATUS_LINES.append((t, level))
+    if len(_STATUS_LINES) > _STATUS_HISTORY:
+        del _STATUS_LINES[:len(_STATUS_LINES) - _STATUS_HISTORY]
+    _status_render()
+
+
+def _status_render(force=False):
+    global _STATUS_DRAWN, _STATUS_LAST_RENDER
+    if not _STATUS_ACTIVE or not _status_supported():
+        return
+    now = time.time()
+    if not force and (now - _STATUS_LAST_RENDER) < _STATUS_THROTTLE:
+        return
+    _STATUS_LAST_RENDER = now
+    lines_out = [_STATUS_COLORS['title'] + _STATUS_TITLE + _RESET,
+                 '\033[90m' + '\u2500' * 60 + _RESET]
+    shown = _STATUS_LINES[-_STATUS_MAX:]
+    pad = _STATUS_MAX - len(shown)
+    for _ in range(pad):
+        lines_out.append('')
+    for i, (text, level) in enumerate(shown):
+        age = len(shown) - 1 - i
+        color = _STATUS_COLORS.get(level, _STATUS_COLORS['info'])
+        if age == 0:
+            lines_out.append(color + text + _RESET)
+        elif age == 1:
+            lines_out.append(_DIM + color + text + _RESET)
+        elif age == 2:
+            lines_out.append(_DIM + '\033[37m' + text + _RESET)
+        else:
+            lines_out.append(_DIM + '\033[90m' + text + _RESET)
+    try:
+        if _STATUS_DRAWN > 0:
+            sys.stderr.write('\033[%dA\033[J' % _STATUS_DRAWN)
+        sys.stderr.write('\n'.join(lines_out) + '\n')
+        sys.stderr.flush()
+        _STATUS_DRAWN = len(lines_out)
+    except Exception:
+        pass
+
+
+def _status_end(summary=None):
+    global _STATUS_ACTIVE, _STATUS_DRAWN
+    if not _STATUS_ACTIVE:
+        return
+    try:
+        if _STATUS_DRAWN > 0 and _status_supported():
+            sys.stderr.write('\033[%dA\033[J' % _STATUS_DRAWN)
+            sys.stderr.flush()
+    except Exception:
+        pass
+    _STATUS_ACTIVE = False
+    _STATUS_DRAWN = 0
+    if summary and _status_supported():
+        try:
+            sys.stderr.write(summary + '\n')
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+
+def _run_cmd_streaming(script, timeout_sec):
+    """Run shell script with live output streaming. Returns (rc, stdout, stderr)."""
+    if sys.platform.startswith('win'):
+        shell_cmd = ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script]
+    else:
+        shell_cmd = ['/bin/sh', '-c', script]
+    try:
+        proc = subprocess.Popen(shell_cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        return (-2, '', 'shell not found')
+    except Exception as e:
+        return (-3, '', str(e))
+    out_chunks = []
+    err_chunks = []
+
+    def _reader(stream, chunks, level):
+        try:
+            for raw_line in iter(stream.readline, b''):
+                try:
+                    line = raw_line.decode('utf-8', errors='replace').rstrip('\r\n')
+                except Exception:
+                    line = repr(raw_line)
+                chunks.append(line)
+                if line.strip():
+                    _status_add(line, level=level)
+        except Exception:
+            pass
+        finally:
+            try: stream.close()
+            except Exception: pass
+
+    t_out = threading.Thread(target=_reader, args=(proc.stdout, out_chunks, 'output'), daemon=True)
+    t_err = threading.Thread(target=_reader, args=(proc.stderr, err_chunks, 'warn'), daemon=True)
+    t_out.start()
+    t_err.start()
+    rc = 0
+    try:
+        rc = proc.wait(timeout=timeout_sec)
+    except subprocess.TimeoutExpired:
+        try: proc.kill()
+        except Exception: pass
+        try: proc.wait(timeout=10)
+        except Exception: pass
+        rc = -1
+    except Exception:
+        rc = -2
+    finally:
+        t_out.join(timeout=5)
+        t_err.join(timeout=5)
+    return (rc, '\n'.join(out_chunks), '\n'.join(err_chunks))
 
 
 def _progress(msg):
@@ -5482,6 +5679,7 @@ def do_apply(patch_id=None):
     ops = parse(content)
     seed = msg_seed()
     out = [f"# MSG-SEED: {seed}", "[APPLY]", "", f"# PATCH_ID: {patch_id}", ""]
+    _status_begin(f"[P{patch_id}] applying {len(ops)} op(s)")
     if BACKUP:
         _do_backup()
     if rate_msg:
@@ -5500,7 +5698,8 @@ def do_apply(patch_id=None):
     for idx_op, op in enumerate(ops, 1):
         kind = op['kind']
         _label = op.get('path', '') or op.get('desc', '') or kind
-        _progress(f"[P{patch_id}] {idx_op}/{total_ops} {_label[:50]}...\r")
+        _status_set_title(f"[P{patch_id}] {idx_op}/{total_ops} {_label[:50]}")
+        _status_add(f"{kind.upper()} {_label[:70]}", level="info")
         if REVIEW and not _review_auto_apply:
             decision = review_op(op, idx_op, total_ops, Path('.').resolve())
             if decision == 'quit':
@@ -5755,7 +5954,10 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[CTX] save failed: {e}")
 
-    _progress_newline()
+    if fail == 0:
+        _status_end(f"[P{patch_id}] \u2713 OK={ok} FAIL={fail}")
+    else:
+        _status_end(f"[P{patch_id}] \u2717 OK={ok} FAIL={fail}")
     _rate_warn_write()
     txt = '\n'.join(out)
     write(OUTPUT, txt); print(txt)
@@ -6735,6 +6937,8 @@ def dispatch(args):
         return do_slim_context(args[i+1:])
     if cmd == '--no-progress':
         PROGRESS = False; return dispatch(args[1:]) if args[1:] else None
+    if cmd == '--no-ansi':
+        PROGRESS = False; return dispatch(args[1:]) if args[1:] else None
 
     if cmd == '--review':
         REVIEW = True; return dispatch(args[1:]) if args[1:] else None
@@ -6822,6 +7026,7 @@ def dispatch(args):
 
 def main():
     global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
+    _enable_windows_ansi()
     WORK.mkdir(parents=True, exist_ok=True)
     if not INPUT.exists():
         write(INPUT, '')
