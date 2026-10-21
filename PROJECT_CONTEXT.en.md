@@ -1855,6 +1855,122 @@ The output appears in `output.txt` only when the command finishes. For a 30-minu
 
 ---
 
+## Section 0-C-28 — Version upgrade protocol (newer version arrives)
+
+> **🔴 If a user's project uses an OLDER `PROJECT_CONTEXT.en.md` or `run.py`, and the AI has a NEWER version, the AI must propose an upgrade — and the upgrade must be surgical: replace framework, preserve user data.**
+
+### 0-C-28-1. The situation this section handles
+
+A user built their project with `PROJECT_CONTEXT.en.md` v1.4 and `run.py` v1.4. Months later they open a new chat, paste their v1.4 document, and start working. The AI has a newer version in its reference. Two failure modes this section prevents:
+
+1. **Silent staleness.** The user's old `run.py` lacks `--sync-section35`, `--health`, `#@ASK:`, and other recent features. The AI assumes they exist, gives commands that fail, user gets confused.
+2. **Silent replacement.** The AI overwrites the user's `PROJECT_CONTEXT.en.md` entirely, losing Sections 2 (project identity), 13 (session tracker), 15 (user's red lines), 16 (user's git history). The project loses its continuity — the exact failure this document exists to prevent.
+
+### 0-C-28-2. The detection step
+
+When a user pastes their `PROJECT_CONTEXT.en.md` at the start of a new chat:
+
+1. Read the document. Note the number of sections, and whether recent sections (`0-C-27`, `0-C-28`, `36`, `37`) are present.
+2. Ask for `python run.py --version` — one line of output.
+3. Compare against the AI's reference version.
+
+| Comparison | Action |
+|------------|--------|
+| user's version < AI's version | Offer upgrade (0-C-28-3) |
+| user's version = AI's version | No action |
+| user's version > AI's version | **Never downgrade.** The AI is outdated; continue with the user's version |
+
+### 0-C-28-3. The offer
+
+Before any other work in that chat, the AI says (one line, user's language):
+
+> "Your project is on `run.py` vX. This document is vY. Want me to upgrade your project to vY? Your Sections 2, 13, 15, and 16 will be preserved."
+
+The user answers:
+
+- **yes** → adopt wholesale (0-C-28-4)
+- **merge** → merge procedure (0-C-28-5)
+- **no** → skip, work with current version
+
+### 0-C-28-4. Adopt wholesale
+
+**Step 1 — snapshot.** Emit a tag-only patch (no file changes):
+
+    # INPUT: pre-upgrade snapshot
+    #@COMMIT: ⬆️ pre-upgrade snapshot
+    #@TAG: pre-upgrade-<from-version>
+
+The user gets a rollback point. If the upgrade fails, `git reset --hard pre-upgrade-<from-version>` restores everything.
+
+**Step 2 — upgrade `run.py`.**
+
+    # INPUT: upgrade run.py to <new version>
+    #@COMMIT: ⬆️ run.py upgraded to <new version>
+    #@TAG: runpy-<new-version>
+    #@POST: --self-test
+
+    ===== CREATE: run.py =====
+    <<<CONTENT>>>
+    [full source from Section 35 of the new document]
+    <<<END>>>
+
+**Careful:** if `python run.py --capabilities` shows features NOT in the AI's version, treat as **merge** (0-C-28-5) — not wholesale replace. A plain CREATE would erase the user's own additions.
+
+**Step 3 — upgrade `PROJECT_CONTEXT.en.md`.** Emit `===== FILE =====` patches, one per framework section that changed. Sections 2, 13, 15, 16 are never touched.
+
+| Category | Sections | Action |
+|----------|----------|--------|
+| **Framework (safe to replace)** | all `0-*`, 3, 4, 5, 6, 6-B, 7, 8, 9, 10, 12, 23, 24, 25, 28, 33, 36, 37 | Replace with the AI's version |
+| **User data (never overwrite)** | 2, 13, 15, 16 | Preserve exactly |
+| **Merge-needed (evaluate)** | 14, 17–22, 29–32, 34 | Present diff, ask user |
+
+**Step 4 — verify.**
+
+    #@POST: --sync-section35
+    #@POST: --self-test
+    #@POST: --health
+
+`HEALTH: GREEN` = success. `HEALTH: RED` = roll back via the pre-upgrade tag.
+
+### 0-C-28-5. Merge procedure (user has customizations)
+
+If the user says "merge" — or if the AI detects local modifications (via `--capabilities` showing extra flags, or `--check-sections` showing extra sections) — do NOT replace wholesale. Instead:
+
+1. **List the differences.** Short table:
+   - Sections in AI's doc but not the user's
+   - Sections in the user's doc but not the AI's
+   - Sections with content differences
+
+2. **Ask which to adopt.** For each difference, one line.
+
+3. **Apply only the adopted changes.** Via `===== FILE =====` patches.
+
+4. **Preserve user data.** Sections 2, 13, 15, 16 are never replaced without an explicit request.
+
+### 0-C-28-6. When NOT to upgrade
+
+- **Mid-patch.** `input.txt` is non-empty. Finish the current patch first.
+- **During a red-line break.** Restore first, then upgrade.
+- **If the user says "not now".** Wait until they ask.
+- **If the user's version > AI's version.** Never downgrade.
+
+### 0-C-28-7. What the AI must never do
+
+- ❌ Silently replace `PROJECT_CONTEXT.en.md` with the AI's version.
+- ❌ Overwrite Sections 2, 13, 15, 16 without asking.
+- ❌ Downgrade `run.py` from a newer to an older version.
+- ❌ Upgrade mid-patch (while `input.txt` has content).
+- ❌ Skip the pre-upgrade tag — the user needs a rollback point.
+- ❌ Overwrite a `run.py` that shows extra capabilities with a plain CREATE — that erases the user's work.
+
+### 0-C-28-8. Why this matters
+
+The protocol survives across chat limits by being one paste. But over months, the protocol itself evolves — new sections, new flags, new safety checks. A user who upgraded their project six months ago is missing six months of protocol. Without an upgrade path, they are silently stuck in a stale protocol. With it, every chat is an opportunity to bring them current.
+
+The counterweight: the protocol stores real user state (Sections 2, 13, 15, 16). Overwriting that state destroys the project's continuity. So the upgrade must be surgical: replace framework, preserve user data.
+
+---
+
 ## Section 0 — Quick Start (60 seconds)
 
 ### For the user
@@ -4555,7 +4671,7 @@ Directives (in _work/input.txt, first lines):
   #@ROADMAP: a | b | c pipe-separated roadmap for _work/ctx_delta.txt
   #@PUSH:              after a successful commit + tag, push to origin
 
-Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.md section 2.
+Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.en.md section 2.
 """
 
 import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
@@ -4563,7 +4679,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.8.0"
+VERSION = "1.8.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -4588,6 +4704,14 @@ SKIP_EXTS = {
     '.mp3', '.mp4', '.wav', '.avi', '.mov'
 }
 SKIP_NAMES = {'run.py'}
+# Section 0-C-18: these never get dumped, hashed, or walked.
+SKIP_SECRET_NAMES = {
+    '.env', 'credentials.json', 'secrets.yaml', 'secrets.yml',
+    'id_rsa', 'id_ed25519',
+}
+SKIP_SECRET_PREFIXES = ('.env.',)  # .env.local, .env.production, ...
+SKIP_SECRET_EXTS = {'.pem', '.key', '.p12', '.pfx'}
+SECRET_EXAMPLE = '.env.example'    # template — must be visible
 MAX_SIZE = 2 * 1024 * 1024
 
 HEADER_RE = re.compile(
@@ -4598,7 +4722,7 @@ FIND, REPLACE, CONTENT, END = '<<<FIND>>>', '<<<REPLACE>>>', '<<<CONTENT>>>', '<
 OR_FIND = '<<<OR-FIND>>>'
 RUN_MARKER = '<<<RUN>>>'
 HASH_MARKER_RE = re.compile(r'^<<<EXPECTED_HASH>>>\s*(.+?)\s*<<<END>>>\s*$')
-FENCE_RE = re.compile(r'^\s*```[a-zA-Z0-9_+\-]*\s*$')
+FENCE_RE = re.compile(r'^\s*(`{3,}|~{3,})[a-zA-Z0-9_+\-]*\s*$')
 
 AUTO_VERIFY = False
 FORCE_APPLY = False
@@ -4849,6 +4973,15 @@ def write(p, t):
     if DRY_RUN:
         print(f"  [DRY] would write {p} ({len(t)} chars)")
         return
+    # Self-patch safety: refuse to write invalid Python into the project's run.py.
+    # A broken run.py would brick the tool; we would rather fail the patch than
+    # lose the tool. Only the project-root run.py is checked.
+    if p == Path('run.py'):
+        import ast
+        try:
+            ast.parse(t)
+        except SyntaxError as e:
+            raise RuntimeError(f"refused to write invalid Python to run.py: {e}")
     p.parent.mkdir(parents=True, exist_ok=True)
     # Binary write: Python 3.14 + Windows text-mode hits EINVAL on very large
     # strings, and text-mode also translates \n -> \r\n implicitly (double
@@ -4903,6 +5036,9 @@ def walk(root):
             p = Path(dp) / fn
             if p.name in SKIP_NAMES: continue
             if p.suffix.lower() in SKIP_EXTS: continue
+            if p.name in SKIP_SECRET_NAMES: continue
+            if p.name.startswith(SKIP_SECRET_PREFIXES) and p.name != SECRET_EXAMPLE: continue
+            if p.suffix.lower() in SKIP_SECRET_EXTS: continue
             try:
                 if p.stat().st_size > MAX_SIZE: continue
             except OSError:
@@ -5048,6 +5184,11 @@ def read_directives(text):
                     default = parts[2][8:].strip()
                 asks.append((name, question, default))
             idx += 1; continue
+        # Conditional blocks belong to apply_conditions, not read_directives.
+        # Stop consuming here so the whole block (IF/ELIF/ELSE/ENDIF) is
+        # passed to apply_conditions intact.
+        if re.match(r'^#@(IF|ELIF|ELSE|ENDIF)\b', s):
+            break
         # Unknown #@ directive — skip, don't break.
         idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
@@ -5059,14 +5200,19 @@ def read_directives(text):
 NEED_COMMANDS = {
     'status', 'tree', 'hash', 'git', 'errors', 'capabilities',
     'version', 'all', 'file', 'files', 'check', 'verify',
-    'find-dup', 'dump',
+    'find-dup', 'dump', 'ctx',
 }
 
+
+# These run as CLI commands, not flags.
+NEED_CLI_COMMANDS = {'check', 'verify', 'dump', 'find-dup', 'clean'}
 
 def need_to_args(need_args):
     if not need_args:
         return []
     cmd = need_args[0].lower()
+    if cmd in NEED_CLI_COMMANDS:
+        return [cmd] + list(need_args[1:])
     if cmd in NEED_COMMANDS:
         return ['--' + cmd] + list(need_args[1:])
     return list(need_args)
@@ -5385,7 +5531,10 @@ def suggest(text, a):
     best = (0.0, None, -1)
     for i in range(len(fl)):
         ln = fl[i].strip()
-        if afirst and afirst not in ln and ln not in afirst and not ln: continue
+        if not ln:
+            continue
+        if afirst and afirst not in ln and ln not in afirst:
+            continue
         for d in (0, 1, -1, 2, -2, 3, -3):
             k = n + d
             if k <= 0 or i + k > len(fl): continue
@@ -5418,7 +5567,11 @@ def apply_patch(path, patches, out, fail_files=None):
                 matched_idx = idx_alt
                 break
         if matched is None:
-            if rl and rl in text:
+            # A short REPLACE like "pass" can occur anywhere. Require 40+ chars
+            # or at least one newline (2+ lines) before calling it "already applied".
+            is_already = (rl and rl in text
+                          and (len(rl) >= 40 or rl.count(chr(10)) >= 1))
+            if is_already:
                 out.append(f"  [SKIP] [{i}/{len(patches)}] already applied")
                 skip += 1; continue
             out.append(f"  [FAIL] [{i}/{len(patches)}] no anchor matched ({n_alts} alternative(s))")
@@ -5442,7 +5595,13 @@ def apply_patch(path, patches, out, fail_files=None):
         out.append(f"  [OK]   [{i}/{len(patches)}] applied{tag}")
         ok += 1
     if ok or skip:
-        write(p, crlf(text) if fe == '\r\n' else text)
+        try:
+            write(p, crlf(text) if fe == '\r\n' else text)
+        except RuntimeError as e:
+            out.append(f"  [FAIL] {e}")
+            fail = len(patches)
+            ok = 0
+            skip = 0
     return ok, fail, skip
 
 
@@ -5647,6 +5806,7 @@ def review_op(op, idx, total, root):
 def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
     rate_msg = _rate_warn_line()
+    post_failed = False
     global ANSWERS
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push,
@@ -5734,9 +5894,13 @@ def do_apply(patch_id=None):
         elif kind == 'create':
             p = Path(op['path']); existed = p.exists()
             out.append(f"[P{patch_id}] [NEW]  {op['path']}")
-            write(p, lf(op['content']))
-            out.append(f"  [OK]   {'updated' if existed else 'created'} ({len(op['content'])} chars)")
-            ok += 1
+            try:
+                write(p, lf(op['content']))
+                out.append(f"  [OK]   {'updated' if existed else 'created'} ({len(op['content'])} chars)")
+                ok += 1
+            except RuntimeError as e:
+                out.append(f"  [FAIL] {e}")
+                fail += 1
 
         elif kind == 'delete':
             p = Path(op['path'])
@@ -5770,6 +5934,12 @@ def do_apply(patch_id=None):
             script = op['script']
             if not script.strip():
                 out.append("  [WARN] empty script"); continue
+            if DRY_RUN:
+                out.append("  [DRY]  would run:")
+                for ln in script.splitlines():
+                    out.append("         " + ln)
+                ok += 1
+                continue
             if re.search(r'python\s+run\.py', script, re.IGNORECASE):
                 out.append("  [WARN] CMD calls python run.py (nested) - skipped")
                 continue
@@ -5831,6 +6001,15 @@ def do_apply(patch_id=None):
             ad_mode = 'compact'
         out.extend(_autodump_block(fail_files, ad_mode))
 
+    if DRY_RUN:
+        out.append(""); out.append("=" * 60)
+        out.append(f"PATCH_ID: {patch_id}  |  OK: {ok}  |  SKIP: {skip}  |  FAIL: {fail}  [DRY-RUN]")
+        out.append("[DRY] input.txt untouched | no git commit | no ctx_delta update")
+        _rate_warn_write()
+        txt = '\n'.join(out)
+        write(OUTPUT, txt); print(txt)
+        return 0 if fail == 0 else 2
+
     out.append(""); out.append("=" * 60)
     out.append(f"PATCH_ID: {patch_id}  |  OK: {ok}  |  SKIP: {skip}  |  FAIL: {fail}")
 
@@ -5849,10 +6028,6 @@ def do_apply(patch_id=None):
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
 
-    if fail == 0:
-        try: _update_auto_block(patch_id, seed)
-        except Exception: pass
-
     if post_cmds and fail == 0:
         for sub_args in post_cmds:
             out.append(""); out.append("=" * 60)
@@ -5861,6 +6036,9 @@ def do_apply(patch_id=None):
             sub_out = dispatch_capture(sub_args)
             if sub_out:
                 out.append(sub_out)
+            if _DISPATCH_RC[0] != 0:
+                post_failed = True
+                out.append(f"[POST] FAILED (exit {_DISPATCH_RC[0]})")
 
     if needs:
         for need_args in needs:
@@ -5872,16 +6050,20 @@ def do_apply(patch_id=None):
             if sub_out:
                 out.append(sub_out)
 
-    if commit_if in (None, '', 'all-ok'):
-        should_commit = (fail == 0)
-    elif commit_if == 'any-ok':
-        should_commit = (ok > 0)
-    elif commit_if == 'always':
+    # POST failures block the commit (except with #@COMMIT_IF: always/never).
+    # This makes the promise in ADR-31 / Section 16-5 real: POST verify + TAG
+    # means the tag only appears when verification actually passed.
+    if commit_if == 'always':
         should_commit = True
     elif commit_if == 'never':
         should_commit = False
+    elif commit_if == 'any-ok':
+        should_commit = (ok > 0) and not post_failed
     else:
-        should_commit = (fail == 0)
+        should_commit = (fail == 0) and not post_failed
+    if post_failed and should_commit is False:
+        out.append("")
+        out.append("[GIT] commit skipped - POST verification failed")
 
     if should_commit:
         try:
@@ -5940,7 +6122,14 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[GIT] push error: {e}")
 
-    if fail == 0:
+    # Auto-block update runs AFTER commit, so "Last commit" is the new HEAD,
+    # not its parent. If no commit happened, it still writes the current HEAD.
+    # Skipped on POST failure: no new commit means no new state to record.
+    if fail == 0 and not post_failed:
+        try: _update_auto_block(patch_id, seed)
+        except Exception: pass
+
+    if fail == 0 and not post_failed:
         try:
             paths = []
             for op in ops:
@@ -5953,6 +6142,24 @@ def do_apply(patch_id=None):
             out.append("[CTX] ctx_delta saved -> _work/ctx_delta.txt")
         except Exception as e:
             out.append(""); out.append(f"[CTX] save failed: {e}")
+
+    # Auto-append compact status so the AI can bootstrap the next chat without
+    # a separate --status round trip. Adds ~300 bytes per apply.
+    try:
+        import io as _io, contextlib as _ctx
+        _sbuf = _io.StringIO()
+        with _ctx.redirect_stdout(_sbuf):
+            do_status()
+        _status_text = _sbuf.getvalue().rstrip()
+        if _status_text:
+            out.append("")
+            out.append("=" * 60)
+            out.append("AUTO STATUS")
+            out.append("=" * 60)
+            for _ln in _status_text.splitlines():
+                out.append(_ln)
+    except Exception:
+        pass
 
     if fail == 0:
         _status_end(f"[P{patch_id}] \u2713 OK={ok} FAIL={fail}")
@@ -6004,8 +6211,11 @@ def do_dump(full=False):
     else:
         L.append("(no changed files)"); L.append("")
 
-    body = '\n'.join(L)
-    new_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()[:16]
+    # Hash over deterministic parts only — skip MSG-SEED (random per run) and
+    # timestamp. The old code hashed the seed too, so the duplicate check
+    # below could never fire.
+    det = '\n'.join(L[2:])
+    new_hash = hashlib.sha256(det.encode('utf-8')).hexdigest()[:16]
     if OUTPUT.exists() and not full:
         old = read(OUTPUT)
         if f"# content_hash: {new_hash}" in old:
@@ -6343,15 +6553,7 @@ def do_slim_context(args):
         drop = drop | {'1', '2', '3', '11', '17', '18', '19', '20', '21',
                        '22', '23', '24', '25', '28', '30', '31', '32',
                        '33', '34', '36', '37'}
-    elif profile == 'aggressive':
-        keep = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
-        # collect all section ids from doc, then drop everything not in keep
-        _all = set(re.findall(r'^## Section ([\w\-]+)', norm, re.M)) if False else None
-        # we compute below after reading doc
-        drop = drop | set()  # placeholder; filled after reading the doc
-    if profile == 'aggressive':
-        # Do it after reading doc — see below
-        pass
+    # aggressive: handled below after reading the doc (see 'if profile == aggressive')
     if '--drop' in args:
         i = args.index('--drop')
         if i + 1 < len(args):
@@ -6417,6 +6619,7 @@ def do_capabilities():
     print("TREE: --tree [--json]")
     print("GIT:  --git-hint (OS-specific install instructions)")
     print("HEALTH: --health (bootstrap + check-md + self-test + git)")
+    print("SYNC:   --sync-section35 (embed current run.py into Section 35)")
     print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
@@ -6573,6 +6776,55 @@ def cmd_find_dup(args):
     print(f"[FIND-DUP] {OUTPUT}")
 
 
+def do_sync_section35():
+    """Sync the run.py embedded in PROJECT_CONTEXT.en.md's Section 35 with the
+    current run.py on disk. One command replaces the entire code block, so the
+    bootstrap source never drifts from the live tool."""
+    doc = Path('PROJECT_CONTEXT.en.md')
+    src_path = Path('run.py')
+    if not doc.exists():
+        print('[FAIL] PROJECT_CONTEXT.en.md not found')
+        return 1
+    if not src_path.exists():
+        print('[FAIL] run.py not found')
+        return 1
+    doc_text, doc_eol = read_raw(doc)
+    src_text = read(src_path)
+    m35 = re.search(r'^## Section 35\b.*$', doc_text, re.M)
+    m36 = re.search(r'^## Section 36\b.*$', doc_text, re.M)
+    if not m35 or not m36 or m36.start() <= m35.start():
+        print('[FAIL] Section 35 or Section 36 boundary not found')
+        return 1
+    body = src_text.rstrip()
+    if '\n' + '`````' + '\n' in '\n' + body + '\n':
+        print('[WARN] run.py contains a 5-backtick fence - sync may mis-close')
+    new_section = (
+        '## Section 35 - Full `run.py` source (Python reference)\n'
+        '\n'
+        '> **One-file distribution.** This section contains the entire `run.py`. '
+        'A newcomer who only has this document can be bootstrapped by an AI that '
+        'emits the block below as a CREATE patch inside `input.txt`.\n'
+        '\n'
+        '> **Never hand-copy this block.** Always let the AI emit it as a CREATE '
+        'patch, so the protocol (Section 0-C-10) is respected.\n'
+        '\n'
+        '> **Mature projects:** Section 35 is only needed once. If the document '
+        'feels too large for your chat, trim this section from your local copy '
+        'after `run.py` exists. The rest of the document is unaffected.\n'
+        '\n'
+        '`````python\n'
+        + body + '\n'
+        '`````\n\n'
+    )
+    before = doc_text[:m35.start()]
+    after = doc_text[m36.start():]
+    new_doc = before + new_section + after
+    write_preserve_eol(doc, new_doc, doc_eol)
+    print(f'[SYNC] Section 35 embedded {len(body)} chars from run.py')
+    print(f'[SYNC] wrote PROJECT_CONTEXT.en.md ({len(new_doc)} chars)')
+    return 0
+
+
 def do_git_hint():
     """Print the OS-specific Git install command."""
     print("[GIT HINT] Git is strongly recommended (auto-commit, auto-tag, rollback).")
@@ -6651,24 +6903,32 @@ def do_self_test():
     if 'REVIEW' in src and 'def review_op(' not in src:
         issues.append('REVIEW used but review_op missing')
 
-    # 5. VERSION in Section 35 embed (if PROJECT_CONTEXT.en.md exists)
+    # 5. Section 35 embed - FULL content check (not just VERSION)
     ctx = Path('PROJECT_CONTEXT.en.md')
     if ctx.exists():
         ctx_text = read(ctx)
-        m = re.search(r'VERSION = "(\d+\.\d+\.\d+)"', src)
-        if m:
-            ver = m.group(1)
-            # find the embedded block
-            m35 = re.search(r'^## Section 35\b.*$', ctx_text, re.M)
-            m36 = re.search(r'^## Section 36\b.*$', ctx_text, re.M)
-            if m35 and m36 and m36.start() > m35.start():
-                section = ctx_text[m35.start():m36.start()]
-                if ('VERSION = "%s"' % ver) not in section:
-                    issues.append('Section 35 embed out of sync with run.py %s' % ver)
+        m35 = re.search(r'^## Section 35\b.*$', ctx_text, re.M)
+        m36 = re.search(r'^## Section 36\b.*$', ctx_text, re.M)
+        if m35 and m36 and m36.start() > m35.start():
+            section = ctx_text[m35.start():m36.start()]
+            m_block = re.search(r'^(`{3,})python\s*\n(.*?)^\1\s*$',
+                                section, re.M | re.S)
+            if m_block:
+                embed = m_block.group(2)
+                if embed.rstrip() != src.rstrip():
+                    embed_lines = embed.count('\n')
+                    src_lines = src.count('\n')
+                    issues.append(
+                        'Section 35 embed out of sync with run.py '
+                        '(%d lines vs %d lines) - run --sync-section35'
+                        % (embed_lines, src_lines))
                 else:
-                    print('[SELF-TEST] Section 35 embed: OK (v%s)' % ver)
+                    print('[SELF-TEST] Section 35 embed: in sync (%d lines)'
+                          % src.count('\n'))
             else:
-                print('[SELF-TEST] Section 35 boundary: skipped')
+                print('[SELF-TEST] Section 35 embed: no code block found (skipped)')
+        else:
+            print('[SELF-TEST] Section 35 boundary: skipped')
 
     if issues:
         print('[SELF-TEST] issues (%d):' % len(issues))
@@ -6878,6 +7138,8 @@ def do_init():
     print("  4. Run: python run.py --status      (quick summary)")
 
 
+_DISPATCH_RC = [0]  # last dispatch return code, for POST gating
+
 def dispatch_capture(args):
     import io, contextlib
     backup = None
@@ -6885,10 +7147,12 @@ def dispatch_capture(args):
         try: backup = OUTPUT.read_text(encoding='utf-8')
         except Exception: backup = None
     buf = io.StringIO()
+    rc = 0
     try:
         with contextlib.redirect_stdout(buf):
-            dispatch(args)
+            rc = dispatch(args) or 0
     finally:
+        _DISPATCH_RC[0] = rc
         if backup is not None:
             try: OUTPUT.write_text(backup, encoding='utf-8')
             except Exception: pass
@@ -6906,6 +7170,7 @@ def dispatch(args):
     if cmd == '--self-test':            return do_self_test()
     if cmd == '--health':               return do_health()
     if cmd == '--git-hint':             do_git_hint(); return 0
+    if cmd == '--sync-section35':       return do_sync_section35()
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
         _p = WORK / 'ctx_delta.txt'
@@ -7055,21 +7320,6 @@ def main():
 if __name__ == '__main__':
     sys.exit(main())
 `````
-
-### 35-1. Bootstrap procedure (what the AI does)
-
-1. Read the code block above.
-2. Emit it as a CREATE patch inside `input.txt`.
-3. Add `#@COMMIT: bootstrap run.py` and `#@TAG: bootstrap-runpy-ok` at the top.
-4. The user saves the block as `run.py` and runs `python run.py --init`.
-
-### 35-2. Bootstrap procedure (what the user does)
-
-1. Save the AI block into a file called `run.py` in the project folder. This is the only manual save in the entire protocol, it happens once, before `input.txt` exists.
-2. Run `python run.py --init`.
-3. Done. From here on, follow Section 0-C-10-A: paste, run, send.
-
----
 
 ## Section 36 — Rate-Limit Mitigation
 

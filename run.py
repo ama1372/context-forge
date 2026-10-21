@@ -40,7 +40,7 @@ Directives (in _work/input.txt, first lines):
   #@ROADMAP: a | b | c pipe-separated roadmap for _work/ctx_delta.txt
   #@PUSH:              after a successful commit + tag, push to origin
 
-Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.md section 2.
+Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.en.md section 2.
 """
 
 import difflib, hashlib, json, os, re, secrets, shlex, shutil, subprocess, sys
@@ -48,7 +48,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.8.0"
+VERSION = "1.8.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -73,6 +73,14 @@ SKIP_EXTS = {
     '.mp3', '.mp4', '.wav', '.avi', '.mov'
 }
 SKIP_NAMES = {'run.py'}
+# Section 0-C-18: these never get dumped, hashed, or walked.
+SKIP_SECRET_NAMES = {
+    '.env', 'credentials.json', 'secrets.yaml', 'secrets.yml',
+    'id_rsa', 'id_ed25519',
+}
+SKIP_SECRET_PREFIXES = ('.env.',)  # .env.local, .env.production, ...
+SKIP_SECRET_EXTS = {'.pem', '.key', '.p12', '.pfx'}
+SECRET_EXAMPLE = '.env.example'    # template — must be visible
 MAX_SIZE = 2 * 1024 * 1024
 
 HEADER_RE = re.compile(
@@ -83,7 +91,7 @@ FIND, REPLACE, CONTENT, END = '<<<FIND>>>', '<<<REPLACE>>>', '<<<CONTENT>>>', '<
 OR_FIND = '<<<OR-FIND>>>'
 RUN_MARKER = '<<<RUN>>>'
 HASH_MARKER_RE = re.compile(r'^<<<EXPECTED_HASH>>>\s*(.+?)\s*<<<END>>>\s*$')
-FENCE_RE = re.compile(r'^\s*```[a-zA-Z0-9_+\-]*\s*$')
+FENCE_RE = re.compile(r'^\s*(`{3,}|~{3,})[a-zA-Z0-9_+\-]*\s*$')
 
 AUTO_VERIFY = False
 FORCE_APPLY = False
@@ -397,6 +405,9 @@ def walk(root):
             p = Path(dp) / fn
             if p.name in SKIP_NAMES: continue
             if p.suffix.lower() in SKIP_EXTS: continue
+            if p.name in SKIP_SECRET_NAMES: continue
+            if p.name.startswith(SKIP_SECRET_PREFIXES) and p.name != SECRET_EXAMPLE: continue
+            if p.suffix.lower() in SKIP_SECRET_EXTS: continue
             try:
                 if p.stat().st_size > MAX_SIZE: continue
             except OSError:
@@ -562,10 +573,15 @@ NEED_COMMANDS = {
 }
 
 
+# These run as CLI commands, not flags.
+NEED_CLI_COMMANDS = {'check', 'verify', 'dump', 'find-dup', 'clean'}
+
 def need_to_args(need_args):
     if not need_args:
         return []
     cmd = need_args[0].lower()
+    if cmd in NEED_CLI_COMMANDS:
+        return [cmd] + list(need_args[1:])
     if cmd in NEED_COMMANDS:
         return ['--' + cmd] + list(need_args[1:])
     return list(need_args)
@@ -884,7 +900,10 @@ def suggest(text, a):
     best = (0.0, None, -1)
     for i in range(len(fl)):
         ln = fl[i].strip()
-        if afirst and afirst not in ln and ln not in afirst and not ln: continue
+        if not ln:
+            continue
+        if afirst and afirst not in ln and ln not in afirst:
+            continue
         for d in (0, 1, -1, 2, -2, 3, -3):
             k = n + d
             if k <= 0 or i + k > len(fl): continue
@@ -917,7 +936,11 @@ def apply_patch(path, patches, out, fail_files=None):
                 matched_idx = idx_alt
                 break
         if matched is None:
-            if rl and rl in text:
+            # A short REPLACE like "pass" can occur anywhere. Require 40+ chars
+            # or at least one newline (2+ lines) before calling it "already applied".
+            is_already = (rl and rl in text
+                          and (len(rl) >= 40 or rl.count(chr(10)) >= 1))
+            if is_already:
                 out.append(f"  [SKIP] [{i}/{len(patches)}] already applied")
                 skip += 1; continue
             out.append(f"  [FAIL] [{i}/{len(patches)}] no anchor matched ({n_alts} alternative(s))")
@@ -1152,6 +1175,7 @@ def review_op(op, idx, total, root):
 def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
     rate_msg = _rate_warn_line()
+    post_failed = False
     global ANSWERS
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push,
@@ -1373,10 +1397,6 @@ def do_apply(patch_id=None):
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
 
-    if fail == 0:
-        try: _update_auto_block(patch_id, seed)
-        except Exception: pass
-
     if post_cmds and fail == 0:
         for sub_args in post_cmds:
             out.append(""); out.append("=" * 60)
@@ -1385,6 +1405,9 @@ def do_apply(patch_id=None):
             sub_out = dispatch_capture(sub_args)
             if sub_out:
                 out.append(sub_out)
+            if _DISPATCH_RC[0] != 0:
+                post_failed = True
+                out.append(f"[POST] FAILED (exit {_DISPATCH_RC[0]})")
 
     if needs:
         for need_args in needs:
@@ -1396,16 +1419,20 @@ def do_apply(patch_id=None):
             if sub_out:
                 out.append(sub_out)
 
-    if commit_if in (None, '', 'all-ok'):
-        should_commit = (fail == 0)
-    elif commit_if == 'any-ok':
-        should_commit = (ok > 0)
-    elif commit_if == 'always':
+    # POST failures block the commit (except with #@COMMIT_IF: always/never).
+    # This makes the promise in ADR-31 / Section 16-5 real: POST verify + TAG
+    # means the tag only appears when verification actually passed.
+    if commit_if == 'always':
         should_commit = True
     elif commit_if == 'never':
         should_commit = False
+    elif commit_if == 'any-ok':
+        should_commit = (ok > 0) and not post_failed
     else:
-        should_commit = (fail == 0)
+        should_commit = (fail == 0) and not post_failed
+    if post_failed and should_commit is False:
+        out.append("")
+        out.append("[GIT] commit skipped - POST verification failed")
 
     if should_commit:
         try:
@@ -1464,7 +1491,14 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[GIT] push error: {e}")
 
-    if fail == 0:
+    # Auto-block update runs AFTER commit, so "Last commit" is the new HEAD,
+    # not its parent. If no commit happened, it still writes the current HEAD.
+    # Skipped on POST failure: no new commit means no new state to record.
+    if fail == 0 and not post_failed:
+        try: _update_auto_block(patch_id, seed)
+        except Exception: pass
+
+    if fail == 0 and not post_failed:
         try:
             paths = []
             for op in ops:
@@ -1477,6 +1511,24 @@ def do_apply(patch_id=None):
             out.append("[CTX] ctx_delta saved -> _work/ctx_delta.txt")
         except Exception as e:
             out.append(""); out.append(f"[CTX] save failed: {e}")
+
+    # Auto-append compact status so the AI can bootstrap the next chat without
+    # a separate --status round trip. Adds ~300 bytes per apply.
+    try:
+        import io as _io, contextlib as _ctx
+        _sbuf = _io.StringIO()
+        with _ctx.redirect_stdout(_sbuf):
+            do_status()
+        _status_text = _sbuf.getvalue().rstrip()
+        if _status_text:
+            out.append("")
+            out.append("=" * 60)
+            out.append("AUTO STATUS")
+            out.append("=" * 60)
+            for _ln in _status_text.splitlines():
+                out.append(_ln)
+    except Exception:
+        pass
 
     if fail == 0:
         _status_end(f"[P{patch_id}] \u2713 OK={ok} FAIL={fail}")
@@ -1528,8 +1580,11 @@ def do_dump(full=False):
     else:
         L.append("(no changed files)"); L.append("")
 
-    body = '\n'.join(L)
-    new_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()[:16]
+    # Hash over deterministic parts only — skip MSG-SEED (random per run) and
+    # timestamp. The old code hashed the seed too, so the duplicate check
+    # below could never fire.
+    det = '\n'.join(L[2:])
+    new_hash = hashlib.sha256(det.encode('utf-8')).hexdigest()[:16]
     if OUTPUT.exists() and not full:
         old = read(OUTPUT)
         if f"# content_hash: {new_hash}" in old:
@@ -1867,15 +1922,7 @@ def do_slim_context(args):
         drop = drop | {'1', '2', '3', '11', '17', '18', '19', '20', '21',
                        '22', '23', '24', '25', '28', '30', '31', '32',
                        '33', '34', '36', '37'}
-    elif profile == 'aggressive':
-        keep = {'0', '0-B', '0-C', '4', '5', '7', '10', '13', '15', '16', '29'}
-        # collect all section ids from doc, then drop everything not in keep
-        _all = set(re.findall(r'^## Section ([\w\-]+)', norm, re.M)) if False else None
-        # we compute below after reading doc
-        drop = drop | set()  # placeholder; filled after reading the doc
-    if profile == 'aggressive':
-        # Do it after reading doc — see below
-        pass
+    # aggressive: handled below after reading the doc (see 'if profile == aggressive')
     if '--drop' in args:
         i = args.index('--drop')
         if i + 1 < len(args):
@@ -1941,6 +1988,7 @@ def do_capabilities():
     print("TREE: --tree [--json]")
     print("GIT:  --git-hint (OS-specific install instructions)")
     print("HEALTH: --health (bootstrap + check-md + self-test + git)")
+    print("SYNC:   --sync-section35 (embed current run.py into Section 35)")
     print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
@@ -2097,6 +2145,55 @@ def cmd_find_dup(args):
     print(f"[FIND-DUP] {OUTPUT}")
 
 
+def do_sync_section35():
+    """Sync the run.py embedded in PROJECT_CONTEXT.en.md's Section 35 with the
+    current run.py on disk. One command replaces the entire code block, so the
+    bootstrap source never drifts from the live tool."""
+    doc = Path('PROJECT_CONTEXT.en.md')
+    src_path = Path('run.py')
+    if not doc.exists():
+        print('[FAIL] PROJECT_CONTEXT.en.md not found')
+        return 1
+    if not src_path.exists():
+        print('[FAIL] run.py not found')
+        return 1
+    doc_text, doc_eol = read_raw(doc)
+    src_text = read(src_path)
+    m35 = re.search(r'^## Section 35\b.*$', doc_text, re.M)
+    m36 = re.search(r'^## Section 36\b.*$', doc_text, re.M)
+    if not m35 or not m36 or m36.start() <= m35.start():
+        print('[FAIL] Section 35 or Section 36 boundary not found')
+        return 1
+    body = src_text.rstrip()
+    if '\n' + '`````' + '\n' in '\n' + body + '\n':
+        print('[WARN] run.py contains a 5-backtick fence - sync may mis-close')
+    new_section = (
+        '## Section 35 - Full `run.py` source (Python reference)\n'
+        '\n'
+        '> **One-file distribution.** This section contains the entire `run.py`. '
+        'A newcomer who only has this document can be bootstrapped by an AI that '
+        'emits the block below as a CREATE patch inside `input.txt`.\n'
+        '\n'
+        '> **Never hand-copy this block.** Always let the AI emit it as a CREATE '
+        'patch, so the protocol (Section 0-C-10) is respected.\n'
+        '\n'
+        '> **Mature projects:** Section 35 is only needed once. If the document '
+        'feels too large for your chat, trim this section from your local copy '
+        'after `run.py` exists. The rest of the document is unaffected.\n'
+        '\n'
+        '`````python\n'
+        + body + '\n'
+        '`````\n\n'
+    )
+    before = doc_text[:m35.start()]
+    after = doc_text[m36.start():]
+    new_doc = before + new_section + after
+    write_preserve_eol(doc, new_doc, doc_eol)
+    print(f'[SYNC] Section 35 embedded {len(body)} chars from run.py')
+    print(f'[SYNC] wrote PROJECT_CONTEXT.en.md ({len(new_doc)} chars)')
+    return 0
+
+
 def do_git_hint():
     """Print the OS-specific Git install command."""
     print("[GIT HINT] Git is strongly recommended (auto-commit, auto-tag, rollback).")
@@ -2175,24 +2272,32 @@ def do_self_test():
     if 'REVIEW' in src and 'def review_op(' not in src:
         issues.append('REVIEW used but review_op missing')
 
-    # 5. VERSION in Section 35 embed (if PROJECT_CONTEXT.en.md exists)
+    # 5. Section 35 embed - FULL content check (not just VERSION)
     ctx = Path('PROJECT_CONTEXT.en.md')
     if ctx.exists():
         ctx_text = read(ctx)
-        m = re.search(r'VERSION = "(\d+\.\d+\.\d+)"', src)
-        if m:
-            ver = m.group(1)
-            # find the embedded block
-            m35 = re.search(r'^## Section 35\b.*$', ctx_text, re.M)
-            m36 = re.search(r'^## Section 36\b.*$', ctx_text, re.M)
-            if m35 and m36 and m36.start() > m35.start():
-                section = ctx_text[m35.start():m36.start()]
-                if ('VERSION = "%s"' % ver) not in section:
-                    issues.append('Section 35 embed out of sync with run.py %s' % ver)
+        m35 = re.search(r'^## Section 35\b.*$', ctx_text, re.M)
+        m36 = re.search(r'^## Section 36\b.*$', ctx_text, re.M)
+        if m35 and m36 and m36.start() > m35.start():
+            section = ctx_text[m35.start():m36.start()]
+            m_block = re.search(r'^(`{3,})python\s*\n(.*?)^\1\s*$',
+                                section, re.M | re.S)
+            if m_block:
+                embed = m_block.group(2)
+                if embed.rstrip() != src.rstrip():
+                    embed_lines = embed.count('\n')
+                    src_lines = src.count('\n')
+                    issues.append(
+                        'Section 35 embed out of sync with run.py '
+                        '(%d lines vs %d lines) - run --sync-section35'
+                        % (embed_lines, src_lines))
                 else:
-                    print('[SELF-TEST] Section 35 embed: OK (v%s)' % ver)
+                    print('[SELF-TEST] Section 35 embed: in sync (%d lines)'
+                          % src.count('\n'))
             else:
-                print('[SELF-TEST] Section 35 boundary: skipped')
+                print('[SELF-TEST] Section 35 embed: no code block found (skipped)')
+        else:
+            print('[SELF-TEST] Section 35 boundary: skipped')
 
     if issues:
         print('[SELF-TEST] issues (%d):' % len(issues))
@@ -2402,6 +2507,8 @@ def do_init():
     print("  4. Run: python run.py --status      (quick summary)")
 
 
+_DISPATCH_RC = [0]  # last dispatch return code, for POST gating
+
 def dispatch_capture(args):
     import io, contextlib
     backup = None
@@ -2409,10 +2516,12 @@ def dispatch_capture(args):
         try: backup = OUTPUT.read_text(encoding='utf-8')
         except Exception: backup = None
     buf = io.StringIO()
+    rc = 0
     try:
         with contextlib.redirect_stdout(buf):
-            dispatch(args)
+            rc = dispatch(args) or 0
     finally:
+        _DISPATCH_RC[0] = rc
         if backup is not None:
             try: OUTPUT.write_text(backup, encoding='utf-8')
             except Exception: pass
@@ -2430,6 +2539,7 @@ def dispatch(args):
     if cmd == '--self-test':            return do_self_test()
     if cmd == '--health':               return do_health()
     if cmd == '--git-hint':             do_git_hint(); return 0
+    if cmd == '--sync-section35':       return do_sync_section35()
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
         _p = WORK / 'ctx_delta.txt'
