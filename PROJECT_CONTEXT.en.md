@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P130 |
-| Last tag | `runpy-resume` |
-| Time | 2026-10-21 22:31 |
-| MSG-SEED | `91d15c5f` |
+| Last patch | P131 |
+| Last tag | `cleanup-archive` |
+| Time | 2026-10-21 22:35 |
+| MSG-SEED | `42e20935` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.

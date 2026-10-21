@@ -28,3 +28,6 @@ Thumbs.db
 *.swo
 *~
 *.tmp
+
+# --- unmaintained archive (deleted per Section 33-1) ---
+_archive/
