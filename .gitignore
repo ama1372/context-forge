@@ -16,3 +16,11 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+
+# --- stale editor/backup files (never commit) ---
+*.bak
+*.orig
+*.swp
+*.swo
+*~
+*.tmp

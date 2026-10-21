@@ -39,6 +39,7 @@ Directives (in _work/input.txt, first lines):
   #@NEXT: <line>       one-line "what's next" for _work/ctx_delta.txt
   #@ROADMAP: a | b | c pipe-separated roadmap for _work/ctx_delta.txt
   #@PUSH:              after a successful commit + tag, push to origin
+  #@SYNC:              auto-run --sync-section35 if run.py was patched
 
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.en.md section 2.
 """
@@ -48,7 +49,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.8.3"
+VERSION = "1.8.7"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -70,7 +71,8 @@ SKIP_EXTS = {
     '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.webp',
     '.pdf', '.ttf', '.otf', '.woff', '.woff2',
     '.lock', '.bin', '.pt', '.pkl', '.pyc', '.pyo',
-    '.mp3', '.mp4', '.wav', '.avi', '.mov'
+    '.mp3', '.mp4', '.wav', '.avi', '.mov',
+    '.bak', '.orig', '.swp', '.swo', '.tmp'
 }
 SKIP_NAMES = {'run.py'}
 # Section 0-C-18: these never get dumped, hashed, or walked.
@@ -493,6 +495,7 @@ def read_directives(text):
     nodump = False
     dump_mode = None
     push = False
+    sync_after = False
     commit_if = None
     next_step = None
     roadmap = []
@@ -533,6 +536,8 @@ def read_directives(text):
         if m: dump_mode = m.group(1).lower(); idx += 1; continue
         if s in ('#@PUSH:', '#@PUSH'):
             push = True; idx += 1; continue
+        if s in ('#@SYNC:', '#@SYNC'):
+            sync_after = True; idx += 1; continue
         m = re.match(r'^#@COMMIT_IF:\s*(\S+)', s)
         if m: commit_if = m.group(1).lower(); idx += 1; continue
         m = re.match(r'^#@NEXT:\s*(.+)$', s)
@@ -561,7 +566,7 @@ def read_directives(text):
         # Unknown #@ directive — skip, don't break.
         idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
-            commit_msg, tag_name, nodump, dump_mode, push,
+            commit_msg, tag_name, nodump, dump_mode, push, sync_after,
             commit_if, next_step, roadmap, asks,
             '\n'.join(lines[idx:]))
 
@@ -746,7 +751,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -1204,7 +1209,7 @@ def do_apply(patch_id=None):
     post_failed = False
     global ANSWERS
     (did, _, post_cmds, needs,
-     commit_msg, tag_name, nodump, dump_mode, push,
+     commit_msg, tag_name, nodump, dump_mode, push, sync_after,
      commit_if, next_step, roadmap, asks,
      remaining) = read_directives(content)
     if did is not None: patch_id = did
@@ -1408,12 +1413,6 @@ def do_apply(patch_id=None):
     out.append(""); out.append("=" * 60)
     out.append(f"PATCH_ID: {patch_id}  |  OK: {ok}  |  SKIP: {skip}  |  FAIL: {fail}")
 
-    try:
-        write(WORK / '.last_patch_status',
-              f"LAST: P{patch_id}  OK:{ok}  SKIP:{skip}  FAIL:{fail}")
-    except Exception:
-        pass
-
     APPLIED.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime('%Y%m%d-%H%M%S')
     arch = APPLIED / f'P{patch_id:04d}-{ts}.txt'
@@ -1428,6 +1427,25 @@ def do_apply(patch_id=None):
     else:
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
+
+    # SYNC runs BEFORE POST (fix P127): Section 35 must be current when
+    # --self-test runs. Otherwise self-test sees stale embed and fails the
+    # whole patch. This ordering is load-bearing — do not move it back.
+    if sync_after and fail == 0:
+        touched_runpy = any(
+            (op.get('path') or '') == 'run.py' or (op.get('dst') or '') == 'run.py'
+            for op in ops
+        )
+        if touched_runpy:
+            out.append(""); out.append("=" * 60)
+            out.append("SYNC: run.py was patched - auto-syncing Section 35")
+            out.append("=" * 60); out.append("")
+            sub_out = dispatch_capture(['--sync-section35'])
+            if sub_out:
+                out.append(sub_out)
+            if _DISPATCH_RC[0] != 0:
+                out.append(f"[SYNC] failed (exit {_DISPATCH_RC[0]})")
+        sync_after = False  # old SYNC block below becomes a no-op
 
     if post_cmds and fail == 0:
         for sub_args in post_cmds:
@@ -1450,6 +1468,23 @@ def do_apply(patch_id=None):
             sub_out = dispatch_capture(real_args)
             if sub_out:
                 out.append(sub_out)
+
+    # #@SYNC: — auto-sync Section 35 if run.py was patched in this batch.
+    # Saves the user from adding #@POST: --sync-section35 manually every time.
+    if sync_after and fail == 0 and not post_failed:
+        touched_runpy = any(
+            (op.get('path') or '') == 'run.py' or (op.get('dst') or '') == 'run.py'
+            for op in ops
+        )
+        if touched_runpy:
+            out.append(""); out.append("=" * 60)
+            out.append("SYNC: run.py was patched - auto-syncing Section 35")
+            out.append("=" * 60); out.append("")
+            sub_out = dispatch_capture(['--sync-section35'])
+            if sub_out:
+                out.append(sub_out)
+            if _DISPATCH_RC[0] != 0:
+                out.append(f"[SYNC] failed (exit {_DISPATCH_RC[0]})")
 
     # Update the auto-block BEFORE the commit so it lands in the same commit
     # as the code change. This keeps PROJECT_CONTEXT.en.md from appearing as
@@ -1560,6 +1595,16 @@ def do_apply(patch_id=None):
         except Exception as e:
             out.append(""); out.append(f"[CTX] save failed: {e}")
 
+    # Persist final patch status BEFORE AUTO STATUS, so AUTO STATUS reads
+    # the new value (not the previous run's value).
+    try:
+        _st_now = f"LAST: P{patch_id}  OK:{ok}  SKIP:{skip}  FAIL:{fail}"
+        if post_failed:
+            _st_now += "  POST-FAILED"
+        write(WORK / '.last_patch_status', _st_now)
+    except Exception:
+        pass
+
     # Auto-append compact status so the AI can bootstrap the next chat without
     # a separate --status round trip. Adds ~300 bytes per apply.
     try:
@@ -1582,6 +1627,13 @@ def do_apply(patch_id=None):
         _status_end(f"[P{patch_id}] \u2713 OK={ok} FAIL={fail}")
     else:
         _status_end(f"[P{patch_id}] \u2717 OK={ok} FAIL={fail}")
+    try:
+        _st = f"LAST: P{patch_id}  OK:{ok}  SKIP:{skip}  FAIL:{fail}"
+        if post_failed:
+            _st += "  POST-FAILED"
+        write(WORK / '.last_patch_status', _st)
+    except Exception:
+        pass
     _rate_warn_write()
     txt = '\n'.join(out)
     write(OUTPUT, txt); print(txt)
@@ -2049,7 +2101,7 @@ def do_capabilities():
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
-          "#@NEXT #@ROADMAP #@PUSH #@COMMIT_IF")
+          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@COMMIT_IF")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
     print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
     print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")
