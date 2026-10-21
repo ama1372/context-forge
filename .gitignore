@@ -16,6 +16,10 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
 
 # --- stale editor/backup files (never commit) ---
 *.bak
