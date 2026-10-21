@@ -40,6 +40,7 @@ Directives (in _work/input.txt, first lines):
   #@ROADMAP: a | b | c pipe-separated roadmap for _work/ctx_delta.txt
   #@PUSH:              after a successful commit + tag, push to origin
   #@SYNC:              auto-run --sync-section35 if run.py was patched
+  #@RESUME:            retry the last failed patch (loads _work/failed/)
 
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.en.md section 2.
 """
@@ -49,7 +50,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.8.7"
+VERSION = "1.8.8"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1205,6 +1206,7 @@ def review_op(op, idx, total, root):
 
 def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
+    _original_input = content  # saved for #@RESUME: detection
     rate_msg = _rate_warn_line()
     post_failed = False
     global ANSWERS
@@ -1236,9 +1238,44 @@ def do_apply(patch_id=None):
         WORK.mkdir(parents=True, exist_ok=True)
         idfile.write_text(str(patch_id), encoding='utf-8')
 
-    ops = parse(content)
+    # #@RESUME: — load last failed blocks from _work/failed/ and append after
+    # current content. User's new blocks run first; failed blocks retry after.
+    _is_resume = False
+    try:
+        _src = _original_input
+    except NameError:
+        _src = ''  # safety if the init patch didn't apply
+    for _ln in _src.split('\n')[:20]:
+        _s = _ln.strip()
+        if not _s: continue
+        if not _s.startswith('#'): break
+        if _s in ('#@RESUME:', '#@RESUME'):
+            _is_resume = True
+            break
+
     seed = msg_seed()
     out = [f"# MSG-SEED: {seed}", "[APPLY]", "", f"# PATCH_ID: {patch_id}", ""]
+
+    if _is_resume:
+        _failed_dir = WORK / 'failed'
+        _candidates = (sorted(_failed_dir.glob('P*.txt'), reverse=True)
+                       if _failed_dir.exists() else [])
+        if not _candidates:
+            out.append("[RESUME] no failed patch to load")
+        else:
+            _target = _candidates[0]
+            try:
+                _loaded = read(_target)
+                _lp = read_directives(_loaded)[-1]
+                if _lp.strip():
+                    content = (content.rstrip() + "\n\n" + _lp.lstrip()).strip()
+                    out.append(f"[RESUME] loaded blocks from {_target.name}")
+                else:
+                    out.append(f"[RESUME] {_target.name} has no patch blocks")
+            except Exception as e:
+                out.append(f"[RESUME] load failed: {e}")
+
+    ops = parse(content)
     _status_begin(f"[P{patch_id}] applying {len(ops)} op(s)")
     if BACKUP:
         _do_backup()
@@ -1427,6 +1464,18 @@ def do_apply(patch_id=None):
     else:
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
+        # Save failed content for #@RESUME: (only latest is kept).
+        _failed_dir = WORK / 'failed'
+        try:
+            _failed_dir.mkdir(parents=True, exist_ok=True)
+            for _old_f in _failed_dir.glob('P*.txt'):
+                try: _old_f.unlink()
+                except Exception: pass
+            _failed_file = _failed_dir / f'P{patch_id:04d}-{ts}.txt'
+            write(_failed_file, content)
+            out.append(f"[RESUME] failed content saved -> {_failed_file}")
+        except Exception as e:
+            out.append(f"[RESUME] save failed: {e}")
 
     # SYNC runs BEFORE POST (fix P127): Section 35 must be current when
     # --self-test runs. Otherwise self-test sees stale embed and fails the
@@ -2101,7 +2150,7 @@ def do_capabilities():
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
-          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@COMMIT_IF")
+          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
     print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
     print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")

@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P128 |
-| Last tag | `runpy-1-8-7` |
-| Time | 2026-10-21 21:12 |
-| MSG-SEED | `f2447ab1` |
+| Last patch | P129 |
+| Last tag | `runpy-resume` |
+| Time | 2026-10-21 21:21 |
+| MSG-SEED | `32286243` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1968,6 +1968,69 @@ If the user says "merge" — or if the AI detects local modifications (via `--ca
 The protocol survives across chat limits by being one paste. But over months, the protocol itself evolves — new sections, new flags, new safety checks. A user who upgraded their project six months ago is missing six months of protocol. Without an upgrade path, they are silently stuck in a stale protocol. With it, every chat is an opportunity to bring them current.
 
 The counterweight: the protocol stores real user state (Sections 2, 13, 15, 16). Overwriting that state destroys the project's continuity. So the upgrade must be surgical: replace framework, preserve user data.
+
+---
+
+## Section 0-C-29 — Resume failed patches (#@RESUME:)
+
+> **🔴 One directive retries the last failed batch. No manual re-copy.**
+
+### 0-C-29-1. The problem
+
+A batch with 8 patch blocks fails on block 5. The user has to:
+1. Read `output.txt` to find the failing block.
+2. Manually copy all 7 other blocks back into `input.txt`.
+3. Edit the failing block.
+4. Rerun.
+
+Steps 1–2 cost tokens and time, and are error-prone.
+
+### 0-C-29-2. The solution
+
+When a batch fails, `run.py` saves the failed content to `_work/failed/P<NNNN>-<ts>.txt`. The AI (or user) sends just:
+
+    # INPUT: retry failed blocks
+    #@COMMIT: 🔧 retry failed patch
+    #@TAG: retry-ok
+    #@RESUME:
+
+`run.py` loads the failed file, re-applies its blocks. Already-applied blocks SKIP; the failed one retries.
+
+### 0-C-29-3. Combining with new content
+
+The user may add new blocks after `#@RESUME:`. They run **first**, then the failed blocks retry:
+
+    #@RESUME:
+    #@COMMIT: retry + fix
+    #@TAG: retry-ok
+
+    ===== FILE: src/main.py =====
+    <<<FIND>>>
+    ... the fixed version of the failing block ...
+    <<<REPLACE>>>
+    ...
+    <<<END>>>
+
+**Order:** user content first, failed content second. This lets a fix land before the retry, so if the fix unblocks the anchor, the retry succeeds.
+
+### 0-C-29-4. Limitations
+
+- **Only the latest failure is kept.** Older failed files are deleted when a new one is saved.
+- **Whole blocks, not individual patches.** If a FILE block has 5 patches and 1 fails, all 5 are retried. The 4 already-applied ones SKIP.
+- **No patch_id selection (yet).** `#@RESUME:` always loads the most recent failure.
+- **`_work/failed/` is gitignored** — never committed.
+
+### 0-C-29-5. When NOT to use it
+
+- **The failure was transient** (network glitch, disk full). Fix the underlying issue first, then `#@RESUME:`.
+- **You do not know what failed.** Read `output.txt` first.
+- **You want to abandon the failed blocks entirely.** Just send new content without `#@RESUME:`.
+
+### 0-C-29-6. What the AI must never do
+
+- ❌ Use `#@RESUME:` without reading `output.txt` first — you must understand what failed.
+- ❌ Assume `#@RESUME:` will "fix itself" — the failing anchor still needs a fix.
+- ❌ Send `#@RESUME:` with no other blocks unless you are certain the failure was transient.
 
 ---
 
@@ -4671,6 +4734,7 @@ Directives (in _work/input.txt, first lines):
   #@ROADMAP: a | b | c pipe-separated roadmap for _work/ctx_delta.txt
   #@PUSH:              after a successful commit + tag, push to origin
   #@SYNC:              auto-run --sync-section35 if run.py was patched
+  #@RESUME:            retry the last failed patch (loads _work/failed/)
 
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.en.md section 2.
 """
@@ -4680,7 +4744,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.8.7"
+VERSION = "1.8.8"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -5836,6 +5900,7 @@ def review_op(op, idx, total, root):
 
 def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
+    _original_input = content  # saved for #@RESUME: detection
     rate_msg = _rate_warn_line()
     post_failed = False
     global ANSWERS
@@ -5867,9 +5932,44 @@ def do_apply(patch_id=None):
         WORK.mkdir(parents=True, exist_ok=True)
         idfile.write_text(str(patch_id), encoding='utf-8')
 
-    ops = parse(content)
+    # #@RESUME: — load last failed blocks from _work/failed/ and append after
+    # current content. User's new blocks run first; failed blocks retry after.
+    _is_resume = False
+    try:
+        _src = _original_input
+    except NameError:
+        _src = ''  # safety if the init patch didn't apply
+    for _ln in _src.split('\n')[:20]:
+        _s = _ln.strip()
+        if not _s: continue
+        if not _s.startswith('#'): break
+        if _s in ('#@RESUME:', '#@RESUME'):
+            _is_resume = True
+            break
+
     seed = msg_seed()
     out = [f"# MSG-SEED: {seed}", "[APPLY]", "", f"# PATCH_ID: {patch_id}", ""]
+
+    if _is_resume:
+        _failed_dir = WORK / 'failed'
+        _candidates = (sorted(_failed_dir.glob('P*.txt'), reverse=True)
+                       if _failed_dir.exists() else [])
+        if not _candidates:
+            out.append("[RESUME] no failed patch to load")
+        else:
+            _target = _candidates[0]
+            try:
+                _loaded = read(_target)
+                _lp = read_directives(_loaded)[-1]
+                if _lp.strip():
+                    content = (content.rstrip() + "\n\n" + _lp.lstrip()).strip()
+                    out.append(f"[RESUME] loaded blocks from {_target.name}")
+                else:
+                    out.append(f"[RESUME] {_target.name} has no patch blocks")
+            except Exception as e:
+                out.append(f"[RESUME] load failed: {e}")
+
+    ops = parse(content)
     _status_begin(f"[P{patch_id}] applying {len(ops)} op(s)")
     if BACKUP:
         _do_backup()
@@ -6058,6 +6158,18 @@ def do_apply(patch_id=None):
     else:
         out.append(f"       {fail} patch(es) FAILED")
         out.append("       input.txt emptied anyway")
+        # Save failed content for #@RESUME: (only latest is kept).
+        _failed_dir = WORK / 'failed'
+        try:
+            _failed_dir.mkdir(parents=True, exist_ok=True)
+            for _old_f in _failed_dir.glob('P*.txt'):
+                try: _old_f.unlink()
+                except Exception: pass
+            _failed_file = _failed_dir / f'P{patch_id:04d}-{ts}.txt'
+            write(_failed_file, content)
+            out.append(f"[RESUME] failed content saved -> {_failed_file}")
+        except Exception as e:
+            out.append(f"[RESUME] save failed: {e}")
 
     # SYNC runs BEFORE POST (fix P127): Section 35 must be current when
     # --self-test runs. Otherwise self-test sees stale embed and fails the
@@ -6732,7 +6844,7 @@ def do_capabilities():
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
-          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@COMMIT_IF")
+          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
     print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
     print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")
