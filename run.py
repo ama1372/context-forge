@@ -41,6 +41,8 @@ Directives (in _work/input.txt, first lines):
   #@PUSH:              after a successful commit + tag, push to origin
   #@SYNC:              auto-run --sync-section35 if run.py was patched
   #@RESUME:            retry the last failed patch (loads _work/failed/)
+  #@CMD_GREP: <regex>  only keep CMD output matching pattern
+  #@CMD_TAIL: <N>      only keep the last N lines of CMD output
 
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.en.md section 2.
 """
@@ -50,7 +52,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.8.9"
+VERSION = "1.9.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -501,6 +503,8 @@ def read_directives(text):
     next_step = None
     roadmap = []
     asks = []
+    cmd_grep = None
+    cmd_tail = None
     idx = 0
     while idx < len(lines):
         s = lines[idx].strip()
@@ -539,6 +543,10 @@ def read_directives(text):
             push = True; idx += 1; continue
         if s in ('#@SYNC:', '#@SYNC'):
             sync_after = True; idx += 1; continue
+        m = re.match(r'^#@CMD_GREP:\s*(.+)$', s)
+        if m: cmd_grep = m.group(1).strip(); idx += 1; continue
+        m = re.match(r'^#@CMD_TAIL:\s*(\d+)', s)
+        if m: cmd_tail = int(m.group(1)); idx += 1; continue
         m = re.match(r'^#@COMMIT_IF:\s*(\S+)', s)
         if m: commit_if = m.group(1).lower(); idx += 1; continue
         m = re.match(r'^#@NEXT:\s*(.+)$', s)
@@ -568,7 +576,7 @@ def read_directives(text):
         idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
             commit_msg, tag_name, nodump, dump_mode, push, sync_after,
-            commit_if, next_step, roadmap, asks,
+            commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
             '\n'.join(lines[idx:]))
 
 
@@ -752,7 +760,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -1212,7 +1220,7 @@ def do_apply(patch_id=None):
     global ANSWERS
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push, sync_after,
-     commit_if, next_step, roadmap, asks,
+     commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
      remaining) = read_directives(content)
     if did is not None: patch_id = did
     if asks:
@@ -1385,37 +1393,71 @@ def do_apply(patch_id=None):
                 out.append("  [TIMEOUT] no limit (--forever)")
             else:
                 out.append(f"  [TIMEOUT] {timeout_sec}s")
-            import tempfile as _tempfile
-            _fd_out, _out_path = _tempfile.mkstemp(suffix="_out.txt", prefix="runpy_")
-            _fd_err, _err_path = _tempfile.mkstemp(suffix="_err.txt", prefix="runpy_")
+            # Stream output in real-time to _status_add while capturing for final out
+            _cmd_out = []
+            _cmd_err = []
+            def _stream_reader(stream, lines, level):
+                try:
+                    for raw_ln in iter(stream.readline, b''):
+                        try: ln_str = raw_ln.decode('utf-8', errors='replace').rstrip('\r\n')
+                        except Exception: ln_str = repr(raw_ln)
+                        lines.append(ln_str)
+                        if ln_str.strip(): _status_add(ln_str, level=level)
+                except Exception: pass
+                finally:
+                    try: stream.close()
+                    except Exception: pass
+
+            proc = subprocess.Popen(
+                ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            
+            t_out = threading.Thread(target=_stream_reader, args=(proc.stdout, _cmd_out, 'output'), daemon=True)
+            t_err = threading.Thread(target=_stream_reader, args=(proc.stderr, _cmd_err, 'warn'), daemon=True)
+            t_out.start(); t_err.start()
+
             try:
-                with os.fdopen(_fd_out, "wb") as _fout, os.fdopen(_fd_err, "wb") as _ferr:
-                    proc = subprocess.Popen(
-                        ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
-                         '-Command', script],
-                        stdin=subprocess.DEVNULL, stdout=_fout, stderr=_ferr)
-                    rc = proc.wait(timeout=timeout_sec)
-                with open(_out_path, 'r', encoding='utf-8', errors='replace') as f:
-                    _stdout = f.read()
-                with open(_err_path, 'r', encoding='utf-8', errors='replace') as f:
-                    _stderr = f.read()
-                for ln in _stdout.rstrip().splitlines():
-                    out.append(f"  | {ln}")
-                for ln in _stderr.rstrip().splitlines():
-                    out.append(f"  ! {ln}")
-                if rc == 0:
-                    out.append("  [OK]   exit 0"); ok += 1
-                else:
-                    out.append(f"  [FAIL] exit {rc}"); fail += 1
+                rc = proc.wait(timeout=timeout_sec)
             except subprocess.TimeoutExpired:
                 try:
                     subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)],
                                    capture_output=True, timeout=5)
-                except Exception:
-                    pass
+                except Exception: pass
                 try: proc.kill()
                 except Exception: pass
+                rc = -1
                 out.append(f"  [FAIL] timeout after {timeout_sec}s")
+            finally:
+                t_out.join(2); t_err.join(2)
+
+            if cmd_grep:
+                try:
+                    rx = re.compile(cmd_grep, re.IGNORECASE)
+                    _cmd_out = [l for l in _cmd_out if rx.search(l)]
+                    _cmd_err = [l for l in _cmd_err if rx.search(l)]
+                    out.append(f"  [GREP] applied filter: {cmd_grep}")
+                except Exception as e:
+                    out.append(f"  [WARN] invalid grep pattern: {e}")
+            
+            if cmd_tail and cmd_tail > 0:
+                if len(_cmd_out) > cmd_tail:
+                    out.append(f"  [TAIL] showing last {cmd_tail} lines ({len(_cmd_out)-cmd_tail} omitted)")
+                    _cmd_out = _cmd_out[-cmd_tail:]
+                if len(_cmd_err) > cmd_tail:
+                    _cmd_err = _cmd_err[-cmd_tail:]
+
+            for ln in _cmd_out:
+                out.append(f"  | {ln}")
+            for ln in _cmd_err:
+                out.append(f"  ! {ln}")
+
+            if rc == 0:
+                out.append("  [OK]   exit 0"); ok += 1
+            elif rc != -1:
+                out.append(f"  [FAIL] exit {rc}"); fail += 1
+            else:
                 out.append("  [TIP]  To run manually in PowerShell (no timeout):")
                 for ln in script.splitlines():
                     out.append("         " + ln)
@@ -1423,12 +1465,6 @@ def do_apply(patch_id=None):
                 out.append("         python run.py --long     # 4-hour timeout")
                 out.append("         python run.py --forever  # no timeout")
                 fail += 1
-            except Exception as e:
-                out.append(f"  [FAIL] {e}"); fail += 1
-            finally:
-                for _p in (_out_path, _err_path):
-                    try: os.unlink(_p)
-                    except Exception: pass
 
     dumps = [op for op in ops if op['kind'] == 'dump']
     if dumps:
@@ -2169,7 +2205,7 @@ def do_capabilities():
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
-          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF")
+          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF #@CMD_GREP #@CMD_TAIL")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
     print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
     print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")
