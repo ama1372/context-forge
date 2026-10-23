@@ -50,7 +50,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.8.8"
+VERSION = "1.8.9"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1385,21 +1385,36 @@ def do_apply(patch_id=None):
                 out.append("  [TIMEOUT] no limit (--forever)")
             else:
                 out.append(f"  [TIMEOUT] {timeout_sec}s")
+            import tempfile as _tempfile
+            _fd_out, _out_path = _tempfile.mkstemp(suffix="_out.txt", prefix="runpy_")
+            _fd_err, _err_path = _tempfile.mkstemp(suffix="_err.txt", prefix="runpy_")
             try:
-                r = subprocess.run(
-                    ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
-                     '-Command', script],
-                    capture_output=True, text=True, encoding='utf-8',
-                    errors='replace', timeout=timeout_sec)
-                for ln in (r.stdout or '').rstrip().splitlines():
+                with os.fdopen(_fd_out, "wb") as _fout, os.fdopen(_fd_err, "wb") as _ferr:
+                    proc = subprocess.Popen(
+                        ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                         '-Command', script],
+                        stdin=subprocess.DEVNULL, stdout=_fout, stderr=_ferr)
+                    rc = proc.wait(timeout=timeout_sec)
+                with open(_out_path, 'r', encoding='utf-8', errors='replace') as f:
+                    _stdout = f.read()
+                with open(_err_path, 'r', encoding='utf-8', errors='replace') as f:
+                    _stderr = f.read()
+                for ln in _stdout.rstrip().splitlines():
                     out.append(f"  | {ln}")
-                for ln in (r.stderr or '').rstrip().splitlines():
+                for ln in _stderr.rstrip().splitlines():
                     out.append(f"  ! {ln}")
-                if r.returncode == 0:
+                if rc == 0:
                     out.append("  [OK]   exit 0"); ok += 1
                 else:
-                    out.append(f"  [FAIL] exit {r.returncode}"); fail += 1
+                    out.append(f"  [FAIL] exit {rc}"); fail += 1
             except subprocess.TimeoutExpired:
+                try:
+                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)],
+                                   capture_output=True, timeout=5)
+                except Exception:
+                    pass
+                try: proc.kill()
+                except Exception: pass
                 out.append(f"  [FAIL] timeout after {timeout_sec}s")
                 out.append("  [TIP]  To run manually in PowerShell (no timeout):")
                 for ln in script.splitlines():
@@ -1410,6 +1425,10 @@ def do_apply(patch_id=None):
                 fail += 1
             except Exception as e:
                 out.append(f"  [FAIL] {e}"); fail += 1
+            finally:
+                for _p in (_out_path, _err_path):
+                    try: os.unlink(_p)
+                    except Exception: pass
 
     dumps = [op for op in ops if op['kind'] == 'dump']
     if dumps:
