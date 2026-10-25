@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P137 |
-| Last tag | `runpy-1-9-2` |
-| Time | 2026-10-25 15:24 |
-| MSG-SEED | `d41cbf3d` |
+| Last patch | P139 |
+| Last tag | `ctx-semantic-fix-v2` |
+| Time | 2026-10-25 15:27 |
+| MSG-SEED | `29d08df2` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1880,17 +1880,20 @@ When a user pastes their `PROJECT_CONTEXT.en.md` at the start of a new chat:
 | user's version = AI's version | No action |
 | user's version > AI's version | **Never downgrade.** The AI is outdated; continue with the user's version |
 
-### 0-C-28-3. The offer
+### 0-C-28-3. The offer (via `#@ASK:`)
 
-Before any other work in that chat, the AI says (one line, user's language):
+Before any other work in that chat, the AI emits a standard patch containing the `#@ASK:` directive (Section 0-C-21):
 
-> "Your project is on `run.py` vX. This document is vY. Want me to upgrade your project to vY? Your Sections 2, 13, 15, and 16 will be preserved."
+    #@ASK: upgrade_action | Upgrade project to vY? (yes / merge / no) | default=yes
 
-The user answers:
+When the user runs `python run.py`, the tool prompts them or uses the default.
+Based on the answer, the AI proceeds:
 
 - **yes** → adopt wholesale (0-C-28-4)
 - **merge** → merge procedure (0-C-28-5)
 - **no** → skip, work with current version
+
+**The AI must NEVER ask this question in chat.** The protocol is strictly `input.txt` / `output.txt`.
 
 ### 0-C-28-4. Adopt wholesale
 
@@ -1962,6 +1965,20 @@ If the user says "merge" — or if the AI detects local modifications (via `--ca
 - ❌ Upgrade mid-patch (while `input.txt` has content).
 - ❌ Skip the pre-upgrade tag — the user needs a rollback point.
 - ❌ Overwrite a `run.py` that shows extra capabilities with a plain CREATE — that erases the user's work.
+
+### 0-C-28-9. The Two-File Confusion (Strict Rule)
+
+> **🔴 When a user pastes TWO versions of the rule document or tool, the AI MUST NOT merge them.**
+
+**The failure mode:** The user upgrades and pastes both the old `PROJECT_CONTEXT.md` and the new `PROJECT_CONTEXT.en.md` in the same chat. The AI tries to "help" by merging them, splitting sections, or combining old and new code. The result is a corrupted document and a broken `run.py`.
+
+**The rule:**
+1. **STOP.** Do not touch the files.
+2. **Identify the target.** Use `#@ASK: master_doc | Which document is the new master? | default=PROJECT_CONTEXT.en.md`
+3. **Ignore the old file.** Treat the old file purely as a reference to extract Sections 2, 13, 15, 16 (User Data). Do not copy framework sections from the old file.
+4. **Never combine.** If the new document lacks a feature the old one had, it means the feature was deprecated. Do not merge it back in.
+5. **Verify the tool.** The AI must ask via `#@NEED: status` and `#@NEED: capabilities` inside `input.txt` to see what is on disk. Never ask the user to run a manual command in chat.
+6. **One source of truth.** At the end of the upgrade, exactly one `PROJECT_CONTEXT.en.md` and one `run.py` must exist. Delete or archive the old ones.
 
 ### 0-C-28-9. The Two-File Confusion (Strict Rule)
 
@@ -3545,25 +3562,25 @@ The AI **never** invents a variant of the rule document. The document is copied 
 
 ### 16-1. Standard flow
 
-```bash
-# Step 1 — before changes (orange)
-git add -A
-git commit -m "🟠 SAFE before step-XX: <description>"
-git tag safe-before-XX
+> **🔴 The AI must NEVER give manual `git` commands in chat. All git operations happen via `input.txt` directives.**
 
-# Step 2 — code + context changes
-# (code and PROJECT_CONTEXT.md together)
+The entire Git flow is handled automatically by `run.py` via `#@COMMIT:`, `#@TAG:`, and `#@PUSH:`.
 
-# Step 3 — after a passing test (green)
-git add -A
-git commit -m "🎉 step-XX: <description> + context updated"
-git tag step-XX-ok
-git push origin main
-git push origin step-XX-ok
+**Step 1 — before changes:**
+(Optional: use `===== CMD: =====` if a manual backup is strictly needed, but tags are automatic).
 
-# Step 4 — on failure
-git reset --hard safe-before-XX
-```
+**Step 2 — code + context changes:**
+Apply patches. `run.py` auto-commits if `FAIL: 0`.
+
+**Step 3 — after a passing test:**
+If you want to tag and push, the top of `input.txt` looks like this:
+
+    #@COMMIT: 🎉 step-XX: <description> + context updated
+    #@TAG: step-XX-ok
+    #@PUSH:
+
+**Step 4 — on failure:**
+Rollback requires a manual command in the terminal (this is the ONLY exception), but normally `run.py` won't commit if a patch fails, so rollback is rarely needed. If forced, use: `git reset --hard safe-before-XX`.
 
 ### 16-2. Commit message pattern
 
@@ -3891,36 +3908,29 @@ def install_crash_logger():
 
 ### 25-1. Adding a function
 
-```
-## 🔧 Add function `<name>`
+> **🔴 All patches must be wrapped in `input.txt` directives. Never use chat-style git commands.**
 
-🔍 Anchor (Ctrl+F):
+```
+#@COMMIT: ✨ step-XX: add <name>
+#@TAG: step-XX-ok
+#@POST: verify
+
+===== FILE: <path> =====
+<<<FIND>>>
 <exact text>
-
-✂️ Replacement:
+<<<REPLACE>>>
 <new text>
-
-📌 Test: <how to test>
-
-💾 Commit:
-git add -A
-git commit -m "✨ step-XX: add <name> + context updated"
-git tag step-XX-ok
-```
-
-**Note:** since run.py v1.0+, the test/commit/tag go **inside** `input.txt` via `#@COMMIT:` and `#@TAG:` (Section 4-15). The above chat-style pattern is only for AI that don't support directives.
 
 ### 25-2. Removing code
 
 ```
-## 🗑 Remove `<name>`
+#@COMMIT: 🗑 step-XX: remove <name>
 
-🔍 Anchor (Ctrl+F):
+===== FILE: <path> =====
+<<<FIND>>>
 <whole block>
-
-✂️ Replacement:
+<<<REPLACE>>>
 <without that block>
-```
 
 ### 25-3. Full rewrite
 
