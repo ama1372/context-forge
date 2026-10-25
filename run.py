@@ -44,6 +44,13 @@ Directives (in _work/input.txt, first lines):
   #@CMD_GREP: <regex>  only keep CMD output matching pattern
   #@CMD_TAIL: <N>      only keep the last N lines of CMD output
 
+Inline scripts:
+  ===== PYTHON: <desc> =====
+  <<<RUN>>>
+  import ast
+  # ... python code ...
+  <<<END>>>
+
 Patch syntax (in _work/input.txt) — see PROJECT_CONTEXT.en.md section 2.
 """
 
@@ -52,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.0"
+VERSION = "1.9.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -89,7 +96,7 @@ SECRET_EXAMPLE = '.env.example'    # template — must be visible
 MAX_SIZE = 2 * 1024 * 1024
 
 HEADER_RE = re.compile(
-    r'^={3,}\s*(FILE|CREATE|DELETE|CMD|MKDIR|DUMP)\s*:\s*(.+?)\s*={3,}\s*$'
+    r'^={3,}\s*(FILE|CREATE|DELETE|CMD|PYTHON|MKDIR|DUMP)\s*:\s*(.+?)\s*={3,}\s*$'
 )
 MOVE_RE = re.compile(r'^={3,}\s*MOVE\s*:\s*(.+?)\s*->\s*(.+?)\s*={3,}\s*$')
 FIND, REPLACE, CONTENT, END = '<<<FIND>>>', '<<<REPLACE>>>', '<<<CONTENT>>>', '<<<END>>>'
@@ -799,19 +806,19 @@ def parse(text):
             flags = parts[1].split() if len(parts) > 1 else []
             ops.append({'kind': 'dump', 'path': p, 'flags': flags}); continue
 
-        if kind == 'cmd':
+        if kind in ('cmd', 'python'):
             while i < n and lines[i].rstrip() != RUN_MARKER:
                 if HEADER_RE.match(lines[i]): break
                 i += 1
             if i >= n or lines[i].rstrip() != RUN_MARKER:
-                ops.append({'kind': 'cmd', 'desc': path, 'script': ''}); continue
+                ops.append({'kind': kind, 'desc': path, 'script': ''}); continue
             i += 1
             block = []
             while i < n and lines[i].rstrip() != END:
                 if HEADER_RE.match(lines[i]): break
                 block.append(lines[i]); i += 1
             if i < n and lines[i].rstrip() == END: i += 1
-            ops.append({'kind': 'cmd', 'desc': path, 'script': '\n'.join(block)})
+            ops.append({'kind': kind, 'desc': path, 'script': '\n'.join(block)})
             continue
 
         if kind == 'create':
@@ -880,14 +887,24 @@ def find_soft(text, a):
     alines = a.splitlines()
     while alines and not alines[-1].strip(): alines.pop()
     if not alines: return None
-    for lvl, tr in ((2, str.rstrip), (3, str.strip)):
-        arr = [tr(x) for x in alines]
+    
+    # Level 2: rstrip
+    # Level 3: strip (full)
+    # Level 4: ignore all whitespace runs (like \s+ -> ' ') to catch CSS/HTML drift
+    levels = (
+        (2, str.rstrip, str.rstrip), 
+        (3, str.strip, str.strip),
+        (4, lambda s: ' '.join(s.split()), lambda s: ' '.join(s.split()))
+    )
+    
+    for lvl, tr_file, tr_anchor in levels:
+        arr = [tr_anchor(x) for x in alines]
         m = len(arr)
         for s in range(len(flines) - m + 1):
-            if tr(flines[s].rstrip('\n')) != arr[0]: continue
+            if tr_file(flines[s].rstrip('\n')) != arr[0]: continue
             ok = True
             for j in range(1, m):
-                if tr(flines[s+j].rstrip('\n')) != arr[j]:
+                if tr_file(flines[s+j].rstrip('\n')) != arr[j]:
                     ok = False; break
             if ok:
                 so = sum(len(l) for l in flines[:s])
@@ -1373,6 +1390,39 @@ def do_apply(patch_id=None):
             shutil.move(str(src), str(dst))
             out.append("  [OK]   moved")
             ok += 1
+
+        elif kind == 'python':
+            out.append(f"[P{patch_id}] [PYTHON] {op['desc']}")
+            script = op['script']
+            if not script.strip():
+                out.append("  [WARN] empty script"); continue
+            if DRY_RUN:
+                out.append("  [DRY] would run python script:")
+                for ln in script.splitlines():
+                    out.append("         " + ln)
+                ok += 1
+                continue
+            tmp_script = WORK / 'tmp_inline.py'
+            write(tmp_script, script)
+            try:
+                r = subprocess.run(
+                    [sys.executable, str(tmp_script)],
+                    capture_output=True, text=True, encoding='utf-8',
+                    errors='replace', timeout=300, cwd='.')
+                for ln in (r.stdout or '').rstrip().splitlines():
+                    out.append(f"  | {ln}")
+                for ln in (r.stderr or '').rstrip().splitlines():
+                    out.append(f"  ! {ln}")
+                if r.returncode == 0:
+                    out.append("  [OK]   exit 0"); ok += 1
+                else:
+                    out.append(f"  [FAIL] exit {r.returncode}"); fail += 1
+            except Exception as e:
+                out.append(f"  [FAIL] {e}"); fail += 1
+            finally:
+                if tmp_script.exists():
+                    try: tmp_script.unlink()
+                    except Exception: pass
 
         elif kind == 'cmd':
             out.append(f"[P{patch_id}] [CMD]  {op['desc']}")
@@ -2203,7 +2253,7 @@ def do_capabilities():
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
           "--progress --no-progress "
           "dump[--full] check verify find-dup apply clean")
-    print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD DUMP")
+    print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD PYTHON DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
           "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF #@CMD_GREP #@CMD_TAIL")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
