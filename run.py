@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.1"
+VERSION = "1.9.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -231,8 +231,12 @@ def _status_render(force=False):
             lines_out.append(_DIM + '\033[90m' + text + _RESET)
     try:
         if _STATUS_DRAWN > 0:
-            sys.stderr.write('\033[%dA\033[J' % _STATUS_DRAWN)
-        sys.stderr.write('\n'.join(lines_out) + '\n')
+            sys.stderr.write('\033[%dA' % _STATUS_DRAWN)
+        # Use \r\033[K (carriage return + clear line) per line. 
+        # This is 100% compatible with VS Code integrated terminal, 
+        # whereas \033[J often fails there and leaves blank lines.
+        for line in lines_out:
+            sys.stderr.write('\r\033[K' + line + '\n')
         sys.stderr.flush()
         _STATUS_DRAWN = len(lines_out)
     except Exception:

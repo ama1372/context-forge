@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P136 |
-| Last tag | `runpy-1-9-1` |
-| Time | 2026-10-25 15:21 |
-| MSG-SEED | `78917ec5` |
+| Last patch | P137 |
+| Last tag | `runpy-1-9-2` |
+| Time | 2026-10-25 15:24 |
+| MSG-SEED | `d41cbf3d` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1962,6 +1962,20 @@ If the user says "merge" — or if the AI detects local modifications (via `--ca
 - ❌ Upgrade mid-patch (while `input.txt` has content).
 - ❌ Skip the pre-upgrade tag — the user needs a rollback point.
 - ❌ Overwrite a `run.py` that shows extra capabilities with a plain CREATE — that erases the user's work.
+
+### 0-C-28-9. The Two-File Confusion (Strict Rule)
+
+> **🔴 When a user pastes TWO versions of the rule document or tool, the AI MUST NOT merge them.**
+
+**The failure mode:** The user upgrades and pastes both the old `PROJECT_CONTEXT.md` and the new `PROJECT_CONTEXT.en.md` in the same chat. The AI tries to "help" by merging them, splitting sections, or combining old and new code. The result is a corrupted document and a broken `run.py`.
+
+**The rule:**
+1. **STOP.** Do not touch the files.
+2. **Identify the target.** Ask the user: *"I see two documents. Which one is the new master document?"* (Usually, the `.en.md` is the new one).
+3. **Ignore the old file.** Treat the old file purely as a reference to extract Sections 2, 13, 15, 16 (User Data). Do not copy framework sections from the old file.
+4. **Never combine.** If the new document lacks a feature the old one had, it means the feature was deprecated. Do not merge it back in.
+5. **Verify the tool.** Run `python run.py --version` and `python run.py --capabilities` to see which `run.py` is actually on disk. If the user pasted two `run.py` sources, ask them to run the command.
+6. **One source of truth.** At the end of the upgrade, exactly one `PROJECT_CONTEXT.en.md` and one `run.py` must exist. Delete or archive the old ones.
 
 ### 0-C-28-8. Why this matters
 
@@ -4753,7 +4767,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.1"
+VERSION = "1.9.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -4925,8 +4939,12 @@ def _status_render(force=False):
             lines_out.append(_DIM + '\033[90m' + text + _RESET)
     try:
         if _STATUS_DRAWN > 0:
-            sys.stderr.write('\033[%dA\033[J' % _STATUS_DRAWN)
-        sys.stderr.write('\n'.join(lines_out) + '\n')
+            sys.stderr.write('\033[%dA' % _STATUS_DRAWN)
+        # Use \r\033[K (carriage return + clear line) per line. 
+        # This is 100% compatible with VS Code integrated terminal, 
+        # whereas \033[J often fails there and leaves blank lines.
+        for line in lines_out:
+            sys.stderr.write('\r\033[K' + line + '\n')
         sys.stderr.flush()
         _STATUS_DRAWN = len(lines_out)
     except Exception:
