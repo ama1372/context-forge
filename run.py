@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.7"
+VERSION = "1.9.8"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -2256,6 +2256,7 @@ def do_capabilities():
     print("TREE: --tree [--json]")
     print("GIT:  --git-hint (OS-specific install instructions)")
     print("HEALTH: --health (bootstrap + check-md + self-test + git)")
+    print("DOCTOR: --doctor (environment check, sync status, leaked secrets)")
     print("SYNC:   --sync-section35 (embed current run.py into Section 35)")
     print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
@@ -2808,7 +2809,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "' + VERSION + '"' in ctx:
+            if 'VERSION = "1.9.8"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")

@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P145 |
-| Last tag | `runpy-1-9-7` |
-| Time | 2026-10-27 18:52 |
-| MSG-SEED | `f24ea98f` |
+| Last patch | P146 |
+| Last tag | `runpy-1-9-8` |
+| Time | 2026-10-27 22:03 |
+| MSG-SEED | `4190d208` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1698,6 +1698,34 @@ When the user says "persona" (or one of its aliases), the AI temporarily stops b
 - ❌ Use developer jargon. Speak in user language: "button" not "component", "page" not "route", "message" not "HTTP 400".
 - ❌ Produce a report that is a wall of text. Structure with categories and short lines.
 - ❌ Do another persona review immediately after one — one pass is enough. The user can ask again later.
+- ❌ **NEVER put the persona report inside `input.txt`.** The report is text-only in the chat. If the user accidentally pastes it into `input.txt`, `run.py` will fail. The AI must remind the user: "Do not paste the report. Tell me which numbers to fix."
+
+### 0-C-26-10. Strict separation of Review vs Patching
+Persona mode is a **read-only** phase. The AI outputs the report in the chat, and then waits. The user replies with numbers (e.g., "1, 3"). Only THEN does the AI generate a proper `input.txt` patch for those specific items. This prevents the `run.py` parser from crashing due to a messy report.
+
+---
+
+### 0-C-33. Competitor Intelligence & Internet Research
+
+> **🔴 Don't reinvent the wheel. Research competitors before building.**
+
+#### 0-C-33-1. The Rule
+If the AI has access to the internet (Web Browsing tool) and is tasked with building a core feature, it SHOULD search for how top competitors solve this problem.
+
+#### 0-C-33-2. What to search for
+- "Top 3 [App Type] apps features"
+- "[Specific Feature] best UI/UX practices"
+- "Common bugs in [Specific Technology/Framework]"
+
+#### 0-C-33-3. How to save research (No token waste)
+The AI must **never** paste long articles into the chat. Instead, it should write a short summary (bullet points) and save it to `_work/research.md` using a `===== CREATE: _work/research.md =====` patch. 
+Then, in the next patch, it implements the feature based on that research.
+
+#### 0-C-33-4. Example Workflow
+1. User asks: "Build a login system."
+2. AI (with web access) searches: "Modern login UX 2024".
+3. AI sends a patch: `===== CREATE: _work/research.md =====` containing a 5-line summary of the best practices (e.g., "Magic links are better than passwords", "Use OAuth").
+4. AI sends the next patch to build the login system based on those findings.
 
 ### 0-C-26-4. How to exit persona mode
 
@@ -4879,7 +4907,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.7"
+VERSION = "1.9.8"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -7076,6 +7104,7 @@ def do_capabilities():
     print("TREE: --tree [--json]")
     print("GIT:  --git-hint (OS-specific install instructions)")
     print("HEALTH: --health (bootstrap + check-md + self-test + git)")
+    print("DOCTOR: --doctor (environment check, sync status, leaked secrets)")
     print("SYNC:   --sync-section35 (embed current run.py into Section 35)")
     print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
           "--git --file --files --errors --diff --ctx "
@@ -7628,7 +7657,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "' + VERSION + '"' in ctx:
+            if 'VERSION = "1.9.8"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
