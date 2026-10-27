@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P144 |
-| Last tag | `runpy-1-9-6` |
-| Time | 2026-10-27 18:46 |
-| MSG-SEED | `ee21241c` |
+| Last patch | P145 |
+| Last tag | `runpy-1-9-7` |
+| Time | 2026-10-27 18:52 |
+| MSG-SEED | `f24ea98f` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2144,6 +2144,26 @@ Before starting a task, grade your confidence:
 - **Rule:** If the AI notices a recurring pattern, an annoying edge case, or a missing feature during development, it MUST propose an improvement to the protocol itself.
 - **Action:** The AI should send a patch that updates `PROJECT_CONTEXT.en.md` (adding a new rule) or `run.py` (adding a new directive).
 - **Why:** The protocol is not static. It should evolve with the project. If the AI automates a repetitive manual task via a new `run.py` command, the whole project becomes faster.
+
+---
+
+## Section 0-C-32 — Version Guard & Cross-Platform Rules
+
+### 0-C-32-1. The Invalid Patch Problem (Version Drift)
+If a user has an older version of `PROJECT_CONTEXT.en.md` or `run.py`, your framework patches will fail (the `<<<FIND>>>` text won't exist in their file).
+- **Rule:** Before sending a massive framework patch (like adding a new Section), the AI MUST request `#@NEED: version` or `#@NEED: status`.
+- **Action:** If the user is on an old version, instruct them to run `python run.py --sync-section35` first (if supported), or provide a standalone `PYTHON` script to update the document.
+
+### 0-C-32-2. Cross-Platform Support (Windows, Linux, macOS, Termux)
+`run.py` works everywhere Python runs. It automatically detects the OS.
+- **Windows:** Uses `powershell` for `CMD` blocks and `taskkill` for cleanup.
+- **Linux / macOS / Android (Termux):** Uses `/bin/sh` for `CMD` blocks and `kill` for cleanup.
+- **The AI must NEVER hardcode OS-specific paths** (like `C:\`) unless explicitly required by the user's project.
+
+### 0-C-32-3. The `--doctor` Command
+If a user reports strange failures (e.g., patches not applying, terminals hanging), instruct them to run:
+    python run.py --doctor
+This checks version sync, git cleanliness, and leaked secrets.
 
 ---
 
@@ -4859,7 +4879,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.6"
+VERSION = "1.9.7"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -6262,11 +6282,19 @@ def do_apply(patch_id=None):
                     try: stream.close()
                     except Exception: pass
 
+            is_win = sys.platform.startswith('win')
+            if is_win:
+                shell_cmd = ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script]
+                preexec = None
+            else:
+                shell_cmd = ['/bin/sh', '-c', script]
+                preexec = os.setsid
             proc = subprocess.Popen(
-                ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+                shell_cmd,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                stderr=subprocess.PIPE,
+                preexec_fn=preexec)
             
             t_out = threading.Thread(target=_stream_reader, args=(proc.stdout, _cmd_out, 'output'), daemon=True)
             t_err = threading.Thread(target=_stream_reader, args=(proc.stderr, _cmd_err, 'warn'), daemon=True)
@@ -6276,8 +6304,12 @@ def do_apply(patch_id=None):
                 rc = proc.wait(timeout=timeout_sec)
             except subprocess.TimeoutExpired:
                 try:
-                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)],
-                                   capture_output=True, timeout=5)
+                    if is_win:
+                        subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)],
+                                       capture_output=True, timeout=5)
+                    else:
+                        import signal
+                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
                 except Exception: pass
                 try: proc.kill()
                 except Exception: pass
@@ -7584,6 +7616,54 @@ def dispatch_capture(args):
     return buf.getvalue().rstrip()
 
 
+
+def do_doctor():
+    print("=" * 50)
+    print("RUN.PY DOCTOR")
+    print("=" * 50)
+    print(f"OS: {sys.platform} | Python: {sys.version.split()[0]}")
+    
+    # Check 1: Version & Sync
+    print("\n[1] Checking Document/Tool Sync...")
+    try:
+        if Path('PROJECT_CONTEXT.en.md').exists():
+            ctx = read(Path('PROJECT_CONTEXT.en.md'))
+            if 'VERSION = "' + VERSION + '"' in ctx:
+                print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
+            else:
+                print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
+        else:
+            print("  [WARN] PROJECT_CONTEXT.en.md not found")
+    except Exception as e:
+        print(f"  [FAIL] Error reading document: {e}")
+
+    # Check 2: Git Status
+    print("\n[2] Checking Git...")
+    try:
+        r = subprocess.run(['git', 'status', '--short'], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            if not r.stdout.strip():
+                print("  [OK] Working tree is clean")
+            else:
+                print(f"  [WARN] Uncommitted changes ({len(r.stdout.splitlines())} files)")
+        else:
+            print("  [WARN] Not a git repository")
+    except FileNotFoundError:
+        print("  [WARN] Git not installed (rollback safety disabled)")
+
+    # Check 3: Secrets
+    print("\n[3] Checking for leaked secrets...")
+    secrets = ['.env', 'id_rsa', 'id_ed25519', 'credentials.json']
+    leaked = [s for s in secrets if Path(s).exists()]
+    if leaked:
+        print(f"  [WARN] Found sensitive files: {', '.join(leaked)}")
+        print("         Ensure they are in .gitignore!")
+    else:
+        print("  [OK] No obvious secrets in root")
+
+    print("\n" + "=" * 50)
+    print("DIAGNOSIS COMPLETE")
+
 def dispatch(args):
     global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     if not args: return None
@@ -7595,6 +7675,7 @@ def dispatch(args):
     if cmd == '--self-test':            return do_self_test()
     if cmd == '--health':               return do_health()
     if cmd == '--git-hint':             do_git_hint(); return 0
+    if cmd == '--doctor':               do_doctor(); return 0
     if cmd == '--sync-section35':       return do_sync_section35()
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
