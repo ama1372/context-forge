@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.8"
+VERSION = "1.9.9"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -2809,7 +2809,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "1.9.8"' in ctx:
+            if 'VERSION = "1.9.9"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")

@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P146 |
-| Last tag | `runpy-1-9-8` |
-| Time | 2026-10-27 22:03 |
-| MSG-SEED | `4190d208` |
+| Last patch | P147 |
+| Last tag | `runpy-1-9-9` |
+| Time | 2026-10-27 22:26 |
+| MSG-SEED | `50532969` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2192,6 +2192,30 @@ If a user has an older version of `PROJECT_CONTEXT.en.md` or `run.py`, your fram
 If a user reports strange failures (e.g., patches not applying, terminals hanging), instruct them to run:
     python run.py --doctor
 This checks version sync, git cleanliness, and leaked secrets.
+
+---
+
+## Section 0-C-34 — The "Ghost QA" Pattern (Automated Self-Testing)
+
+> **🔴 Let the AI do the tiring testing. Save the human developer's time.**
+
+### 0-C-34-1. The Concept
+Manual testing is slow, repetitive, and boring. During development, the AI should build a "Ghost QA" module *inside* the project that automatically tests the app (clicks every button, opens every tab, tests CRUD operations) and writes the results to a log file.
+
+### 0-C-34-2. How the AI should build it
+- **Location:** Create a dedicated script (e.g., `tests/ghost_qa.py` or `scripts/e2e_test.js`).
+- **Execution:** The AI runs it using `===== CMD: Run Ghost QA =====` or `#@POST: verify`.
+- **Logging:** The script must save its output to `_work/qa_report.log`. The AI reads this log (using `#@NEED: file _work/qa_report.log`) to see if everything passed.
+
+### 0-C-34-3. The Production Safety Rule (CRITICAL)
+The Ghost QA module is strictly for **development**. It must NEVER appear in a public release.
+- The AI must wrap the QA execution in a development-only flag (e.g., `if os.getenv("ENV") == "development":`).
+- The AI must ensure this module is excluded from the final build (e.g., in `pyinstaller` spec, or frontend build ignore list).
+
+### 0-C-34-4. When to trigger Ghost QA
+- After every major feature implementation (Vertical Slice).
+- Before creating any release tag (e.g., `v1.0.0`).
+- When the user says: "Run Ghost QA" or "Test everything".
 
 ---
 
@@ -4907,7 +4931,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.8"
+VERSION = "1.9.9"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -7657,7 +7681,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "1.9.8"' in ctx:
+            if 'VERSION = "1.9.9"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
