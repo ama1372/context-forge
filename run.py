@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.9"
+VERSION = "2.0.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -2347,6 +2347,10 @@ def do_verify(args):
         print(f"[FAIL] command not found: {cfg['test_cmd'][0]}"); return 2
     except Exception as e:
         print(f"[FAIL] {e}"); return 2
+    out = r.stdout or ""
+    err = r.stderr or ""
+    combined = out + "\n" + err
+    
     if r.stdout: print(r.stdout.rstrip())
     if r.stderr:
         for ln in r.stderr.rstrip().splitlines():
@@ -2354,6 +2358,27 @@ def do_verify(args):
             if s.startswith(('warning:', 'note:', '=', '|', '-->', 'help:')):
                 continue
             print(ln)
+            
+    # Self-Healing Summary
+    if r.returncode != 0:
+        print("\n" + "="*50)
+        print("[VERIFY] TESTS FAILED. See details above.")
+        print("="*50)
+        # Extract common failure lines for quick reading
+        failures = []
+        for ln in combined.splitlines():
+            s = ln.strip()
+            if 'FAILED' in s or 'AssertionError' in s or 'Expected' in s or 'Error:' in s:
+                failures.append(s)
+        if failures:
+            print("QUICK ERROR EXTRACTION:")
+            for f in failures[:10]:
+                print("  ! " + f)
+            if len(failures) > 10:
+                print(f"  ... and {len(failures)-10} more errors.")
+    else:
+        print("\n[VERIFY] ALL TESTS PASSED.")
+        
     return 0 if r.returncode == 0 else 2
 
 
@@ -2809,7 +2834,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "1.9.9"' in ctx:
+            if 'VERSION = "2.0.0"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")

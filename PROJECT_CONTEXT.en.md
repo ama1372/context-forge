@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P147 |
-| Last tag | `runpy-1-9-9` |
-| Time | 2026-10-27 22:26 |
-| MSG-SEED | `50532969` |
+| Last patch | P148 |
+| Last tag | `runpy-2-0-0` |
+| Time | 2026-10-27 22:30 |
+| MSG-SEED | `5521175e` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2161,8 +2161,26 @@ Before starting a task, grade your confidence:
 ### 0-C-31-2. Clean Test-Driven AI (The Testing Advantage)
 - **Rule:** For complex logic, the AI MUST write the tests FIRST.
 - **Action:** Patch 1: Create the test file. Patch 2: Write the code to pass it. Patch 3: Run `#@POST: verify`.
-- **Constraint (No Clutter):** Tests must NEVER clutter the root directory. They must be placed in a dedicated `tests/` folder (or `_work/tests/` for scratch tests) with a clear naming convention (e.g., `tests/test_feature.py`).
+- **Constraint (No Clutter):** Tests must NEVER clutter the root directory. They must be placed in a dedicated `tests/` folder with a clear naming convention (e.g., `tests/test_feature.py`).
 - **Why:** LLMs are better at passing defined tests, but they tend to create messy files. Enforcing a clean folder structure keeps the project maintainable.
+
+---
+
+## Section 0-C-35 — The Auto-Test & Self-Healing Loop
+
+> **🔴 Every feature generates a test. Every test failure heals itself.**
+
+### 0-C-35-1. Auto-Test Scaffolding
+When the AI builds a new feature (e.g., `src/login.py`), it MUST simultaneously generate a test file (e.g., `tests/test_login.py`). The test file must cover standard edge cases (success, failure, empty input).
+
+### 0-C-35-2. The Self-Healing Execution
+After writing the code, the AI runs `#@POST: verify`.
+- If the tests pass, the feature is done. Move to the next feature.
+- If the tests fail, `run.py` now automatically extracts the exact error lines and places them in `output.txt`. 
+- The AI reads the `output.txt`, sees the `[VERIFY] TESTS FAILED` block, fixes the code, and re-runs.
+
+### 0-C-35-3. Ghost QA Integration
+For UI or large system tests, the AI can write a `tests/ghost_qa.py` script (Section 0-C-34). The AI adds `#@NEED: file _work/qa_report.log` to its `input.txt` to read the Ghost QA results directly from the output.
 
 ### 0-C-31-3. The Lost-in-the-Middle Protection
 - **Rule:** LLMs remember the beginning and end of prompts, but forget the middle.
@@ -4931,7 +4949,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.9"
+VERSION = "2.0.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -7219,6 +7237,10 @@ def do_verify(args):
         print(f"[FAIL] command not found: {cfg['test_cmd'][0]}"); return 2
     except Exception as e:
         print(f"[FAIL] {e}"); return 2
+    out = r.stdout or ""
+    err = r.stderr or ""
+    combined = out + "\n" + err
+    
     if r.stdout: print(r.stdout.rstrip())
     if r.stderr:
         for ln in r.stderr.rstrip().splitlines():
@@ -7226,6 +7248,27 @@ def do_verify(args):
             if s.startswith(('warning:', 'note:', '=', '|', '-->', 'help:')):
                 continue
             print(ln)
+            
+    # Self-Healing Summary
+    if r.returncode != 0:
+        print("\n" + "="*50)
+        print("[VERIFY] TESTS FAILED. See details above.")
+        print("="*50)
+        # Extract common failure lines for quick reading
+        failures = []
+        for ln in combined.splitlines():
+            s = ln.strip()
+            if 'FAILED' in s or 'AssertionError' in s or 'Expected' in s or 'Error:' in s:
+                failures.append(s)
+        if failures:
+            print("QUICK ERROR EXTRACTION:")
+            for f in failures[:10]:
+                print("  ! " + f)
+            if len(failures) > 10:
+                print(f"  ... and {len(failures)-10} more errors.")
+    else:
+        print("\n[VERIFY] ALL TESTS PASSED.")
+        
     return 0 if r.returncode == 0 else 2
 
 
@@ -7681,7 +7724,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "1.9.9"' in ctx:
+            if 'VERSION = "2.0.0"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
