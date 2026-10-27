@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.2"
+VERSION = "1.9.3"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'

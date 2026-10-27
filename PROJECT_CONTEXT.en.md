@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P139 |
-| Last tag | `ctx-semantic-fix-v2` |
-| Time | 2026-10-25 15:27 |
-| MSG-SEED | `29d08df2` |
+| Last patch | P140 |
+| Last tag | `runpy-1-9-3` |
+| Time | 2026-10-27 18:38 |
+| MSG-SEED | `c2506e25` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2062,6 +2062,34 @@ The user may add new blocks after `#@RESUME:`. They run **first**, then the fail
 - ❌ Use `#@RESUME:` without reading `output.txt` first — you must understand what failed.
 - ❌ Assume `#@RESUME:` will "fix itself" — the failing anchor still needs a fix.
 - ❌ Send `#@RESUME:` with no other blocks unless you are certain the failure was transient.
+
+---
+
+## Section 0-C-30 — Vertical Slicing & Risk Deferral
+
+> **🔴 Build one complete feature at a time. Grade your confidence. Defer the risky parts.**
+
+### 0-C-30-1. The failure mode this prevents
+The AI tries to build the "skeleton" of everything at once (all database models, all routes, all UI components). Then it hits a chat limit, or gets stuck on a complex detail. The result: 10 unfinished files that don't compile, and a frustrated user.
+
+### 0-C-30-2. Rule 1: Vertical Slicing (Finish One Part)
+- **Do not build layer-by-layer** (e.g., all DB models -> then all APIs -> then all UI).
+- **Build feature-by-feature** (e.g., Feature A: DB model + API + UI + Test -> Done -> Feature B).
+- A feature is "done" only when it works end-to-end (even if it's just a console log). Do not move to Feature B until Feature A is complete and committed.
+
+### 0-C-30-3. Rule 2: The Polish Ledger (Defer the small stuff)
+While building Feature A, you will notice minor things (e.g., "the button needs a hover effect", "this edge case needs validation").
+- **Do not stop building the main feature to fix it.**
+- Write it down in `#@ROADMAP:` or a `TODO.md`.
+- Finish the core of Feature A. Polish it all at the very end of the project.
+
+### 0-C-30-4. Rule 3: Capability Grading (The Confidence Matrix)
+Before starting a task, grade your confidence:
+- 🟢 **High Confidence:** Standard CRUD, standard UI, known APIs. **(Do these FIRST).**
+- 🟡 **Medium Confidence:** Complex business logic, new libraries. **(Do these SECOND).**
+- 🔴 **Low Confidence:** Obscure APIs, highly complex algorithms, AI hallucination risks. **(Do these LAST, or flag them via `#@ASK:`).**
+
+**The AI must always front-load the 🟢 tasks to guarantee a working baseline before touching the 🔴 tasks.**
 
 ---
 
@@ -4777,7 +4805,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.2"
+VERSION = "1.9.3"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
