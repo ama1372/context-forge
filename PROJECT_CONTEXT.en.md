@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P140 |
-| Last tag | `runpy-1-9-3` |
-| Time | 2026-10-27 18:38 |
-| MSG-SEED | `c2506e25` |
+| Last patch | P144 |
+| Last tag | `runpy-1-9-6` |
+| Time | 2026-10-27 18:46 |
+| MSG-SEED | `ee21241c` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2090,6 +2090,60 @@ Before starting a task, grade your confidence:
 - 🔴 **Low Confidence:** Obscure APIs, highly complex algorithms, AI hallucination risks. **(Do these LAST, or flag them via `#@ASK:`).**
 
 **The AI must always front-load the 🟢 tasks to guarantee a working baseline before touching the 🔴 tasks.**
+
+---
+
+## Section 0-C-30 — Vertical Slicing & Risk Deferral
+
+> **🔴 Build one complete feature at a time. Grade your confidence. Defer the risky parts.**
+
+### 0-C-30-1. The failure mode this prevents
+The AI tries to build the "skeleton" of everything at once (all database models, all routes, all UI components). Then it hits a chat limit, or gets stuck on a complex detail. The result: 10 unfinished files that don't compile, and a frustrated user.
+
+### 0-C-30-2. Rule 1: Vertical Slicing (Finish One Part)
+- **Do not build layer-by-layer** (e.g., all DB models -> then all APIs -> then all UI).
+- **Build feature-by-feature** (e.g., Feature A: DB model + API + UI + Test -> Done -> Feature B).
+- A feature is "done" only when it works end-to-end (even if it's just a console log). Do not move to Feature B until Feature A is complete and committed.
+
+### 0-C-30-3. Rule 2: The Polish Ledger (Defer the small stuff)
+While building Feature A, you will notice minor things (e.g., "the button needs a hover effect", "this edge case needs validation").
+- **Do not stop building the main feature to fix it.**
+- Write it down in `#@ROADMAP:` or a `TODO.md`.
+- Finish the core of Feature A. Polish it all at the very end of the project.
+
+### 0-C-30-4. Rule 3: Capability Grading (The Confidence Matrix)
+Before starting a task, grade your confidence:
+- 🟢 **High Confidence:** Standard CRUD, standard UI, known APIs. **(Do these FIRST).**
+- 🟡 **Medium Confidence:** Complex business logic, new libraries. **(Do these SECOND).**
+- 🔴 **Low Confidence:** Obscure APIs, highly complex algorithms, AI hallucination risks. **(Do these LAST, or flag them via `#@ASK:`).**
+
+**The AI must always front-load the 🟢 tasks to guarantee a working baseline before touching the 🔴 tasks.**
+
+---
+
+## Section 0-C-31 — LLM Engineering Playbook (The 5 Survival Rules)
+
+> **🔴 Codified rules from real-world AI engineering. Never violate these.**
+
+### 0-C-31-1. The Three-Strikes Rule (Anti-Hallucination)
+- **Rule:** If a bug fix fails 3 times in a row, STOP immediately.
+- **Action:** Revert to the last safe tag, wipe the failed patches, and re-analyze the problem from scratch.
+- **Why:** On the 3rd failure, the AI enters a "hallucination loop" and starts corrupting working code. Reverting resets the context and saves the project.
+
+### 0-C-31-2. Clean Test-Driven AI (The Testing Advantage)
+- **Rule:** For complex logic, the AI MUST write the tests FIRST.
+- **Action:** Patch 1: Create the test file. Patch 2: Write the code to pass it. Patch 3: Run `#@POST: verify`.
+- **Constraint (No Clutter):** Tests must NEVER clutter the root directory. They must be placed in a dedicated `tests/` folder (or `_work/tests/` for scratch tests) with a clear naming convention (e.g., `tests/test_feature.py`).
+- **Why:** LLMs are better at passing defined tests, but they tend to create messy files. Enforcing a clean folder structure keeps the project maintainable.
+
+### 0-C-31-3. The Lost-in-the-Middle Protection
+- **Rule:** LLMs remember the beginning and end of prompts, but forget the middle.
+- **Action:** The most critical rules (Red Lines) must be placed at the absolute TOP and absolute BOTTOM of `PROJECT_CONTEXT.en.md`. Never bury safety rules in the middle of a document.
+
+### 0-C-31-4. Continuous Meta-Improvement (Evolving the Protocol)
+- **Rule:** If the AI notices a recurring pattern, an annoying edge case, or a missing feature during development, it MUST propose an improvement to the protocol itself.
+- **Action:** The AI should send a patch that updates `PROJECT_CONTEXT.en.md` (adding a new rule) or `run.py` (adding a new directive).
+- **Why:** The protocol is not static. It should evolve with the project. If the AI automates a repetitive manual task via a new `run.py` command, the whole project becomes faster.
 
 ---
 
@@ -4805,7 +4859,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.3"
+VERSION = "1.9.6"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -6336,10 +6390,7 @@ def do_apply(patch_id=None):
     # --self-test runs. Otherwise self-test sees stale embed and fails the
     # whole patch. This ordering is load-bearing — do not move it back.
     if sync_after and fail == 0:
-        touched_runpy = any(
-            (op.get('path') or '') == 'run.py' or (op.get('dst') or '') == 'run.py'
-            for op in ops
-        )
+        touched_runpy = True  # Always sync if #@SYNC: is explicitly requested
         if touched_runpy:
             out.append(""); out.append("=" * 60)
             out.append("SYNC: run.py was patched - auto-syncing Section 35")
@@ -6376,10 +6427,7 @@ def do_apply(patch_id=None):
     # #@SYNC: — auto-sync Section 35 if run.py was patched in this batch.
     # Saves the user from adding #@POST: --sync-section35 manually every time.
     if sync_after and fail == 0 and not post_failed:
-        touched_runpy = any(
-            (op.get('path') or '') == 'run.py' or (op.get('dst') or '') == 'run.py'
-            for op in ops
-        )
+        touched_runpy = True  # Always sync if #@SYNC: is explicitly requested
         if touched_runpy:
             out.append(""); out.append("=" * 60)
             out.append("SYNC: run.py was patched - auto-syncing Section 35")

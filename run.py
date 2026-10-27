@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "1.9.3"
+VERSION = "1.9.6"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1590,10 +1590,7 @@ def do_apply(patch_id=None):
     # --self-test runs. Otherwise self-test sees stale embed and fails the
     # whole patch. This ordering is load-bearing — do not move it back.
     if sync_after and fail == 0:
-        touched_runpy = any(
-            (op.get('path') or '') == 'run.py' or (op.get('dst') or '') == 'run.py'
-            for op in ops
-        )
+        touched_runpy = True  # Always sync if #@SYNC: is explicitly requested
         if touched_runpy:
             out.append(""); out.append("=" * 60)
             out.append("SYNC: run.py was patched - auto-syncing Section 35")
@@ -1630,10 +1627,7 @@ def do_apply(patch_id=None):
     # #@SYNC: — auto-sync Section 35 if run.py was patched in this batch.
     # Saves the user from adding #@POST: --sync-section35 manually every time.
     if sync_after and fail == 0 and not post_failed:
-        touched_runpy = any(
-            (op.get('path') or '') == 'run.py' or (op.get('dst') or '') == 'run.py'
-            for op in ops
-        )
+        touched_runpy = True  # Always sync if #@SYNC: is explicitly requested
         if touched_runpy:
             out.append(""); out.append("=" * 60)
             out.append("SYNC: run.py was patched - auto-syncing Section 35")
