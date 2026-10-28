@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P151 |
-| Last tag | `runpy-2-0-3` |
-| Time | 2026-10-28 23:49 |
-| MSG-SEED | `f0196a2c` |
+| Last patch | P152 |
+| Last tag | `runpy-2-0-4` |
+| Time | 2026-10-29 00:02 |
+| MSG-SEED | `bdfba52a` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2282,6 +2282,33 @@ The new AI must:
 3. Ask the user for the next task.
 4. **Do NOT request `PROJECT_CONTEXT.md` again** (assume the user has already pasted it in a previous message or will do so).
 5. Use the `last_patch_content` to see exactly what was being worked on.
+
+---
+
+## Section 0-C-38 — Intelligent Model Routing (AI Self-Awareness)
+
+> **🔴 Stop guessing. The AI must recommend the best model and effort level for the job.**
+
+### 0-C-38-1. The Goal
+Different tasks require different levels of intelligence, context size, and reasoning power. Using a massive model for a tiny task wastes money; using a small model for complex logic causes failure. The AI must act as a "router" and advise the user on how to configure their chat platform (Claude, ChatGPT, etc.).
+
+### 0-C-38-2. The Recommendation Matrix
+Before starting a major task, the AI must output a one-line recommendation:
+
+| Task Type | Example | Recommended Model | Effort / Reasoning Level |
+| :--- | :--- | :--- | :--- |
+| **Massive Architecture / Deep Scans** | Designing a new system, refactoring 10 files, scanning large codebases. | **Claude Opus 5.5** or **GPT-4o** (Highest Context) | **Extra / High** (Needs deep reasoning and 1M context) |
+| **Standard Feature Building** | Writing a CRUD API, building a UI form, standard bug fixes. | **Claude Sonnet 5.5** or **GPT-4o-mini** | **Medium / High** (Balanced speed and logic) |
+| **Boilerplate / Minor Edits** | Renaming variables, fixing typos, simple text replacements. | **Claude Haiku** or **DeepSeek-V3** | **Low / Fast** (No deep reasoning needed) |
+
+### 0-C-38-3. The Token-Saving Rules
+1. **Prompt Caching:** If the platform supports it (like Claude Projects), the user MUST upload `PROJECT_CONTEXT.en.md` to the Project Knowledge Base so it gets cached (10x cheaper for subsequent messages).
+2. **Handoff:** If switching to a heavier model (e.g., Opus), use `python run.py handoff` first to avoid re-scanning the whole project.
+3. **Context Limit:** Never use a model with a small context window (e.g., < 200k tokens) for this project, as `PROJECT_CONTEXT.en.md` itself takes up significant space.
+
+### 0-C-38-4. How the AI should present this
+When the user asks for a new feature or a complex fix, the AI must start its response with:
+> 💡 **Model Advice:** *For this task, I recommend using **[Model Name]** with **[Effort Level]** effort. This ensures the best balance of accuracy and token efficiency.*
 
 ---
 
@@ -4997,7 +5024,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.3"
+VERSION = "2.0.4"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -7786,7 +7813,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.3"' in ctx:
+            if 'VERSION = "2.0.4"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
