@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P154 |
-| Last tag | `runpy-2-0-6` |
-| Time | 2026-10-29 01:00 |
-| MSG-SEED | `46e1cd48` |
+| Last patch | P155 |
+| Last tag | `runpy-2-0-7` |
+| Time | 2026-10-29 01:08 |
+| MSG-SEED | `baffdbda` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2338,6 +2338,28 @@ Immediately **BEFORE** every `input.txt` code block, the AI must output exactly 
 1. **Prompt Caching:** If the platform supports it (e.g., Claude Projects), upload `PROJECT_CONTEXT.en.md` to the Knowledge Base. Subsequent messages cost 90% less.
 2. **Handoff:** If switching to a heavier model, use `python run.py handoff` to avoid re-scanning the whole project.
 3. **Context Window:** Never use a model with a window smaller than 200k tokens. The context document alone is huge.
+
+---
+
+## Section 0-C-39 — Project Guard & Multi-Terminal Safety
+
+> **🔴 Don't let a patch from Project A destroy Project B.**
+
+### 0-C-39-1. The Cross-Project Contamination Problem
+Users often work on multiple projects in different terminals. Copy-pasting a patch from Project A into Project B's `input.txt` can corrupt the entire codebase.
+
+### 0-C-39-2. The `#@PROJECT:` Directive
+Every project must define its name in `_work/config.json`:
+    {"project": "my-awesome-app"}
+Every AI must include this signature at the top of every patch:
+    #@PROJECT: my-awesome-app
+If the name in the patch does not match `_work/config.json`, `run.py` will **reject the entire patch** and leave the project untouched. To override this intentionally (if you renamed the project), use `python run.py --force-project`.
+
+### 0-C-39-3. AI Tracking in the Auto-Block
+To know which AI touched the project last, the AI must sign its patches:
+    #@AI: Claude 3.5 Sonnet
+    #@AI: DeepSeek V3
+The `run.py` tool reads this tag and permanently writes it into the `<!-- AUTO:START -->` table inside `PROJECT_CONTEXT.en.md`. Any AI reading the document instantly knows who made the last change.
 
 ---
 
@@ -5053,7 +5075,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.6"
+VERSION = "2.0.7"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -6227,9 +6249,43 @@ def review_op(op, idx, total, root):
     return 'no'
 
 
+
+FORCE_PROJECT = False
+
+def _project_guard(content):
+    """Prevent cross-project contamination."""
+    try:
+        want = str(load_config().get('project') or '').strip().lower()
+    except Exception:
+        want = ''
+    if not want:
+        return None
+    got = None
+    for ln in content.split('\n')[:60]:
+        s = ln.strip()
+        if not s: continue
+        if not s.startswith('#'): break
+        m = re.match(r'^#@PROJECT:\s*(\S+)', s)
+        if m:
+            got = m.group(1).strip().lower()
+            break
+    if got == want:
+        return None
+    if got is None:
+        return f"this patch has no '#@PROJECT: {want}' line. Nothing was applied."
+    return f"this patch is for '{got}', but this folder is '{want}'. Nothing was applied."
+
 def do_apply(patch_id=None):
     content = INPUT.read_text(encoding='utf-8-sig')
     _original_input = content  # saved for #@RESUME: detection
+    
+    _guard = _project_guard(content)
+    if _guard and not FORCE_PROJECT:
+        _txt = '\n'.join(['# MSG-SEED: ' + msg_seed(), '[APPLY]', '', '[REFUSED] ' + _guard])
+        write(OUTPUT, _txt)
+        print(_txt)
+        return 3
+        
     rate_msg = _rate_warn_line()
     post_failed = False
     global ANSWERS
@@ -7842,7 +7898,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.6"' in ctx:
+            if 'VERSION = "2.0.7"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -7980,6 +8036,10 @@ def dispatch(args):
     cmd = args[0]
 
     if cmd in ('--version', '-v'):     print(f"run.py v{VERSION}"); return 0
+    if cmd == '--force-project':
+        global FORCE_PROJECT
+        FORCE_PROJECT = True
+        return dispatch(args[1:]) if args[1:] else (do_apply() if INPUT.read_text(encoding='utf-8').strip() else 0)
     if cmd == '--init':                 do_init(); return 0
     if cmd == '--bootstrap':            return do_bootstrap()
     if cmd == '--self-test':            return do_self_test()
