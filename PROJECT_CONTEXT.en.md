@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P150 |
-| Last tag | `runpy-2-0-2` |
-| Time | 2026-10-28 23:47 |
-| MSG-SEED | `551ecbf2` |
+| Last patch | P151 |
+| Last tag | `runpy-2-0-3` |
+| Time | 2026-10-28 23:49 |
+| MSG-SEED | `f0196a2c` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2260,12 +2260,20 @@ Sometimes the current AI gets stuck or hits a limit. The user wants to switch to
 Before switching, the user (or AI via a `CMD` block) runs:
     python run.py handoff
 This creates a single file `_work/handoff.json` containing:
-- The last patch ID (e.g., `P425`).
+- The current patch ID.
 - The last safe git tag.
+- The **AI History**: A chronological list of the last 5 patches, showing *which AI* (via `#@AI:`) made *what changes* (via `#@COMMIT:`). This allows the new AI to understand the recent thought process and changes made by the previous AI.
 - The content of the most recent patch.
 - Recent git commits.
 
-The user sends this single file to the next AI model. The new AI reads it and immediately knows the project's exact state.
+The user sends this single file to the next AI model. The new AI reads it and immediately understands: "I am taking over. The previous AI did X, Y, and Z. I need to continue from here."
+
+### 0-C-37-4. The `#@AI:` Directive
+To make the handoff useful, all AIs must sign their patches.
+    #@AI: DeepSeek
+    #@AI: Claude
+    #@AI: GPT-4
+The `run.py` tool extracts this tag and saves it in the history. If the AI forgets, the tool defaults to "Unknown AI".
 
 ### 0-C-37-3. Instructions for the New AI
 The new AI must:
@@ -4989,7 +4997,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.2"
+VERSION = "2.0.3"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -7778,7 +7786,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.2"' in ctx:
+            if 'VERSION = "2.0.3"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -7844,9 +7852,9 @@ def do_revert(patch_id_str):
 
 def do_handoff():
     import json
-    print("Generating handoff package for the next AI...")
+    print("Generating handoff package with AI history...")
     
-    # Get latest patch ID from _work/.patch_id
+    # Get latest patch ID
     patch_id = "unknown"
     pid_file = WORK / '.patch_id'
     if pid_file.exists():
@@ -7870,18 +7878,37 @@ def do_handoff():
     except Exception:
         pass
     
-    # Get last applied patch content
+    # Get recent patches and AI history
     applied_dir = WORK / 'applied'
+    ai_history = []
     last_patch_content = ""
-    if applied_dir.exists():
-        patches = sorted(applied_dir.glob('P*.txt'), reverse=True)
-        if patches:
-            last_patch_content = read(patches[0])
     
+    if applied_dir.exists():
+        patches = sorted(applied_dir.glob('P*.txt'), reverse=True)[:5]  # Get last 5 patches
+        patches.reverse()  # Chronological order
+        for p in patches:
+            content = read(p)
+            commit_match = re.search(r'^#@COMMIT:\s*(.+)$', content, re.MULTILINE)
+            ai_match = re.search(r'^#@AI:\s*(.+)$', content, re.MULTILINE)
+            
+            ai_name = ai_match.group(1).strip() if ai_match else "Unknown AI"
+            commit_msg = commit_match.group(1).strip() if commit_match else "No commit message"
+            
+            ai_history.append({
+                "patch": p.name,
+                "ai": ai_name,
+                "action": commit_msg
+            })
+            
+            # The last one in the chronological list is the most recent
+            if p == patches[-1]:
+                last_patch_content = content
+
     handoff = {
-        "patch_id": patch_id,
+        "current_patch_id": patch_id,
         "last_tag": tag,
         "recent_commits": commits,
+        "ai_history": ai_history,
         "last_patch_content": last_patch_content,
         "project_root": str(Path('.').resolve())
     }
@@ -7889,7 +7916,7 @@ def do_handoff():
     out_file = WORK / 'handoff.json'
     write(out_file, json.dumps(handoff, indent=2, ensure_ascii=False))
     print(f"[OK] Handoff package saved to {out_file}")
-    print("Send this file to the next AI model along with your question.")
+    print("Send this file to the next AI model along with your prompt.")
 
 def dispatch(args):
     global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
