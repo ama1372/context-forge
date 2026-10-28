@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P152 |
-| Last tag | `runpy-2-0-4` |
-| Time | 2026-10-29 00:02 |
-| MSG-SEED | `bdfba52a` |
+| Last patch | P153 |
+| Last tag | `runpy-2-0-5` |
+| Time | 2026-10-29 00:04 |
+| MSG-SEED | `2a06f7d8` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -1994,19 +1994,36 @@ If the user says "merge" — or if the AI detects local modifications (via `--ca
 - ❌ Skip the pre-upgrade tag — the user needs a rollback point.
 - ❌ Overwrite a `run.py` that shows extra capabilities with a plain CREATE — that erases the user's work.
 
-### 0-C-28-9. The Two-File Confusion (Strict Rule)
+### 0-C-28-9. Auto-Detect Version Upgrade (Zero-Config Handoff)
 
-> **🔴 When a user pastes TWO versions of the rule document or tool, the AI MUST NOT merge them.**
+> **🔴 If the user pastes TWO documents, the AI MUST automatically trigger an upgrade.**
 
-**The failure mode:** The user upgrades and pastes both the old `PROJECT_CONTEXT.md` and the new `PROJECT_CONTEXT.en.md` in the same chat. The AI tries to "help" by merging them, splitting sections, or combining old and new code. The result is a corrupted document and a broken `run.py`.
+**The failure mode:** The user upgrades and pastes both the old document and the new one. The AI tries to "help" by merging them, corrupting the framework. Or, the AI waits for the user to explain which one is which.
 
-**The rule:**
-1. **STOP.** Do not touch the files.
-2. **Identify the target.** Use `#@ASK: master_doc | Which document is the new master? | default=PROJECT_CONTEXT.en.md`
-3. **Ignore the old file.** Treat the old file purely as a reference to extract Sections 2, 13, 15, 16 (User Data). Do not copy framework sections from the old file.
-4. **Never combine.** If the new document lacks a feature the old one had, it means the feature was deprecated. Do not merge it back in.
-5. **Verify the tool.** The AI must ask via `#@NEED: status` and `#@NEED: capabilities` inside `input.txt` to see what is on disk. Never ask the user to run a manual command in chat.
-6. **One source of truth.** At the end of the upgrade, exactly one `PROJECT_CONTEXT.en.md` and one `run.py` must exist. Delete or archive the old ones.
+**The rule (The AI must act autonomously):**
+1. **Detect:** If the very first message contains two versions of the context document (e.g., one says `v1.5` and one says `v2.0.5`), the AI MUST NOT ask the user to explain. The AI must assume the newer version (with more sections) is the master.
+2. **Propose via Patch:** Immediately send a patch with `#@ASK:` to get user consent for the upgrade:
+       `#@ASK: auto_upgrade | I detected an older project context and a newer master context. Upgrade to the latest version while preserving your Sections 2, 13, 15, and 16? | default=yes`
+3. **Surgical Upgrade:** If the answer is `yes` (or if the user types nothing and the default applies), execute the upgrade (Section 0-C-28-4).
+4. **Never ask in chat:** Do not ask "Which document is the master?" in plain text. Always use the `input.txt` protocol.
+5. **One source of truth:** At the end of the upgrade, exactly one `PROJECT_CONTEXT.en.md` and one `run.py` must exist.
+
+### 0-C-28-10. Example of the AI's First Message
+When the user pastes two documents, the AI's first response must be exactly this:
+
+    # INPUT: auto-upgrade detection
+    #@AI: <Your Name>
+    #@COMMIT: ⬆️ auto-upgrade to latest master context
+    #@TAG: auto-upgrade
+    #@ASK: auto_upgrade | I detected two versions. Upgrade to the latest master (v2.0.5) while preserving your project data? | default=yes
+    #@NEXT: rebuild the project state after upgrade
+    
+    ===== FILE: PROJECT_CONTEXT.en.md =====
+    <<<FIND>>>
+    [AI will intelligently target the old version's framework sections here]
+    <<<REPLACE>>>
+    [AI will replace them with the new version's framework sections here]
+    <<<END>>>
 
 ### 0-C-28-9. The Two-File Confusion (Strict Rule)
 
@@ -5024,7 +5041,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.4"
+VERSION = "2.0.5"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -7813,7 +7830,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.4"' in ctx:
+            if 'VERSION = "2.0.5"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
