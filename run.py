@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -2848,7 +2848,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.1"' in ctx:
+            if 'VERSION = "2.0.2"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -2911,6 +2911,56 @@ def do_revert(patch_id_str):
         print(f"[FAIL] Revert failed: {e}")
         return 1
 
+
+def do_handoff():
+    import json
+    print("Generating handoff package for the next AI...")
+    
+    # Get latest patch ID from _work/.patch_id
+    patch_id = "unknown"
+    pid_file = WORK / '.patch_id'
+    if pid_file.exists():
+        patch_id = pid_file.read_text(encoding='utf-8').strip()
+    
+    # Get latest tag
+    tag = "no-tag"
+    try:
+        r = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip():
+            tag = r.stdout.strip()
+    except Exception:
+        pass
+    
+    # Get recent commits
+    commits = []
+    try:
+        r = subprocess.run(['git', 'log', '--oneline', '-5'], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            commits = r.stdout.strip().splitlines()
+    except Exception:
+        pass
+    
+    # Get last applied patch content
+    applied_dir = WORK / 'applied'
+    last_patch_content = ""
+    if applied_dir.exists():
+        patches = sorted(applied_dir.glob('P*.txt'), reverse=True)
+        if patches:
+            last_patch_content = read(patches[0])
+    
+    handoff = {
+        "patch_id": patch_id,
+        "last_tag": tag,
+        "recent_commits": commits,
+        "last_patch_content": last_patch_content,
+        "project_root": str(Path('.').resolve())
+    }
+    
+    out_file = WORK / 'handoff.json'
+    write(out_file, json.dumps(handoff, indent=2, ensure_ascii=False))
+    print(f"[OK] Handoff package saved to {out_file}")
+    print("Send this file to the next AI model along with your question.")
+
 def dispatch(args):
     global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     if not args: return None
@@ -2923,6 +2973,7 @@ def dispatch(args):
     if cmd == '--health':               return do_health()
     if cmd == '--git-hint':             do_git_hint(); return 0
     if cmd == '--doctor':               do_doctor(); return 0
+    if cmd == 'handoff':                do_handoff(); return 0
     if cmd == 'revert':
         if len(args) > 1:
             return do_revert(args[1])

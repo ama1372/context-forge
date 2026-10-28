@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P149 |
-| Last tag | `runpy-2-0-1` |
-| Time | 2026-10-28 11:41 |
-| MSG-SEED | `27752249` |
+| Last patch | P150 |
+| Last tag | `runpy-2-0-2` |
+| Time | 2026-10-28 23:47 |
+| MSG-SEED | `551ecbf2` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2246,6 +2246,34 @@ This searches the git log for the commit tagged with that patch ID and performs 
 
 ### 0-C-36-2. Standalone `#@NEED:`
 The AI can now request information without sending a single code patch. If `input.txt` contains only `#@NEED: status` or `#@NEED: errors`, `run.py` executes the commands, outputs the result, and clears `input.txt` without failing on "no valid patches". Use this when you just want to ask the project "how are you doing?".
+
+---
+
+## Section 0-C-37 — Seamless AI Handoff
+
+> **🔴 Switching AI models shouldn't require re-briefing from scratch.**
+
+### 0-C-37-1. The Problem
+Sometimes the current AI gets stuck or hits a limit. The user wants to switch to a different (perhaps more expensive) model but doesn't want to re-send the entire `PROJECT_CONTEXT.md` and a full scan again.
+
+### 0-C-37-2. The Solution: `python run.py handoff`
+Before switching, the user (or AI via a `CMD` block) runs:
+    python run.py handoff
+This creates a single file `_work/handoff.json` containing:
+- The last patch ID (e.g., `P425`).
+- The last safe git tag.
+- The content of the most recent patch.
+- Recent git commits.
+
+The user sends this single file to the next AI model. The new AI reads it and immediately knows the project's exact state.
+
+### 0-C-37-3. Instructions for the New AI
+The new AI must:
+1. Read `_work/handoff.json`.
+2. Understand the current patch ID and tag.
+3. Ask the user for the next task.
+4. **Do NOT request `PROJECT_CONTEXT.md` again** (assume the user has already pasted it in a previous message or will do so).
+5. Use the `last_patch_content` to see exactly what was being worked on.
 
 ---
 
@@ -4961,7 +4989,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -7750,7 +7778,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.1"' in ctx:
+            if 'VERSION = "2.0.2"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -7813,6 +7841,56 @@ def do_revert(patch_id_str):
         print(f"[FAIL] Revert failed: {e}")
         return 1
 
+
+def do_handoff():
+    import json
+    print("Generating handoff package for the next AI...")
+    
+    # Get latest patch ID from _work/.patch_id
+    patch_id = "unknown"
+    pid_file = WORK / '.patch_id'
+    if pid_file.exists():
+        patch_id = pid_file.read_text(encoding='utf-8').strip()
+    
+    # Get latest tag
+    tag = "no-tag"
+    try:
+        r = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip():
+            tag = r.stdout.strip()
+    except Exception:
+        pass
+    
+    # Get recent commits
+    commits = []
+    try:
+        r = subprocess.run(['git', 'log', '--oneline', '-5'], capture_output=True, text=True, timeout=5)
+        if r.returncode == 0:
+            commits = r.stdout.strip().splitlines()
+    except Exception:
+        pass
+    
+    # Get last applied patch content
+    applied_dir = WORK / 'applied'
+    last_patch_content = ""
+    if applied_dir.exists():
+        patches = sorted(applied_dir.glob('P*.txt'), reverse=True)
+        if patches:
+            last_patch_content = read(patches[0])
+    
+    handoff = {
+        "patch_id": patch_id,
+        "last_tag": tag,
+        "recent_commits": commits,
+        "last_patch_content": last_patch_content,
+        "project_root": str(Path('.').resolve())
+    }
+    
+    out_file = WORK / 'handoff.json'
+    write(out_file, json.dumps(handoff, indent=2, ensure_ascii=False))
+    print(f"[OK] Handoff package saved to {out_file}")
+    print("Send this file to the next AI model along with your question.")
+
 def dispatch(args):
     global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     if not args: return None
@@ -7825,6 +7903,7 @@ def dispatch(args):
     if cmd == '--health':               return do_health()
     if cmd == '--git-hint':             do_git_hint(); return 0
     if cmd == '--doctor':               do_doctor(); return 0
+    if cmd == 'handoff':                do_handoff(); return 0
     if cmd == 'revert':
         if len(args) > 1:
             return do_revert(args[1])
