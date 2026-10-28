@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P153 |
-| Last tag | `runpy-2-0-5` |
-| Time | 2026-10-29 00:04 |
-| MSG-SEED | `2a06f7d8` |
+| Last patch | P154 |
+| Last tag | `runpy-2-0-6` |
+| Time | 2026-10-29 01:00 |
+| MSG-SEED | `46e1cd48` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2302,30 +2302,42 @@ The new AI must:
 
 ---
 
-## Section 0-C-38 — Intelligent Model Routing (AI Self-Awareness)
+## Section 0-C-38 — Intelligent Model Routing & Effort Levels
 
-> **🔴 Stop guessing. The AI must recommend the best model and effort level for the job.**
+> **🔴 Don't burn tokens on simple tasks. Don't use small models for complex logic. The AI must act as a "Router".**
 
-### 0-C-38-1. The Goal
-Different tasks require different levels of intelligence, context size, and reasoning power. Using a massive model for a tiny task wastes money; using a small model for complex logic causes failure. The AI must act as a "router" and advise the user on how to configure their chat platform (Claude, ChatGPT, etc.).
+### 0-C-38-1. The Golden Format (Mandatory)
+Immediately **BEFORE** every `input.txt` code block, the AI must output exactly one line in this format:
+`🧠 **Model Advice:** [Model Name] · Effort: [Low/Medium/High] · [One-line reason]`
 
-### 0-C-38-2. The Recommendation Matrix
-Before starting a major task, the AI must output a one-line recommendation:
+### 0-C-38-2. The Effort Levels (Claude, Gemini, etc.)
+| Level | When to use it | Example |
+| :--- | :--- | :--- |
+| **Low** | Reading successful output, small doc changes, simple text replacements. | Renaming a variable. |
+| **Medium** | Multi-file patches when exact code is known, standard feature building. | Adding a UI button, CRUD API. |
+| **High** | Massive architectural design, deep scans, security, complex bugs, or **after 2 failed patches**. | Refactoring the auth system. |
 
-| Task Type | Example | Recommended Model | Effort / Reasoning Level |
-| :--- | :--- | :--- | :--- |
-| **Massive Architecture / Deep Scans** | Designing a new system, refactoring 10 files, scanning large codebases. | **Claude Opus 5.5** or **GPT-4o** (Highest Context) | **Extra / High** (Needs deep reasoning and 1M context) |
-| **Standard Feature Building** | Writing a CRUD API, building a UI form, standard bug fixes. | **Claude Sonnet 5.5** or **GPT-4o-mini** | **Medium / High** (Balanced speed and logic) |
-| **Boilerplate / Minor Edits** | Renaming variables, fixing typos, simple text replacements. | **Claude Haiku** or **DeepSeek-V3** | **Low / Fast** (No deep reasoning needed) |
+*Rule of thumb: High effort = more tokens + more time. Never use High for simple tasks.*
 
-### 0-C-38-3. The Token-Saving Rules
-1. **Prompt Caching:** If the platform supports it (like Claude Projects), the user MUST upload `PROJECT_CONTEXT.en.md` to the Project Knowledge Base so it gets cached (10x cheaper for subsequent messages).
-2. **Handoff:** If switching to a heavier model (e.g., Opus), use `python run.py handoff` first to avoid re-scanning the whole project.
-3. **Context Limit:** Never use a model with a small context window (e.g., < 200k tokens) for this project, as `PROJECT_CONTEXT.en.md` itself takes up significant space.
+### 0-C-38-3. Cross-Model Recommendation Matrix
+*(Note: Version numbers change constantly. Always use the latest of that family.)*
 
-### 0-C-38-4. How the AI should present this
-When the user asks for a new feature or a complex fix, the AI must start its response with:
-> 💡 **Model Advice:** *For this task, I recommend using **[Model Name]** with **[Effort Level]** effort. This ensures the best balance of accuracy and token efficiency.*
+| Task Type | Best Choice (High Quality) | Cheaper Alternative |
+| :--- | :--- | :--- |
+| **Architecture, Security, Ambiguous Bugs** | Claude Opus (High) or GPT-4o (High reasoning) | — |
+| **Large Multi-file Patches (Known Context)** | Claude Opus (Medium) or Sonnet (High) | DeepSeek V3 / Qwen-Max |
+| **Small Deterministic Patches** | Claude Sonnet (Low) or Haiku (Low) | DeepSeek Chat |
+| **Massive One-time Read (Scanning)** | Gemini Pro (Long Context) | — |
+
+### 0-C-38-4. The Failure Escalation Rule
+- **1 Failure:** Retry with the same model.
+- **2 Failures:** Step up to a heavier model or higher effort.
+- **3 Failures:** Revert (`python run.py revert P<id>`), run `python run.py handoff`, and switch to a different AI family entirely (e.g., from DeepSeek to Claude).
+
+### 0-C-38-5. Token-Saving Rules
+1. **Prompt Caching:** If the platform supports it (e.g., Claude Projects), upload `PROJECT_CONTEXT.en.md` to the Knowledge Base. Subsequent messages cost 90% less.
+2. **Handoff:** If switching to a heavier model, use `python run.py handoff` to avoid re-scanning the whole project.
+3. **Context Window:** Never use a model with a window smaller than 200k tokens. The context document alone is huge.
 
 ---
 
@@ -5041,7 +5053,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.5"
+VERSION = "2.0.6"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -7830,7 +7842,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.5"' in ctx:
+            if 'VERSION = "2.0.6"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
