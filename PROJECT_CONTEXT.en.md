@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P148 |
-| Last tag | `runpy-2-0-0` |
-| Time | 2026-10-27 22:30 |
-| MSG-SEED | `5521175e` |
+| Last patch | P149 |
+| Last tag | `runpy-2-0-1` |
+| Time | 2026-10-28 11:41 |
+| MSG-SEED | `27752249` |
 <!-- AUTO:END -->
 
 > The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
@@ -2234,6 +2234,18 @@ The Ghost QA module is strictly for **development**. It must NEVER appear in a p
 - After every major feature implementation (Vertical Slice).
 - Before creating any release tag (e.g., `v1.0.0`).
 - When the user says: "Run Ghost QA" or "Test everything".
+
+---
+
+## Section 0-C-36 — Revert Command & Standalone NEED
+
+### 0-C-36-1. `run.py revert P<id>`
+If a patch completely breaks the project, the AI must not try to fix it manually. It should instruct the user (or execute via `CMD`) to run:
+    python run.py revert P425
+This searches the git log for the commit tagged with that patch ID and performs a hard reset to the commit immediately before it. It is the fastest and safest way to undo a bad patch.
+
+### 0-C-36-2. Standalone `#@NEED:`
+The AI can now request information without sending a single code patch. If `input.txt` contains only `#@NEED: status` or `#@NEED: errors`, `run.py` executes the commands, outputs the result, and clears `input.txt` without failing on "no valid patches". Use this when you just want to ask the project "how are you doing?".
 
 ---
 
@@ -4949,7 +4961,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -6204,6 +6216,20 @@ def do_apply(patch_id=None):
         out.append("")
 
     if not ops:
+        if needs:
+            out.append(f"[NEED] No patches, but found {len(needs)} #@NEED commands.")
+            for need_args in needs:
+                real_args = need_to_args(need_args)
+                out.append(""); out.append("=" * 60)
+                out.append(f"NEED: {' '.join(need_args)}"); out.append("=" * 60)
+                out.append("")
+                sub_out = dispatch_capture(real_args)
+                if sub_out: out.append(sub_out)
+            out.append("")
+            out.append("[OK] NEED commands executed. No patches applied.")
+            write(OUTPUT, '\n'.join(out)); print('\n'.join(out))
+            write(INPUT, '')
+            return 0
         out.append("[FAIL] no valid patches")
         write(OUTPUT, '\n'.join(out)); print('\n'.join(out)); return 2
 
@@ -7724,7 +7750,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.0"' in ctx:
+            if 'VERSION = "2.0.1"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -7760,6 +7786,33 @@ def do_doctor():
     print("\n" + "=" * 50)
     print("DIAGNOSIS COMPLETE")
 
+
+def do_revert(patch_id_str):
+    try:
+        pid = int(patch_id_str.replace("P", ""))
+    except ValueError:
+        print(f"[FAIL] Invalid patch ID: {patch_id_str}")
+        return 1
+    print(f"Searching for patch P{pid} in git history...")
+    try:
+        r = subprocess.run(['git', 'log', '--oneline', '--grep', f'P{pid}', '--grep', f'patch {pid}', '-n', '1'],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            commit_hash = r.stdout.strip().split()[0]
+            print(f"Found commit {commit_hash} for P{pid}.")
+            print(f"Rolling back to the commit BEFORE P{pid}...")
+            subprocess.run(['git', 'reset', '--hard', f'{commit_hash}^'], check=True)
+            print(f"[OK] Rolled back successfully. Tool and code are now at the state before P{pid}.")
+            print(f"      Ensure you run `python run.py --sync-section35` if needed.")
+            return 0
+        else:
+            print(f"[WARN] Could not find P{pid} in git log.")
+            print("       Make sure you used #@COMMIT: with the patch ID in it.")
+            return 1
+    except Exception as e:
+        print(f"[FAIL] Revert failed: {e}")
+        return 1
+
 def dispatch(args):
     global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     if not args: return None
@@ -7772,6 +7825,11 @@ def dispatch(args):
     if cmd == '--health':               return do_health()
     if cmd == '--git-hint':             do_git_hint(); return 0
     if cmd == '--doctor':               do_doctor(); return 0
+    if cmd == 'revert':
+        if len(args) > 1:
+            return do_revert(args[1])
+        print("[FAIL] usage: python run.py revert P<id>")
+        return 1
     if cmd == '--sync-section35':       return do_sync_section35()
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':

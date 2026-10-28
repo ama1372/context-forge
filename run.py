@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -1314,6 +1314,20 @@ def do_apply(patch_id=None):
         out.append("")
 
     if not ops:
+        if needs:
+            out.append(f"[NEED] No patches, but found {len(needs)} #@NEED commands.")
+            for need_args in needs:
+                real_args = need_to_args(need_args)
+                out.append(""); out.append("=" * 60)
+                out.append(f"NEED: {' '.join(need_args)}"); out.append("=" * 60)
+                out.append("")
+                sub_out = dispatch_capture(real_args)
+                if sub_out: out.append(sub_out)
+            out.append("")
+            out.append("[OK] NEED commands executed. No patches applied.")
+            write(OUTPUT, '\n'.join(out)); print('\n'.join(out))
+            write(INPUT, '')
+            return 0
         out.append("[FAIL] no valid patches")
         write(OUTPUT, '\n'.join(out)); print('\n'.join(out)); return 2
 
@@ -2834,7 +2848,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.0"' in ctx:
+            if 'VERSION = "2.0.1"' in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -2870,6 +2884,33 @@ def do_doctor():
     print("\n" + "=" * 50)
     print("DIAGNOSIS COMPLETE")
 
+
+def do_revert(patch_id_str):
+    try:
+        pid = int(patch_id_str.replace("P", ""))
+    except ValueError:
+        print(f"[FAIL] Invalid patch ID: {patch_id_str}")
+        return 1
+    print(f"Searching for patch P{pid} in git history...")
+    try:
+        r = subprocess.run(['git', 'log', '--oneline', '--grep', f'P{pid}', '--grep', f'patch {pid}', '-n', '1'],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            commit_hash = r.stdout.strip().split()[0]
+            print(f"Found commit {commit_hash} for P{pid}.")
+            print(f"Rolling back to the commit BEFORE P{pid}...")
+            subprocess.run(['git', 'reset', '--hard', f'{commit_hash}^'], check=True)
+            print(f"[OK] Rolled back successfully. Tool and code are now at the state before P{pid}.")
+            print(f"      Ensure you run `python run.py --sync-section35` if needed.")
+            return 0
+        else:
+            print(f"[WARN] Could not find P{pid} in git log.")
+            print("       Make sure you used #@COMMIT: with the patch ID in it.")
+            return 1
+    except Exception as e:
+        print(f"[FAIL] Revert failed: {e}")
+        return 1
+
 def dispatch(args):
     global AUTO_VERIFY, FORCE_APPLY, FUZZY, DRY_RUN, BACKUP, PROGRESS, INTERACTIVE, REVIEW, TIMEOUT_LONG, TIMEOUT_FOREVER
     if not args: return None
@@ -2882,6 +2923,11 @@ def dispatch(args):
     if cmd == '--health':               return do_health()
     if cmd == '--git-hint':             do_git_hint(); return 0
     if cmd == '--doctor':               do_doctor(); return 0
+    if cmd == 'revert':
+        if len(args) > 1:
+            return do_revert(args[1])
+        print("[FAIL] usage: python run.py revert P<id>")
+        return 1
     if cmd == '--sync-section35':       return do_sync_section35()
     if cmd == '--capabilities':         do_capabilities(); return 0
     if cmd == '--ctx':
