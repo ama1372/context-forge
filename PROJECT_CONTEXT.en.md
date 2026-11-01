@@ -5,13 +5,13 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P155 |
-| Last tag | `runpy-2-0-7` |
-| Time | 2026-10-29 01:08 |
-| MSG-SEED | `baffdbda` |
+| Last patch | P157 |
+| Last tag | `runpy-2-0-9` |
+| Time | 2026-11-01 17:49 |
+| MSG-SEED | `d2bd1d30` |
 <!-- AUTO:END -->
 
-> The dream version. Designed for any project, any language, any AI. Tuned for DeepSeek.
+> A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
 > **This is a single document — copy it, drop it in the project root, paste it in every new chat.**
 
 ---
@@ -88,7 +88,7 @@ Never jump from step 1 straight to step 3.
 - **Section 17** — Testing
 - **Section 18** — Bug Fixing
 - **Section 19** — Adding a Feature
-- **Section 20** — DeepSeek and the Others
+- **Section 20** — Coding Agents and Chat Fallback
 - **Section 21** — Code Quality Principles
 - **Section 22** — Logging & Error Handling
 - **Section 23** — Decision Tree
@@ -105,6 +105,7 @@ Never jump from step 1 straight to step 3.
 - **Section 35** — Full `run.py` source (bootstrap)
 - **Section 36** — Rate-Limit Mitigation
 - **Section 37** — Uploading to GitHub
+- **Section 38** — Reusable release lessons (optional Android / store checklist)
 
 ---
 
@@ -382,9 +383,11 @@ Wait for the user's answer. See Section 0-C-13 for the rewrite contract.
 
 > **🔴 This rule outranks every other rule.**
 
-### 0-C-7-1. The only communication channel
+### 0-C-7-1. The chat-patch communication channel
 
-**Every AI response must start with input.txt:**
+**In direct-chat patch mode, every code-changing response uses input.txt:**
+
+**Project-scope guard:** If `_work/config.json` has a nonempty `project` setting, include `#@PROJECT: <that exact value>` near the top of every `input.txt` patch. A missing or different project directive makes `run.py` refuse the **entire batch without changes**. Read the error, restore the complete patch with the matching directive, and rerun; do not bypass the guard as a convenience.
 
     # INPUT: <short change name>
     ===== FILE: <path> =====
@@ -554,7 +557,7 @@ This document is in English so that:
 
 > **🔴🔴🔴 This is the single most important rule in this document. It outranks every other rule in every section. No exceptions.**
 
-The AI **must never** step outside the `input.txt` / `output.txt` protocol:
+**Scope:** This rule governs **direct-chat patch mode** (where an AI sends text for the user to paste). In **authorized coding-agent mode**, tools such as Claude Code or Codex may inspect and edit files directly, run permitted tests, and show diffs. The master context remains in the repository; do not force agent edits through `input.txt`. If the user returns to direct chat, immediately use the `input.txt` / `output.txt` protocol. The prohibitions below apply to direct-chat patch mode.
 
 - ❌ **Never** ask the user to run a shell command other than `python run.py`.
 - ❌ **Never** ask the user to edit a file by hand outside `input.txt`.
@@ -860,7 +863,7 @@ If you are unsure, use the simple forms (single FIND, no conditions). The protoc
 
 ### 0-C-15-1. PROJECT_CONTEXT is the master document
 
-The rule document is the **single source of truth** for how the AI and the user work together. It is not a suggestion. It is not "one possible way". It is **the way**.
+The rule document is the **single source of truth** for project decisions and safe continuation, regardless of which AI tool is used. Direct chat uses the patch protocol; an explicitly authorized coding agent may edit files through its own tracked tools. Switching tools must not silently change project invariants, safety rules, or the master document.
 
 If the AI ever feels the project has become too heavy for the protocol, that is a **signal to use the protocol's own tools more**, not to abandon the protocol.
 
@@ -2360,6 +2363,26 @@ To know which AI touched the project last, the AI must sign its patches:
     #@AI: Claude 3.5 Sonnet
     #@AI: DeepSeek V3
 The `run.py` tool reads this tag and permanently writes it into the `<!-- AUTO:START -->` table inside `PROJECT_CONTEXT.en.md`. Any AI reading the document instantly knows who made the last change.
+
+---
+
+## Section 0-C-42 — Geo-Targeting & Contextual Localization
+
+> **🔴 The protocol is global. The advice must be local.**
+
+### 0-C-42-1. The Problem
+This document is used by developers worldwide. If the AI suggests an Iran-specific service (e.g., Cafe Bazaar, SMS.ir, Jalali calendar) to a developer building a project for the US or Europe, it causes confusion and friction. Conversely, if a developer is building for Iran, they need localized advice.
+
+### 0-C-42-2. The Rule: Detect, Don't Assume
+The AI must detect the project's target audience from context (user's language, project files, explicit goals):
+- **Global Audience**: Use Google Play, Apple App Store, Stripe, standard Gregorian dates, and global SMS/email providers.
+- **Iranian Audience**: Use Cafe Bazaar, Myket, Zarinpal, local SMS panels, Jalali calendar, and local legal frameworks (e.g., Article 4 of the Apartment Ownership Law).
+
+### 0-C-42-3. No Blaming the Context
+If the AI has a localized rule in mind (like the Mobile/Store Playbook in Section 0-C-40), it must verify if it applies to the current project's region before proposing it. **Never blame the `PROJECT_CONTEXT` for being "too local"** — the context is a toolkit, and the AI is responsible for picking the right tool for the project's location.
+
+### 0-C-42-4. Separation of Concerns
+Keep local jargon out of global projects. If the user is building a global app, do not mention Bazaar, Jalali, or local laws unless they explicitly ask. If they are building an Iranian app, fully embrace the local ecosystem (like the lessons in Section 0-C-40).
 
 ---
 
@@ -4023,34 +4046,33 @@ Ask the user for:
 **Shall we start?**
 ```
 
-## Section 20 — DeepSeek and the Others
+## Section 20 — Coding Agents and Chat Fallback
 
-### 20-1. Why DeepSeek?
+### 20-1. Prefer a coding agent for hands-on implementation
 
-DeepSeek performs best at executing the "copy and replace" method exactly, without touching code.
+For repositories available on the user's machine, consider **Claude Code, OpenAI Codex, or another capable repository-aware coding agent** first. They can inspect the actual tree, make coordinated multi-file edits, run builds and tests, and review diffs without repeatedly copying large file dumps into chat. This **often reduces copy/paste and context overhead**; token usage, cost, speed, and quality still depend on the task, model, plan, and tool settings. No provider is universally best.
 
-### 20-2. For DeepSeek
+**Keep `PROJECT_CONTEXT.en.md` and `run.py` in the project root even when coding with agents.** They are the durable continuity and direct-chat fallback. Never delete or replace the master document simply because an agent has its own memory or instruction files.
 
-1. **Copy the anchor character-by-character** — don't build it from memory.
-2. **If unsure, ask.** With the right flag.
-3. **Keep replies concise.**
-4. **Every message = one complete patch + context.**
-5. **Don't put parser markers in the body.**
-6. **Test reminder at the end.**
+### 20-2. Two supported execution modes
 
-### 20-3. For others (Claude/GPT/Gemini)
+- **Coding-agent mode (explicitly authorized):** read the master context, inspect affected files, edit using the agent's native file tools, run focused tests, show changed paths and a diff summary, record decisions/open issues in the context, and use Git only with the user's permissions. Do not pretend an agent's own edits passed through `input.txt`.
+- **Direct-chat patch mode:** send the precise `input.txt` patch, have the user execute `python run.py`, and use `_work/output.txt` to verify. Sections 0-C-7 and 0-C-10 govern this mode strictly.
+- **Switching modes:** preserve the same codebase and history; check the working tree first, never overwrite unfinished agent changes, and provide a compact handoff of verified results, unverified claims, affected files, and the next step.
 
-Mandatory instructions:
+### 20-3. Rules for any model or agent
 
-1. **Don't touch the user's code except in FIND/REPLACE.**
-2. **Copy the anchor character-by-character from the file.**
-3. **Follow the reply structure exactly.**
-4. **Don't send any extra code.**
+1. Inspect first; do not invent anchors, APIs, available commands, test results, or repository contents.
+2. Minimize scope and avoid duplicate implementations; preserve source of truth.
+3. Respect permissions, secrets, privacy boundaries, and user approval for destructive or remote actions.
+4. Report evidence separately: static inspection, test pass, build artifact, installation, real-device behavior, and production acceptance are different gates.
+5. Use an appropriate tool for the job, not model loyalty. If an edit is difficult in direct chat, switch to an authorized agent only with user consent.
 
-### 20-4. If the AI fails
+### 20-4. If an AI loses the workflow
 
-- Send a message reminding "only FIND/REPLACE".
-- If it still fails, switch to DeepSeek.
+- In direct chat: remind it to follow the FIND/REPLACE and CTX-DELTA contract.
+- In an agent: request the changed-file list, diff, test output, and unresolved issues before continuing.
+- Never claim a change was applied or tested solely because the AI wrote a patch.
 
 ---
 
@@ -5075,7 +5097,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.7"
+VERSION = "2.0.9"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -5608,7 +5630,7 @@ def read_directives(text):
 
 
 NEED_COMMANDS = {
-    'status', 'tree', 'hash', 'git', 'errors', 'capabilities',
+    'status', 'tree', 'hash', 'git', 'git-audit', 'errors', 'capabilities',
     'version', 'all', 'file', 'files', 'check', 'verify',
     'find-dup', 'dump', 'ctx',
 }
@@ -5970,7 +5992,8 @@ def apply_patch(path, patches, out, fail_files=None):
         out.append(f"  [FAIL] file not found: {path}")
         if fail_files is not None: fail_files.add(path)
         return 0, len(patches), 0
-    raw = read(p); fe = eol(raw); text = lf(raw)
+    # Read raw bytes to preserve the source file's actual LF/CRLF convention.
+    text, fe = read_raw(p)
     ok = fail = skip = 0
     for i, (alts, r) in enumerate(patches, 1):
         rl = lf(r)
@@ -6084,6 +6107,33 @@ def _git_head():
         return (r.stdout or '').strip() or '-'
     except Exception:
         return '-'
+
+
+def _patch_path_error(raw):
+    """Fail closed on paths outside this checkout or naming secret files.
+
+    CMD/PYTHON are executable code, not a sandbox. Only use trusted patches.
+    """
+    value = str(raw).strip().replace('\\', '/')
+    if not value or '\x00' in value:
+        return 'empty or invalid path'
+    if value.startswith('/') or re.match(r'^[A-Za-z]:', value):
+        return 'absolute path'
+    parts = value.split('/')
+    if '..' in parts or '.git' in [part.lower() for part in parts]:
+        return 'parent traversal or Git metadata'
+    name = parts[-1].lower()
+    if (name in SKIP_SECRET_NAMES or
+            (name.startswith(SKIP_SECRET_PREFIXES) and name != SECRET_EXAMPLE) or
+            Path(name).suffix in SKIP_SECRET_EXTS or '.ssh' in [p.lower() for p in parts]):
+        return 'protected secret path'
+    try:
+        root = Path('.').resolve()
+        target = (root / value).resolve()
+        target.relative_to(root)
+    except (ValueError, OSError, RuntimeError):
+        return 'path escapes project root'
+    return None
 
 
 def _check_tracked_secrets():
@@ -6272,7 +6322,8 @@ def _project_guard(content):
     if got == want:
         return None
     if got is None:
-        return f"this patch has no '#@PROJECT: {want}' line. Nothing was applied."
+        return (f"this patch has no '#@PROJECT: {want}' line. Nothing was applied. "
+                "Add that directive near the top of input.txt and rerun the complete patch.")
     return f"this patch is for '{got}', but this folder is '{want}'. Nothing was applied."
 
 def do_apply(patch_id=None):
@@ -6355,6 +6406,22 @@ def do_apply(patch_id=None):
                 out.append(f"[RESUME] load failed: {e}")
 
     ops = parse(content)
+    # Validate the entire file-operation batch before touching project files.
+    # This does not sandbox the deliberately executable CMD/PYTHON blocks.
+    for op in ops:
+        kind = op.get('kind')
+        targets = []
+        if kind in ('file', 'create', 'delete', 'mkdir', 'dump'):
+            targets = [op.get('path', '')]
+        elif kind == 'move':
+            targets = [op.get('src', ''), op.get('dst', '')]
+        for target in targets:
+            reason = _patch_path_error(target)
+            if reason:
+                out.append(f"[REFUSED] {kind}: {reason}; no operations applied")
+                txt = '\n'.join(out)
+                write(OUTPUT, txt); print(txt)
+                return 3
     _status_begin(f"[P{patch_id}] applying {len(ops)} op(s)")
     if BACKUP:
         _do_backup()
@@ -6739,12 +6806,51 @@ def do_apply(patch_id=None):
         out.append("[GIT] commit skipped - POST verification failed")
 
     if should_commit:
+        # Any pre-staged content may be unrelated. Refuse to commit it.
+        # Users may unstage or commit their own work separately.
+        try:
+            already_staged = subprocess.run(
+                ['git', 'diff', '--cached', '--name-only', '-z'],
+                capture_output=True, timeout=10)
+            if already_staged.returncode == 0 and already_staged.stdout:
+                out.append('[GIT] commit skipped: pre-staged files detected; no unrelated changes committed')
+                should_commit = False
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    if should_commit:
         try:
             r0 = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
                                 capture_output=True, text=True)
             if r0.returncode == 0 and r0.stdout.strip() == 'true':
                 msg = commit_msg if commit_msg else f"patch {patch_id}: {ts}"
-                subprocess.run(['git', 'add', '-A'], capture_output=True)
+                # Stage only explicitly patched paths and the auto-updated
+                # master context. Never absorb unrelated README or user edits.
+                paths = set()
+                for op in ops:
+                    if op['kind'] in ('file', 'create', 'delete'):
+                        paths.add(op['path'])
+                    elif op['kind'] == 'move':
+                        paths.update((op['src'], op['dst']))
+                for context_name in ('PROJECT_CONTEXT.en.md', 'PROJECT_CONTEXT.md'):
+                    if Path(context_name).exists() and '<!-- AUTO:START -->' in read(Path(context_name)):
+                        paths.add(context_name)
+                        break
+                stageable = []
+                for path in sorted(paths):
+                    if _patch_path_error(path):
+                        raise RuntimeError('unsafe Git staging path refused')
+                    tracked = subprocess.run(
+                        ['git', 'ls-files', '--error-unmatch', '--', path],
+                        capture_output=True, timeout=10).returncode == 0
+                    if tracked or Path(path).exists():
+                        stageable.append(path)
+                if not stageable:
+                    out.append('[GIT] no declared file changes to stage')
+                    raise RuntimeError('nothing safe to stage')
+                added = subprocess.run(['git', 'add', '-A', '--'] + stageable,
+                                       capture_output=True, text=True, timeout=30)
+                if added.returncode != 0:
+                    raise RuntimeError('git add failed: ' + added.stderr[:120])
                 r1 = subprocess.run(['git', 'commit', '-m', msg],
                                     capture_output=True, text=True)
                 out.append("")
@@ -7018,6 +7124,49 @@ def do_git():
             print(f"[WARN] {e}")
 
 
+def do_git_audit():
+    """Offline, read-only Git diagnostic; never fetches or prints remote URLs."""
+    def query(*args):
+        return subprocess.run(['git'] + list(args), capture_output=True,
+                              text=True, encoding='utf-8', errors='replace',
+                              timeout=10)
+    print('[GIT-AUDIT] offline, read-only (no fetch, pull or push)')
+    try:
+        root = query('rev-parse', '--show-toplevel')
+        if root.returncode != 0:
+            print('[GIT-AUDIT] not a Git repository'); return 0
+        print('[GIT-AUDIT] branch: ' + (query('branch', '--show-current').stdout.strip() or '(detached)'))
+        remotes = query('remote')
+        aliases = remotes.stdout.splitlines() if remotes.returncode == 0 else []
+        print('[GIT-AUDIT] remotes: ' + (', '.join(aliases) if aliases else '(none)'))
+        for label, args in (
+            ('staged', ('diff', '--cached', '--name-only', '-z')),
+            ('unstaged', ('diff', '--name-only', '-z')),
+            ('untracked', ('ls-files', '--others', '--exclude-standard', '-z')),
+        ):
+            result = query(*args)
+            if result.returncode == 0:
+                print(f'[GIT-AUDIT] {label}: {len([x for x in result.stdout.split(chr(0)) if x])} file(s)')
+        sensitive = _check_tracked_secrets()
+        if sensitive:
+            print(f'[GIT-AUDIT] WARNING: {len(sensitive)} tracked path(s) look like secrets; review before push')
+        upstream = query('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}')
+        if upstream.returncode != 0:
+            print('[GIT-AUDIT] upstream: none (or unavailable)')
+        else:
+            name = upstream.stdout.strip()
+            print('[GIT-AUDIT] upstream: ' + name)
+            counts = query('rev-list', '--left-right', '--count', 'HEAD...@{upstream}')
+            parts = counts.stdout.split() if counts.returncode == 0 else []
+            if len(parts) == 2 and all(part.isdigit() for part in parts):
+                print(f'[GIT-AUDIT] cached tracking: ahead {parts[0]}, behind {parts[1]}')
+        print('[GIT-AUDIT] counts use LOCAL refs only; remote may have advanced since the last fetch')
+        return 0
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print('[GIT-AUDIT] unavailable: ' + type(exc).__name__)
+        return 0
+
+
 def do_diff():
     root = Path('.').resolve()
     cache = load_cache()
@@ -7109,11 +7258,15 @@ def _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, roadmap, paths):
 
 
 def do_file(name, flags=None):
+    reason = _patch_path_error(name)
+    if reason:
+        print(f'[REFUSED] file read: {reason}')
+        return 1
     p = Path(name)
     if not p.is_absolute():
         p = Path('.').resolve() / name
-    if not p.exists():
-        print(f"[FAIL] file not found: {name}"); return
+    if not p.exists() or not p.is_file():
+        print(f"[FAIL] file not found: {name}"); return 1
     raw = read(p)
     filtered = filter_content(raw, flags or [])
     print(f"FILE: {name}")
@@ -7124,12 +7277,15 @@ def do_file(name, flags=None):
         print(f"SHOWN: {len(filtered.splitlines())} of {len(raw.splitlines())} lines")
     print("---CONTENT---")
     print(filtered)
+    return 0
 
 
 def do_files(names):
+    result = 0
     for i, name in enumerate(names):
         if i > 0: print()
-        do_file(name)
+        result = max(result, do_file(name))
+    return result
 
 
 def do_errors():
@@ -7319,11 +7475,12 @@ def do_capabilities():
     print(f"run.py v{VERSION}")
     print("TREE: --tree [--json]")
     print("GIT:  --git-hint (OS-specific install instructions)")
+    print("AUDIT: --git-audit (offline, read-only; no remote contact)")
     print("HEALTH: --health (bootstrap + check-md + self-test + git)")
     print("DOCTOR: --doctor (environment check, sync status, leaked secrets)")
     print("SYNC:   --sync-section35 (embed current run.py into Section 35)")
     print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
-          "--git --file --files --errors --diff --ctx "
+          "--git --git-audit --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
           "--progress --no-progress "
@@ -7898,7 +8055,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.7"' in ctx:
+            if ('VERSION = "2.0.9"') in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -7921,15 +8078,16 @@ def do_doctor():
     except FileNotFoundError:
         print("  [WARN] Git not installed (rollback safety disabled)")
 
-    # Check 3: Secrets
-    print("\n[3] Checking for leaked secrets...")
-    secrets = ['.env', 'id_rsa', 'id_ed25519', 'credentials.json']
-    leaked = [s for s in secrets if Path(s).exists()]
+    # Check 3: tracked secrets, not merely files safely kept in .gitignore.
+    print("\n[3] Checking for tracked secret-like files...")
+    leaked = _check_tracked_secrets()
     if leaked:
-        print(f"  [WARN] Found sensitive files: {', '.join(leaked)}")
-        print("         Ensure they are in .gitignore!")
+        print(f"  [WARN] {len(leaked)} secret-like path(s) tracked by Git")
+        print("         Check Git index/history; ignore rules alone do not untrack files.")
+    elif leaked is None:
+        print("  [INFO] Git index unavailable; cannot verify tracked secrets")
     else:
-        print("  [OK] No obvious secrets in root")
+        print("  [OK] No secret-like filenames tracked by Git")
 
     print("\n" + "=" * 50)
     print("DIAGNOSIS COMPLETE")
@@ -8068,6 +8226,7 @@ def dispatch(args):
         return 0
     if cmd == '--hash':                 do_hash(); return 0
     if cmd in ('--git', '-g'):          do_git(); return 0
+    if cmd == '--git-audit':           return do_git_audit()
     if cmd == '--errors':               do_errors(); return 0
     if cmd == '--check-md':
         i = args.index('--check-md')
@@ -8127,12 +8286,12 @@ def dispatch(args):
         i = args.index('--file')
         if i + 1 < len(args):
             rest = args[i+1:]
-            do_file(rest[0], rest[1:]); return 0
+            return do_file(rest[0], rest[1:])
         print("[FAIL] --file needs a path"); return 1
     if cmd == '--files':
         i = args.index('--files')
         names = [a for a in args[i+1:] if not a.startswith('--')]
-        if names: do_files(names); return 0
+        if names: return do_files(names)
         print("[FAIL] --files needs paths"); return 1
 
     if cmd == '--auto-verify':
@@ -8281,7 +8440,7 @@ After every batch of local commits:
     git push origin main
     git push origin --tags
 
-`--tags` pushes local tags so the remote keeps the same safe-point history.
+`--tags` pushes local tags so the remote keeps the same safe-point history. **Remote pushes are never automatic unless explicitly requested.** Before deciding to sync, use `python run.py --git-audit` for an offline read-only summary of branch, cached tracking divergence, and local change counts. It does not fetch or contact GitHub; a stale tracking ref is not a current remote-state guarantee.
 
 ### 37-3. Everyday pull
 
@@ -8330,6 +8489,58 @@ Check the state:
     git branch -vv
 
 The `branch -vv` line shows whether local `main` is ahead or behind `origin/main`.
+
+---
+
+## Section 38 — Reusable engineering and release lessons
+
+> **Universal by default; platform-specific checks are conditional.** These are general lessons distilled from practical development. They do not copy another project's identity, implementation, credentials, pricing, or decisions. Verify current tool versions and store policies before acting.
+
+### 38-1. Release evidence ladder (all platforms)
+
+- **Source inspected** is not **tests passed**; **tests passed** is not **build passed**; **build passed** is not **installed and launched**; **installed** is not **real-device feature verified**; **device verified** is not **store approved**.
+- Record per gate: exact command, result, relevant environment, artifact type/path, SHA-256, signature verification, and remaining untested behaviors. Mark `PASS`, `FAIL`, or `NOT TESTED` truthfully.
+- Do not reuse a previously built binary as evidence for a fresh build. Match crash logs and symbol/deobfuscation maps to the **exact shipped artifact**.
+- Prefer reproducible scripts and minimal targeted fixes. Generated platform code may be overwritten; keep durable, idempotent repair logic in source, with backups and fail-closed behavior on unknown structures.
+
+### 38-2. Conditional Android release gates
+
+Apply only when the project actually targets Android:
+
+1. **Environment:** collect actual Gradle/Kotlin/Rust errors before diagnosis. Check SDK, JDK, NDK, ABI support, dependency resolution, file-system roots, offline caches, and build-process proxy configuration separately. Do not assume a network issue is a compiler issue.
+2. **Native lifecycle:** preserve existing Activity callbacks, plugin registrations, permission request paths, and OS integration when modifying generated Kotlin or Java. A successful compile does not prove that a WebView-to-native plugin call is authorized or functional. Verify framework-specific IPC permissions and both registration sides.
+3. **Fresh install and update:** test clean storage, onboarding, locks, navigation, previous-version update, signing-certificate continuity, and expected data preservation. Never trap a first-time user behind a lock without an accessible valid unlock path.
+4. **UI and power:** test narrow screens, font scaling, RTL/bidirectional text where supported, system-bar/keyboard insets, long labels, accessibility, offline startup, foreground/background transitions, and idle network/battery effects on actual low-end devices.
+5. **Privacy and permissions:** request only features' necessary Android permissions; check manifest merged into the shipped artifact. Validate backups and any claims about on-device-only storage. No unconsented access to messages, contacts, or device identifiers.
+6. **Optimization:** R8 or shrinkers can remove classes/methods loaded reflectively. Inspect the **release DEX or actual package**, add precise keep rules when necessary, and archive the mapping for each shipped build. Mapping entries alone do not prove methods survived.
+7. **Artifact verification:** verify package ID, versionCode increment, min/target SDK, architectures, signing certificate, actual APK/AAB contents, and post-build environment flags. APK and AAB have different signing/verification procedures; use the current Android tooling for each.
+
+### 38-3. Conditional app-store and paid-feature gates
+
+Apply only when publishing to a store (including **Cafe Bazaar**, when selected by the user):
+
+- Confirm current publishing rules, mandatory billing provider for applicable digital goods, account setup, product type (consumable/non-consumable/subscription), price units, taxes, refund behavior, reviewer requirements, and the required order of app registration/key availability. **Do not hardcode** prices, SKUs, package IDs, certificate identifiers, or store URLs from other projects.
+- A store-specific build and a directly distributed build may have **different permitted payment flows**. Choose the distribution explicitly at build time; inspect the resulting bundle so disabled flows and embedded variables match that build. No automatic assumption that a direct-sale method is allowed inside a store build.
+- Keep client-embedded **public** verification keys distinct from server-only secrets. Public keys do not become confidential merely by moving them into `.env`; build-time environment values prefixed for frontend exposure may be shipped in JavaScript. Never embed private signing keys, merchant secrets, passwords, or server API credentials in a client artifact.
+- For purchase integration, test install/login with the store client, purchase/cancel/fail/restore, reconnect, offline and expiry behavior, and relevant subscription edge cases **on a real supported device and test account**. Do not mark billing production-ready on compile-only evidence. Prefer server-side verification when supported and appropriate; local checks alone have limitations.
+- For AAB/APK uploads, check the store's accepted format, signing, package identity, monotonically increasing versionCode, 32/64-bit compatibility as required, listing accuracy, and policy compliance. Preserve keystores securely offline; do not commit or print secrets.
+
+### 38-4. Universal trust boundaries
+
+- **UI state is not authorization.** Account/workspace/role isolation and paid-tier limits must be enforced at the trusted backend or persistent-data boundary, not only by hiding buttons.
+- **No invented success:** mock tests do not prove native-device, payment, network, camera, or push-notification behavior. Capture exact field failures and replay them with an automated regression before closing the issue.
+- **User-controlled side effects:** purchases, outbound messages, uploads, sync, deletion, and data sharing need the appropriate explicit permission and understandable confirmation. Do not silently introduce network services or telemetry.
+- **Safe publishing:** inspect tracked files, staged changes, secrets, signing materials, release notes, and artifact hashes before any push. `--git-audit` is deliberately offline and read-only; remote fetch/push requires a separate explicit user decision.
+
+### 38-5. Store upload format and release usability (conditional; Cafe Bazaar example)
+
+- **Check the destination's upload form before preparing the final deliverable.** A compiled, signed, verified APK or AAB may NOT be the file accepted by a particular store. Identify every required companion file, conversion tool, signing scheme, store-specific encryption/digest step, and submission order from the **current official publisher instructions** before saying "ready to upload". A generic "Unknown error" on upload is not proof that the build is corrupt or that a rebuild is necessary.
+- **Cafe Bazaar App Bundle example:** when Pishkhan requests a `.bin` for an AAB, use Cafe Bazaar's official **bundle-signer** (its `genbin` operation) to generate the **signed binary digest** associated with that exact AAB using the appropriate release keystore and alias. `jarsigner` verification of an AAB and generation of the Bazaar `.bin` are **different checks**; signing an AAB does not automatically produce this `.bin`. Follow the portal's actual AAB/BIN upload fields; do not substitute an unrelated APK or upload only the AAB if the portal explicitly requests BIN. Official source: https://github.com/cafebazaar/bundle-signer (release assets: https://github.com/cafebazaar/bundle-signer/releases).
+- **Before `genbin`:** verify the AAB is the intended store distribution, with the required package, incremented versionCode, ABI coverage, content, signature, and billing policy. Select the release of bundle-signer compatible with the current official instructions; never assume a version number or a downloaded JAR's authenticity from the filename or file size alone. Verify trustworthy provenance/checksum when available. Check its documented `--bundle`, `--bin`, `--ks`, `--ks-key-alias`, signing-scheme, and password-input options; do not guess them.
+- **Protect signing keys:** sign locally, keep the keystore/private key out of Git and transmitted patches, use supported environment-variable or interactive secret input instead of `pass:<plaintext>` on a command line, avoid echoing the password or its environment, and never upload the keystore. Protect locally generated `.bin` and release artifacts as release deliverables; record file hashes and which exact AAB produced which BIN.
+- **Rebuild decision:** if the existing store AAB is correct and immutable and the only missing requirement is its store-specific BIN, create the BIN from the **same existing AAB** without rebuilding. If code, purchasing entry points, version, distribution flags, signing identity, or bundled assets must change, rebuild, reverify, and regenerate the BIN for the **new** AAB. Never reuse a BIN from another bundle or silently upload the direct-distribution build to the store.
+- **Paid-feature discoverability:** verify a first-time user can find and understand the buy/upgrade entry point, price/period, entitlement, restore-purchases action, and cancellation/failure states. Test the real navigation on a narrow phone and in the **actual store variant**. A working payment backend with an undiscoverable buy button is not a complete release; missing functionality must be reported as `NOT TESTED` or an open issue until device-verified.
+- **Upload closure:** record the actual selected file(s), hash(es), upload acceptance/rejection message and submission status separately from local build success. Never interpret "BIN generated" as "store upload succeeded" or "purchase flow verified".
 
 ---
 
