@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P170 |
-| Last tag | `p170a-continuity` |
-| Time | 2026-11-04 16:25 |
-| MSG-SEED | `0f751919` |
+| Last patch | P171 |
+| Last tag | `p170b1-lessons` |
+| Time | 2026-11-04 16:29 |
+| MSG-SEED | `504bd9cf` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4253,6 +4253,43 @@ A patch's commit message says one line. The diff says what changed. Neither says
 - **20 bullets** is a re-summary of the whole project, not the patch. That is what Section 14-6 (session refresh) is for, and it happens every 5-10 patches.
 
 3-5 is the rhythm: enough to understand the patch in 10 seconds, not enough to drown the next patch.
+
+---
+
+### 14-9. Failure Lessons Ledger — every failure teaches a rule
+
+> **Every failure that takes more than 2 attempts to fix is recorded as a lesson. Three fields: what happened, why, what rule prevents recurrence.**
+
+A failure that is fixed silently is a failure that will happen again. The AI fixes it, the user moves on, and six patches later a similar bug appears with a similar fix — because nobody wrote down what caused it.
+
+**What counts as a lesson:**
+
+- Any bug that took 3+ attempts to fix.
+- Any patch that failed more than once before applying.
+- Any approach that "seemed right" and was wrong.
+- Any library or tool limit discovered by trial (Section 21-11 — Known Limits Registry is the sibling).
+- Any user confusion that led to a spec change.
+
+**The lesson format (three fields, one line each):**
+
+    L-<N>: <title>
+    - What happened: <one line — the symptom, in user terms>
+    - Why: <one line — the root cause, in code terms>
+    - Rule: <one line — the new rule, referenced from the section it amends>
+
+**Where the ledger lives:**
+
+- As a subsection of Section 13-B (ADR) — lessons are architectural decisions in disguise.
+- Or as a dedicated file if the project's ADRs exceed the section budget.
+- **Never deleted.** A lesson that is no longer relevant is marked `Superseded by L-<M>` — the old one stays.
+
+**The AI's duty:**
+
+1. **Every failure with a 3+ attempt fix produces a lesson** — in the same patch or the next one. Not "later".
+2. **Every lesson points to the section it amends** — the lesson does not live in isolation; it updates the rule that would have prevented it.
+3. **When facing a bug, the AI checks the ledger first.** "Have we seen this before?" is 1 line of search; re-diagnosing is 20 minutes.
+
+**Why this matters:** the ledger is the project's memory of its own mistakes. Without it, every AI re-learns the same lessons. With it, every AI starts from where the last one ended.
 
 ---
 
