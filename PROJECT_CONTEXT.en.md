@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P158 |
-| Last tag | `runpy-2-0-10` |
-| Time | 2026-11-04 15:45 |
-| MSG-SEED | `c37448c9` |
+| Last patch | P159 |
+| Last tag | `runpy-2-0-11` |
+| Time | 2026-11-04 15:48 |
+| MSG-SEED | `6675e205` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -2451,6 +2451,30 @@ The AI outputs a short paragraph to the user:
 
 ### 0-C-45-4. The Pivot
 If the check reveals a problem (e.g., "We are using 5 different files for one feature, it's too complex"), the AI must **immediately propose a refactoring patch** (Strategy Pivot) BEFORE writing any new features. Quality and speed come from clean foundations.
+
+---
+
+## Section 0-C-46 — Dual-Mode Value (Chat & Agents)
+
+> **🔴 This protocol is not just for chat. It's for every AI interface.**
+
+### 0-C-46-1. The Universal Need
+Whether a developer uses a **web chat** (DeepSeek, ChatGPT, Claude) or an **autonomous agent** (Claude Code, Codex, Cursor), they face the exact same problem: **Context Loss**. 
+- In chat, the token limit resets, and the AI forgets.
+- In an agent, the tool grabs the whole repository, burns 1M tokens of background context, and gets confused in the middle.
+
+### 0-C-46-2. The Solution
+This `PROJECT_CONTEXT.en.md` acts as the **Single Source of Truth** for *both* modes.
+- **For Chat:** Use the `input.txt` patch loop (Sections 0-C-7, 0-C-10).
+- **For Agents:** Instruct the agent to read this file first. The agent uses its native editing tools, but obeys the rules here (e.g., Vertical Slicing, Anti-Duplication, Test-First).
+
+### 0-C-46-3. Why it Supercharges Both
+1. **Zero Context Loss:** Start a new chat or a new agent session anytime. The document provides the state.
+2. **Huge Token Savings:** Instead of the agent scanning 100 files, it reads this document, checks the feature map (`docs/`), and opens exactly 2 files.
+3. **Higher Quality:** The 5 Survival Rules (Three-Strikes, Vertical Slicing, etc.) prevent the AI from going in circles or writing spaghetti code.
+
+### 0-C-46-4. Action for the AI
+When reading the GitHub `README.md` files for this project (in any language), the AI must understand that the rules here apply to it, regardless of whether it is in a chat window or a code editor.
 
 ---
 
@@ -5165,7 +5189,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.10"
+VERSION = "2.0.11"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -8123,7 +8147,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if ('VERSION = "2.0.10"') in ctx:
+            if ('VERSION = "2.0.11"') in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
