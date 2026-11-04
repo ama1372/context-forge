@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P180 |
-| Last tag | `p170i-self-discipline` |
-| Time | 2026-11-04 16:58 |
-| MSG-SEED | `68be42ee` |
+| Last patch | P181 |
+| Last tag | `p170j-framework-index` |
+| Time | 2026-11-04 17:00 |
+| MSG-SEED | `63279704` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -392,6 +392,103 @@ A document that pretends every rule applies everywhere forces the AI to perform 
 - ✅ When a new conditional rule is added to the document, add a row to this table so the list stays complete.
 
 **Why this section exists:** a document without an explicit "conditional" list is dishonest. It pretends every rule applies to every project, which produces either false compliance (marking things done) or false gaps (marking things missing that do not apply). Listing the three current conditional rules makes the document honest about its own scope.
+
+---
+
+## Section 0-A-9 — Framework Index (navigation guide)
+
+> **The document has grown large. This section is the map. Read this first, then jump to the sections you need. Do not read 10,000 lines to find one rule.**
+
+### 0-A-9-1. The eight clusters
+
+| Cluster | Sections | Purpose | Read when... |
+|---------|----------|---------|--------------|
+| **Foundation** | 0-A to 0-A-9 | Charter, locked decisions, out-of-scope, forbidden questions, red lines, amendment, verification, self-discipline, this index | First 5 minutes of any new chat |
+| **Testing** | 17-4 to 17-13 | Four levels (compile/static/DOM/flow/manual), count-diagnostic, round-trip, coverage rule, stop-the-bleed, honesty vocabulary, expansion roadmap | Before any patch that touches backend or frontend |
+| **Data safety** | 21-6 to 21-12 | Schema-first, startup guarantee, temporal integrity, single source, silent wrapping, known limits, migration discipline | Before any patch that touches a database, config, or computed value |
+| **Feature discipline** | 19-3 to 19-10 | Persona walkthrough (mandatory), bundle strategy, audit-first, assumed defaults, version bump, concrete over abstract, user-extensibility, competitive research | Before starting any new feature |
+| **UX quality** | 24-5 to 24-12 | 10-item checklist, persona-parallel views, progressive disclosure, menu registry, weighted rollup, mobile modal, single entry point, persona vs role | Before any patch that changes what the user sees |
+| **Continuity** | 14-5 to 14-11 | Compact report, session sync, handoff package, per-patch snapshot, failure lessons, readiness matrix, phase gates | Every 5-10 patches, at every phase boundary, and before any AI switch |
+| **Release** | 15-4 | Hide, don't delete | Before any release build |
+| **Robustness** | 30-5 to 30-7, 28-4 | Debugging infrastructure, forbidden patterns | When stuck, or before any risky patch |
+
+### 0-A-9-2. The three conditional rules
+
+| Rule | Section | Applies when | Not applicable when |
+|------|---------|-------------|---------------------|
+| Static analysis | 30-7 | Project has a linter (any language) | No linter configured |
+| Competitive research | 19-10 | Feature has an analog elsewhere | Bug fix, refactor, internal tool, docs |
+| Mobile modal full-screen | 24-10 | Project renders on mobile | Desktop-only, CLI-only, backend-only |
+
+### 0-A-9-3. The 24 forbidden patterns (quick reference)
+
+Full table with "why" and "instead" columns: Section 28-4. This is the index.
+
+**Code modification (5):**
+
+1. Regex on source to change attributes.
+2. `git add -A` in a scripted patch.
+3. `rm -rf` without listing targets.
+4. Editing this document without `--check-md` after.
+5. Writing durable work to `_work/`.
+
+**Backend and data (6):**
+
+6. Silent `try/except: pass` on a write.
+7. `let _ = <write>` on INSERT/UPDATE.
+8. Schema created lazily inside an add command.
+9. Editing a config value in place when history depends on it.
+10. Recomputing past records after a rate change.
+11. Reading a table without scope filter.
+
+**Frontend and UI (7):**
+
+12. `alert()` / `confirm()` for feedback.
+13. Silent success.
+14. Destructive action without confirmation.
+15. Empty state = blank area.
+16. Hardcoded hex colors.
+17. `if persona === 'X'` gating a permission.
+18. `width: 90vw; max-width: 700px` on mobile modals.
+
+**Process and continuity (6):**
+
+19. Anchor from memory instead of the real file.
+20. `#@IF:` without `#@ENDIF:`.
+21. Nested triple-backtick fences in this document.
+22. `--grep --head N` to read a block.
+23. Asking "should I proceed?" when no ambiguity exists.
+24. Making assumptions silently.
+25. Deleting a dev/test/archived feature "to clean up".
+26. Continuing to fix a failing test through 20 patches.
+
+### 0-A-9-4. How to navigate this document
+
+**You have a runtime bug.** Section 30-5 through 30-7 (tools) → Section 30-1 through 30-4 (existing troubleshooting).
+
+**You have a data bug.** Section 21-6 through 21-12 (data safety) → Section 28-4 backend rows.
+
+**You are starting a feature.** Section 19-3 (persona walkthrough) → Section 19-2 (design) → Section 19-6 (assumptions) → Section 19-4 (bundle strategy) → Section 17-7 (flow test).
+
+**You are finishing a feature.** Section 24-5 (10-item checklist) → Section 17-6 (DOM test) → Section 17-9 (round-trip) → Section 14-8 (snapshot).
+
+**You are cutting a release.** Section 14-10 (readiness matrix) → Section 14-11 (phase gate) → Section 0-A-7 (four checks).
+
+**You are switching AI.** Section 14-7 (handoff package) → Section 14-6 (session refresh) → Section 0-A (START HERE).
+
+**You are stuck after 3 attempts.** Section 14-9 (failure lessons) → Section 0-A-8-2 (overcorrection trap) → Section 17-11 (stop-the-bleed).
+
+**You are uncertain about an anchor.** Section 4-4 (never from memory) → Section 0-A-8-3 (anchor discipline) → Section 4-14 (NEED directive).
+
+**You are unsure if a rule applies.** Section 0-A-9-2 (conditional rules) → Section 0-A-8-4 (conditional handling).
+
+### 0-A-9-5. Session changelog
+
+Patches P162 through P170j added the framework across 16 successful patches. Three patches failed on anchor-from-memory (P165, P166, P167) — the exact failure mode Section 0-A-8-3 and Section 4-4 warn against, documented here for the record, not erased.
+
+The next AI reads this section, then reads Sections 0-A through 0-A-8, then uses Section 14-6 (session refresh) to know the current state, then continues. Reading the entire document is not required; reading this index plus the four foundation sections is sufficient for 90% of work.
+
+If a future patch adds a new cluster, rule, or forbidden pattern, it must update the relevant table in Section 0-A-9 in the SAME patch. An index that drifts from the document is worse than no index at all.
 
 
 ---
