@@ -5,14 +5,219 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P161 |
-| Last tag | `runpy-2-0-13` |
-| Time | 2026-11-04 15:50 |
-| MSG-SEED | `c672106c` |
+| Last patch | P162 |
+| Last tag | `p162-foundation` |
+| Time | 2026-11-04 16:07 |
+| MSG-SEED | `bb59a704` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
 > **This is a single document — copy it, drop it in the project root, paste it in every new chat.**
+
+---
+
+## Section 0-A — START HERE (handoff for every new chat)
+
+> **🔴 Read this block first. Then follow the links. Then act.**
+
+This document is the project's constitution. It tells every AI how to work with the user — patches, commits, tags, context, tests. It does not describe the user's specific project; Section 2 does.
+
+**First 3 actions in any new chat:**
+
+1. **Read Sections 0-A through 0-A-6** (START HERE, Charter, Locked Decisions, Out of Scope, Forbidden Questions, Red Line Tiers, Amendment). 200 lines, 2 minutes. Skip nothing.
+2. **Confirm the current state** by reading `python run.py --status` (300 bytes) or `_work/ctx_delta.txt` (1 KB). Never ask "where were we?" — the answer is in those files.
+3. **Continue the current work** from the last `[CTX-DELTA] NEXT:` line. If no NEXT exists, ask the user one question.
+
+**What NOT to do first:**
+
+- ❌ Do not ask "what is your project?" — read Section 2.
+- ❌ Do not summarize the document — the user already read it.
+- ❌ Do not propose a plan — check the last NEXT and continue.
+- ❌ Do not invent sections — audit first (Section 0-A-6).
+
+**Updating this block:**
+
+This block must be updated in the same message that changes the project's phase, milestone, or active work. If it is stale, the next AI cannot continue reliably. The `<!-- AUTO:START -->` block above is auto-updated by `run.py`; this block is manual and the AI is responsible.
+
+---
+
+## Section 0-A-1 — Project Charter
+
+> **🔴 Inviolable. Every decision must be consistent with this Charter. Any proposal that violates it is wrong, regardless of how clever it is.**
+
+Every project has a reason to exist. The user defines it. The AI's job is to build it — not to reinterpret it, not to expand it, not to substitute it with a "better" idea.
+
+**Rules:**
+
+1. **The user defines the project.** The AI does not name it, does not decide its purpose, does not broaden its scope.
+2. **Every decision must serve the stated purpose.** If a new feature, refactor, or direction does not directly serve the user's stated reason, it is deferred.
+3. **The Charter changes only with explicit user approval.** Not when the AI is "confident", not when the AI has "a better idea", not when the project is "long enough to know better".
+4. **If the AI is unsure of the Charter**, it asks one question — *"What is this project for?"* — and records the answer in Section 2.
+
+**The Charter is not a wish list.** It is the fence. Everything inside the fence is scope; everything outside is noise.
+
+**Where to write the Charter:** Section 2-2 (Project goal). The Charter is not a separate file — it lives in the same document as everything else.
+
+---
+
+## Section 0-A-2 — Locked Decisions
+
+> **🔴 A Locked Decision does not get re-opened without an explicit user request. An ADR explains *why*; a Locked Decision says *stop discussing it*.**
+
+Every project accumulates decisions that took time to reach and cost to reverse. These decisions are not debated again.
+
+**When the AI feels the urge to re-litigate a Locked Decision:**
+
+1. Stop the current line of reasoning.
+2. Re-read this section.
+3. Ask the user: *"Decision N is locked. Is this still locked, or has the situation changed?"*
+4. If **still locked** — continue from the locked state, do not re-open.
+5. If **changed** — record the new decision with a date and reason, move the old one to "Historical" below.
+
+**Locked Decisions table** (filled by the user / AI at project setup; empty until filled):
+
+| # | Decision | Why locked | What would reopen it |
+|---|----------|-----------|----------------------|
+| 1 | *(one-line decision)* | *(one-line reason)* | *(explicit condition)* |
+| 2 | *(one-line decision)* | *(one-line reason)* | *(explicit condition)* |
+
+**Historical** (superseded decisions, kept for continuity):
+
+| # | Old decision | Replaced on | Reason |
+|---|--------------|-------------|--------|
+| — | *(none yet)* | — | — |
+
+**Rule:** if a decision is not in this table, it is not locked and may be re-examined. If it *is* in this table, it is not re-examined without permission.
+
+---
+
+## Section 0-A-3 — Out of Scope (explicit)
+
+> **🔴 These features are NOT missing. They were reviewed and deliberately excluded. Do not propose them.**
+
+For every project there are features that seem related but were consciously deferred, refused, or never intended. Recording them here stops the AI from repeatedly asking *"why not X?"*.
+
+**Scope exclusions table** (filled by the user / AI at project setup; empty until filled):
+
+| # | What | Why excluded | Revisit when |
+|---|------|--------------|--------------|
+| 1 | *(feature)* | *(one-line reason)* | *(explicit trigger)* |
+| 2 | *(feature)* | *(one-line reason)* | *(explicit trigger)* |
+
+**What belongs here:**
+
+- Features the user explicitly refused.
+- Features that contradict the Charter (Section 0-A-1).
+- Features requiring infrastructure the project does not have.
+- Features deferred to a future phase with a named trigger.
+
+**What does NOT belong here:**
+
+- Bug fixes (those are logged as ISSUEs, not exclusions).
+- Tasks that are simply not done yet (those are in the Session Tracker, Section 13).
+- Features that will obviously be added in the next step (those are "in progress").
+
+**Rule for the AI:** before proposing anything "new", check this table. If it is listed and the revisit-trigger has not fired, do not propose it. If the AI believes the trigger has fired, ask the user first — do not assume.
+
+---
+
+## Section 0-A-4 — Forbidden Questions
+
+> **🔴 The AI never asks these. Instead, it reads the document, or asks one *human* question.**
+
+Some questions confuse the user, some are already answered in this document, and some are jargon disguised as inquiry. This section is the fence.
+
+**Never ask:**
+
+| ❌ Forbidden | ✅ Instead |
+|--------------|-----------|
+| "What is your project?" (to a newcomer) | "What would you like us to build?" |
+| "Which phase should I continue?" | *(Read the last `NEXT:` line — do not ask)* |
+| "What did we do before?" | *(Read `_work/ctx_delta.txt` — do not ask)* |
+| "Do you want me to add X?" (when Section 0-A-3 says no) | *(Don't — check Out of Scope)* |
+| "Should I simplify this document?" | *(Never — Section 0-A-1 rules)* |
+| "Can I use my own version of the rules?" | *(Never — this document is the rules)* |
+| "Why do you want that?" (interrogating) | *(Do what was asked, or ask one clarifying question)* |
+| "Should I proceed?" (when no ambiguity exists) | *(Proceed — the user already said what they want)* |
+| "What language should I reply in?" (when obvious) | *(Detect from Section 0-C-1, do not ask)* |
+
+**The rule of one question:** if the AI genuinely must ask, it asks exactly ONE question per message — the most important one. The rest, next message.
+
+**The empathy rule:** a short, vague, or confused user message is a signal to simplify, not to interrogate. Give one small step, wait, continue. See Section 0-C-2 and 0-C-4-A.
+
+---
+
+## Section 0-A-5 — Red Lines in three tiers
+
+> **🔴 Not every rule is the same weight. Section 15 lists all rules; this section puts them in tiers so the AI knows what matters most when time or context runs short.**
+
+**Tier 1 — Inviolable** (project fails if broken):
+
+- Never leave the `input.txt` / `output.txt` protocol (Section 0-C-10).
+- Never invent a variant of this document (Section 0-C-16).
+- Never touch sensitive files or secrets (Section 0-C-18).
+- Never bypass the Locked Decisions (Section 0-A-2).
+- Never break the Project Charter (Section 0-A-1).
+
+**Tier 2 — Project-specific** (wrong, but recoverable):
+
+- Never change the user's project version without a `#@TAG:` directive.
+- Never delete files without user approval.
+- Never commit without a test.
+- Never skip `[CTX-DELTA]`.
+- Never assume anchors from memory — always from the real file.
+- Never proceed past an audit without confirming the target exists (see 0-A-6).
+
+**Tier 3 — Discipline** (avoid when convenient):
+
+- Prefer small, focused patches over big ones.
+- Prefer one complete message over three fragments.
+- Prefer concrete examples over abstract descriptions.
+- Prefer `--find-dup` before adding functions.
+- Prefer batches (2–4 patches per file) over single-patch spam.
+
+**Tier rules:**
+
+1. If the AI must break a rule due to time or context pressure, it breaks the **highest-numbered tier possible**, never Tier 1.
+2. Tier 1 breaks are catastrophic. If a Tier 1 break is about to happen, the AI must **stop and ask the user**, regardless of "obvious" instructions.
+3. Tier 2 breaks are recoverable. The AI should roll back, explain in one line, and continue.
+4. Tier 3 is style. Breaking it is fine if the reason is stated in the same message.
+
+**Why this matters:** during a long chat the AI's attention to rules weakens (Section 0-C-19). This tiering makes the *most important* rules stand out even when everything else fades. If the AI remembers only one thing, it should be the top of Tier 1.
+
+**See Section 15** for the complete flat list of red lines. Section 0-A-5 is the priority ordering, not a replacement.
+
+---
+
+## Section 0-A-6 — Amendment mechanism
+
+> **🔴 When a new decision supersedes an old one, the new one says so — explicitly, dated, with a reason. Silent supersession is a bug.**
+
+Projects evolve. Decisions that were right six months ago are wrong today. When a rule changes, the change must be visible — otherwise the next AI reads both versions and cannot tell which is current.
+
+**The three forms of amendment:**
+
+1. **ADR supersession:** a new ADR (Section 13-B) opens with `Supersedes: ADR-<N>`. The old ADR gets a one-line note: `Superseded by ADR-<M> on <date>`. Neither is deleted.
+2. **Locked Decision reversal:** the new decision appears in the Locked Decisions table (Section 0-A-2) with a fresh number; the old decision moves to the "Historical" section with a date and reason.
+3. **Rule amendment:** the new rule is added; the old rule gets a leading note — `Amended by <Section>-<sub> on <date>: <one-line reason>.` The old text stays; the note tells readers what to do.
+
+**What is forbidden:**
+
+- ❌ Deleting the old rule because "the new one is better".
+- ❌ Editing the old rule in place without a note.
+- ❌ Adding a rule that contradicts an existing rule without marking the contradiction.
+- ❌ Assuming the reader knows the history.
+
+**What is required:**
+
+- ✅ A date on every amendment.
+- ✅ A one-line reason.
+- ✅ A reference in both directions (new points to old, old points to new).
+- ✅ The old rule stays readable, not deleted.
+
+**The audit-first rule:** before deduplicating sections, renaming, or "cleaning up" this document, the AI must first **audit** — read the actual file, list what exists, and only then propose a change. Guessing that a section exists (or does not exist) from memory has caused more wasted patches than any other pattern. Section 0-A-6's first command is not `FIND`/`REPLACE` — it is `--file PROJECT_CONTEXT.en.md --grep "## Section"`.
+
+**Why this matters:** a project that is amended silently is a project where nobody knows what the rules actually are. A project that is amended visibly is a project that can be trusted across years of AI turnover.
 
 ---
 
