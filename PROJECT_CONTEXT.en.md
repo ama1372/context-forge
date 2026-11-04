@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P157 |
-| Last tag | `runpy-2-0-9` |
-| Time | 2026-11-01 17:49 |
-| MSG-SEED | `d2bd1d30` |
+| Last patch | P158 |
+| Last tag | `runpy-2-0-10` |
+| Time | 2026-11-04 15:45 |
+| MSG-SEED | `c37448c9` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -2383,6 +2383,74 @@ If the AI has a localized rule in mind (like the Mobile/Store Playbook in Sectio
 
 ### 0-C-42-4. Separation of Concerns
 Keep local jargon out of global projects. If the user is building a global app, do not mention Bazaar, Jalali, or local laws unless they explicitly ask. If they are building an Iranian app, fully embrace the local ecosystem (like the lessons in Section 0-C-40).
+
+---
+
+## Section 0-C-43 — Live Documentation & Code Mapping
+
+> **🔴 Stop scanning the whole project. Let the map guide you.**
+
+### 0-C-43-1. The Problem
+As a project grows to 50+ files, asking the AI to scan the whole repo to find "where is the login logic?" burns thousands of tokens and causes the AI to lose focus in the middle of the context.
+
+### 0-C-43-2. The Solution: The `docs/` Map
+Every project MUST have a `docs/` folder. Inside, there is a `README.md` or an `INDEX.md` that acts as the **Master Map**.
+It must contain:
+1. **High-Level Overview:** What does the app do? (For human onboarding).
+2. **Feature-to-File Mapping:** A table listing every major feature and the *exact paths* to the files/functions that implement it.
+
+**Example of a Feature Map:**
+| Feature | Backend (Logic/DB) | Frontend (UI) | Tests |
+| :--- | :--- | :--- | :--- |
+| **User Auth** | `src/api/auth.py`<br>`src/db/users.py` | `src/ui/Login.svelte` | `tests/test_auth.py` |
+| **Payment** | `src/api/stripe.py` | `src/ui/Checkout.svelte` | `tests/test_pay.py` |
+
+### 0-C-43-3. The AI's Duty
+1. **Consult the Map First:** Before requesting `dump --full` or scanning multiple files, the AI MUST read `docs/INDEX.md` (or equivalent) if it exists. It then requests *only* the specific files listed for that feature.
+2. **Keep it Updated:** Whenever the AI creates a new feature, moves a file, or changes a core function, it MUST update the `docs/` map in the **same patch**.
+3. **For Humans Too:** The docs must be written in plain language, not just technical jargon, so the human owner can understand where things live.
+
+---
+
+## Section 0-C-44 — Limit-Aware Checkpointing (Save Before You Stop)
+
+> **🔴 If the chat is about to end, freeze the state first.**
+
+### 0-C-44-1. The Problem
+The user says: *"I only have 500 tokens left"* or *"The chat limit is almost here"*. The AI rushes to finish a thought, hits the limit mid-sentence, and the context is lost. The next chat doesn't know what was half-done.
+
+### 0-C-44-2. The Rule
+When the AI (or the user) realizes the limit is near:
+
+1. **STOP writing new code immediately.**
+2. **Update `PROJECT_CONTEXT.en.md` (Section 13 / Session Tracker) first.**
+   * Write exactly what is happening right now (e.g., "Currently refactoring the DB, stopped at line 42, function X is broken").
+   * Write exactly what must be done next.
+3. **Send the context update patch.**
+4. **If tokens allow,** continue the work. If not, end gracefully.
+
+**Do NOT** attempt to finish a 5-file patch if only 100 tokens remain. Save the state, so the next AI can pick up exactly where you left off without guessing.
+
+---
+
+## Section 0-C-45 — Periodic Meta-Cognition (The Strategy Check)
+
+> **🔴 Don't run into a wall repeatedly. Stop and look at the map.**
+
+### 0-C-45-1. The Problem
+AI tends to get "tunnel vision". It starts using a specific pattern (e.g., fixing a bug by adding another `if` statement). 10 patches later, the code is a mess, but the AI keeps digging deeper into the same hole.
+
+### 0-C-45-2. The Rule
+Every **5 to 10 patches** (or when finishing a major vertical slice), the AI MUST perform a **Meta-Cognition Check** before starting the next feature.
+
+### 0-C-45-3. The Checklist
+The AI outputs a short paragraph to the user:
+1. **Pace:** Are we moving fast enough, or are we stuck on edge cases?
+2. **Quality:** Are we duplicating code? Is the file structure getting messy?
+3. **Direction:** Is the current approach actually solving the user's problem, or are we over-engineering?
+
+### 0-C-45-4. The Pivot
+If the check reveals a problem (e.g., "We are using 5 different files for one feature, it's too complex"), the AI must **immediately propose a refactoring patch** (Strategy Pivot) BEFORE writing any new features. Quality and speed come from clean foundations.
 
 ---
 
@@ -5097,7 +5165,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.9"
+VERSION = "2.0.10"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -8055,7 +8123,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if ('VERSION = "2.0.9"') in ctx:
+            if ('VERSION = "2.0.10"') in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
