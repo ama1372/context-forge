@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P178 |
-| Last tag | `p170g-forbidden-patterns` |
-| Time | 2026-11-04 16:54 |
-| MSG-SEED | `609d5738` |
+| Last patch | P179 |
+| Last tag | `p170h-verified` |
+| Time | 2026-11-04 16:55 |
+| MSG-SEED | `13e066cd` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -218,6 +218,45 @@ Projects evolve. Decisions that were right six months ago are wrong today. When 
 **The audit-first rule:** before deduplicating sections, renaming, or "cleaning up" this document, the AI must first **audit** — read the actual file, list what exists, and only then propose a change. Guessing that a section exists (or does not exist) from memory has caused more wasted patches than any other pattern. Section 0-A-6's first command is not `FIND`/`REPLACE` — it is `--file PROJECT_CONTEXT.en.md --grep "## Section"`.
 
 **Why this matters:** a project that is amended silently is a project where nobody knows what the rules actually are. A project that is amended visibly is a project that can be trusted across years of AI turnover.
+
+---
+
+## Section 0-A-7 — Verification record
+
+> **After every structural change to this document, run the four checks. Record the green state. The next AI reads the record, not the full document, to confirm the document is healthy.**
+
+Structural changes include: adding a section, removing a section, renaming a heading, moving a subsection between sections, or changing the document's length by more than 10%. Content edits inside existing sections do not need a full re-verification — only the fence check.
+
+**The four checks:**
+
+| Command | What it proves |
+|---------|----------------|
+| `python run.py --check-md` | No nested or unclosed fences in any `.md` file. |
+| `python run.py --check-sections PROJECT_CONTEXT.en.md PROJECT_CONTEXT.en.md` | Every section header is unique; the document self-compares. |
+| `python run.py --health` | Bootstrap + document + self-test + git, in one command. |
+| `python run.py --self-test` | The tool's own integrity: required constants, functions, Section 35 embed in sync. |
+
+**How to run them:**
+
+- As a batch inside `input.txt`: use four POST directives — one per check. The POST commands run only if the patch succeeded (FAIL: 0).
+- Manually, one at a time, when the document was edited outside a patch (by hand, by a tool, by the Section 35 sync command).
+
+**What green means:**
+
+- The fence check ends with the no-nested-or-unclosed summary line.
+- The sections check ends with the section-sets-match line.
+- The health check ends with HEALTH: GREEN.
+- The self-test ends with all-checks-passed.
+
+**What to do when red:**
+
+1. Read the output file — the fail or warn line names the exact file and line.
+2. Fix the specific problem — do not re-run the full verification hoping it passes.
+3. Re-run only the failing check. When it goes green, run the health check to confirm nothing else broke.
+
+**Where the record lives:** in `_work/ctx_delta.txt`, appended to the CTX-DELTA block. The tag suffix `-verified` marks a run where all four checks were green. A tag without that suffix may still be green — the suffix is a convention, not a guarantee.
+
+**Why this section exists:** the document grows. Long documents rot silently — a fence missing its pair, a section number duplicated by a careless patch, a tool that drifted from its embedded source. Four commands catch these rot patterns in under 30 seconds. Not running them is the failure mode; the checks themselves are trivial.
 
 ---
 
