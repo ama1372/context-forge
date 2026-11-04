@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P177 |
-| Last tag | `p170f-research` |
-| Time | 2026-11-04 16:52 |
-| MSG-SEED | `020b583f` |
+| Last patch | P178 |
+| Last tag | `p170g-forbidden-patterns` |
+| Time | 2026-11-04 16:54 |
+| MSG-SEED | `609d5738` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -5770,6 +5770,72 @@ A minimal real example (indent = 4 spaces, no nested fences):
 | 5000-line file | Hard to read | Modular |
 | 200-line function | Hard to test | Split into smaller |
 | No docs | The next dev is lost | docstring |
+
+---
+
+### 28-4. Forbidden patterns in code development
+
+> **These patterns have caused real failures. Each row is a lesson learned the expensive way. If a patch proposes any of them, the patch is wrong.**
+
+The general principles are in Section 21 (Code Quality). This section lists the specific patterns that repeatedly break projects — not because they are unusual, but because they look reasonable in isolation.
+
+**Code modification:**
+
+| ❌ Forbidden | Why | ✅ Instead |
+|--------------|-----|-----------|
+| Regex on a source file to modify attributes | Regex cannot see nested `{}`, `<>`, or `""` inside an attribute. Matching stops at the first `>` — everything after is corrupted. | The language's parser, or hand-written FIND/REPLACE |
+| `git add -A` in a scripted patch | Stages unrelated files (editor backups, untracked artifacts, `_work/`, secrets) that should not be committed | `git add <specific paths>` or `#@COMMIT:` with explicit paths |
+| `rm -rf` / `rmdir /s` without listing targets | Deletes files the AI did not know existed. No recovery. | Explicit file list, `safe_trash` if available, or move to `_work/trash/` |
+| Editing `PROJECT_CONTEXT.en.md` without `--check-md` after | Nested fences silently corrupt the document; markdown parsers close early and eat content | Always `#@POST: --check-md` on any patch touching `.md` files |
+| Writing to `_work/` as if it were project source | `_work/` is runtime, gitignored, wiped by `--clean`. Anything durable there is lost | Write to the project's source directory |
+
+**Backend and data:**
+
+| ❌ Forbidden | Why | ✅ Instead |
+|--------------|-----|-----------|
+| Silent `try/except: pass` on a write | Data loss with no error. User sees success, record is gone. | Propagate the error; the caller must decide |
+| `let _ = <write>` on INSERT/UPDATE | Same as above — the write may fail silently | `let result = ... ?;` — propagate |
+| Schema created lazily inside an add command | Fresh install has no tables until first visit. Diagnostics, backup, migrations break | All `CREATE TABLE IF NOT EXISTS` in the startup init (Section 21-6) |
+| Editing a config value in place when a historical report depends on it | Past reports recalculate differently when viewed in the future | Versioned table with `effective_from`/`effective_to` (Section 21-8) |
+| Recomputing all past records after a rate change | Erases history; makes past reports unreliable | Freeze the computed value in the transaction at write time |
+| Reading a table without checking the profile/scope filter | Cross-tenant data leak. User sees records they should not. | Scope by the active user/persona/workspace, always |
+
+**Frontend and UI:**
+
+| ❌ Forbidden | Why | ✅ Instead |
+|--------------|-----|-----------|
+| `alert()` / `confirm()` for non-blocking feedback | Blocks the UI, looks dated, cannot be dismissed gracefully | Toast or banner (Section 24-5 item 3) |
+| Silent success (no toast, no state change) | User repeats the action; duplicate records | Explicit success signal (Section 24-5 item 4) |
+| Destructive action without confirmation | One tap deletes a year of data | Explicit confirm dialog (Section 24-5 item 5) |
+| Empty state = blank area | User thinks the app is broken | Icon + message + next-step CTA (Section 24-5 item 2) |
+| Hardcoded hex colors in components | Dark mode, brand change, or A/B test requires finding every occurrence | Theme variable (CSS custom property or theme file) |
+| `if persona === 'X'` gating a permission | Persona is presentation, not permission. Security bug when audited | Gate on role, verify on backend (Section 24-12) |
+| `width: 90vw; max-width: 700px` on mobile modals | Never reaches 100% width, inner content assumes desktop widths | `width: 100%` below 500px breakpoint (Section 24-10) |
+
+**Process and continuity:**
+
+| ❌ Forbidden | Why | ✅ Instead |
+|--------------|-----|-----------|
+| Anchor from memory instead of the real file | Mismatch fails the patch, or worse — matches the wrong location. Observed in every failed patch of the current project. | Copy from `--file X` output in the current conversation (Section 4-4) |
+| `#@IF:` without a `#@ENDIF:` | Swallows everything after; subsequent patches silently apply inside the block | Always pair (Section 0-C-14-2) |
+| Nested triple-backtick fences in this document | Markdown closes the outer fence early; content eaten (Section 12-7) | 4-space indent for embedded examples, never fenced |
+| `--grep --head N` to read a block | `--grep` filters first, then `--head` limits to first N matches — returns "first N matched lines", not "N lines after match" | `--file X --lines A-B` after `--grep` gives line numbers, or Python with brace matching |
+| Asking "should I proceed?" when no ambiguity exists | Wastes a message; the user already said what they want (Section 0-A-4) | Proceed, or ask the one genuinely ambiguous question |
+| Making assumptions silently | Produces features the user did not want | State assumptions before the patch (Section 19-6) |
+| Deleting a dev/test/archived feature "to clean up" | Removes the recovery path; the feature returns via git archaeology | Hide behind dev flag (Section 15-4) |
+| Continuing to fix a failing test through 20 patches | Ships nothing user-facing while tests are chased | Log as ISSUE, fix in next relevant patch (Section 17-11) |
+
+**The rule for this table:**
+
+When a patch proposes any pattern in the leftmost column, **the patch is wrong**. Even if it "works this time". The pattern has failed before; it will fail again. Replace with the right column, or ask the user before deviating.
+
+**When a new pattern should be added:**
+
+- After a failure that took 3+ attempts to fix (Section 14-9 — Failure Lessons Ledger).
+- After the same mistake happens twice in the same project.
+- After a user reports a bug that the pattern was the root cause of.
+
+The table grows; it never shrinks. A pattern that is no longer relevant is marked `Superseded by <new> on <date>` — not deleted.
 
 ---
 
