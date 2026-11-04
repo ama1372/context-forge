@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P175 |
-| Last tag | `p170d-debugging` |
+| Last patch | P176 |
+| Last tag | `p170e-extensibility` |
 | Time | 2026-11-04 16:51 |
-| MSG-SEED | `31eef905` |
+| MSG-SEED | `dca28a3b` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4907,6 +4907,48 @@ A patch that names the real file (src/main.py) and the real function (handle_sub
 **Exception:** when teaching a *pattern* to a general audience (Section 0-C-13-4 for language-neutral tool rewrites, for example), abstract is appropriate. The rule is: concrete when the reader is a specific user working on a specific file, abstract when the reader is any user on any project.
 
 **Why this matters:** every minute a user spends translating an abstract example into their actual code is a minute of friction. The AI's job is to reduce friction, not to be "clean" in its presentation.
+
+### 19-9. User-extensibility pattern — three layers of flexibility
+
+> **A feature that hardcodes its structure cannot be extended by the user. A feature that exposes structure in three layers can.**
+
+Every project eventually reaches a point where the developer's assumptions about structure no longer match some user's actual needs. A WBS with 6 hardcoded phases cannot serve a user with 3 phases or 15 phases. A settings page with hardcoded toggles cannot serve a user who wants a toggle the developer never imagined.
+
+The fix is not "let the user edit everything" (that produces chaos). It is a three-layer pattern:
+
+**Layer 1 — structure is data, not code.**
+
+The phases, the tabs, the categories — whatever the structure is — live in a database table, not in a JavaScript array. A user with 15 phases has 15 rows; a user with 3 phases has 3 rows. The developer provides defaults on first use; the user edits from there.
+
+**Layer 2 — templates save and load structure.**
+
+When a user customizes their structure, they can save it as a template. A second project starts from the template instead of the defaults. Templates are stored locally, not synced (Section 2-5-7-A — no cloud). A user who builds many similar projects saves hours.
+
+**Layer 3 — custom fields extend individual records.**
+
+When a user needs metadata the developer did not anticipate, they add a custom field to a record. The field has a name, a type, a value. It appears in the record's detail view. It is not a schema change — it is a value in a JSON column or a key-value table.
+
+**What the three layers buy together:**
+
+- A user with a standard project uses the defaults. They see the same clean UI the developer designed.
+- A user with a non-standard project customizes Layer 1 (structure). The UI reflects their structure, not the developer's.
+- A user who builds many similar projects uses Layer 2 (templates). They start from where they left off.
+- A user who needs one more field on one record uses Layer 3 (custom fields). They do not have to file a feature request.
+
+**What the layers do NOT buy:**
+
+- The layers do not make the feature "infinitely flexible". Structure, templates, and fields are the three axes. A user who wants a completely different feature (not structure, not template, not field) needs a developer.
+- The layers do not guarantee quality. A user who creates 50 phases has 50 phases; if the UI becomes unusable, that is the user's choice, not a bug the developer must fix.
+- The layers do not replace onboarding. A first-time user still needs to see the defaults and understand what they are editing.
+
+**Where to apply this pattern:**
+
+- Task lists (phases to templates to custom fields).
+- Settings pages (sections to presets to advanced fields).
+- Report builders (columns to saved views to calculated fields).
+- Any feature where the developer says "users probably want X" — check if X should be data, not code.
+
+**The test:** ask "what if a user wants 3 of these instead of 6?" If the answer is "we would change the code", the feature needs Layer 1. If the answer is "they can edit it", the feature already has it. If the answer is "we never thought about it", it needs all three.
 
 ---
 
