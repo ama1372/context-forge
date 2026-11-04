@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P159 |
-| Last tag | `runpy-2-0-11` |
-| Time | 2026-11-04 15:48 |
-| MSG-SEED | `6675e205` |
+| Last patch | P160 |
+| Last tag | `runpy-2-0-12` |
+| Time | 2026-11-04 15:50 |
+| MSG-SEED | `4ed4b361` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -3007,6 +3007,7 @@ Directives are lines starting with `#@` at the top of `input.txt`, before the fi
 | `#@ROADMAP: a \| b \| c` | Pipe-separated roadmap for `_work/ctx_delta.txt` (at least 2 items) |
 | `#@PUSH:` | After a successful commit + tag, push both to `origin` (current branch) |
 | `#@COMMIT_IF: all-ok\|any-ok\|always\|never` | Override the commit policy (default: `all-ok`) |
+| `#@GIT_ADD_ALL:` | Stage *all* modified files (`git add -u`) before committing. Essential when a `PYTHON` script modifies files indirectly. |
 | `#@IF:` / `#@ELIF:` / `#@ELSE:` / `#@ENDIF:` | Conditionally include/exclude patch blocks (Section 0-C-14) |
 
 **Order of execution:** apply → POST → NEED → auto-context update → git commit → git tag.
@@ -5189,7 +5190,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.11"
+VERSION = "2.0.12"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -5640,6 +5641,7 @@ def read_directives(text):
     dump_mode = None
     push = False
     sync_after = False
+    git_add_all = False
     commit_if = None
     next_step = None
     roadmap = []
@@ -5682,6 +5684,8 @@ def read_directives(text):
         if m: dump_mode = m.group(1).lower(); idx += 1; continue
         if s in ('#@PUSH:', '#@PUSH'):
             push = True; idx += 1; continue
+        if s in ('#@GIT_ADD_ALL:', '#@GIT_ADD_ALL'):
+            git_add_all = True; idx += 1; continue
         if s in ('#@SYNC:', '#@SYNC'):
             sync_after = True; idx += 1; continue
         m = re.match(r'^#@CMD_GREP:\s*(.+)$', s)
@@ -5717,7 +5721,7 @@ def read_directives(text):
         idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
             commit_msg, tag_name, nodump, dump_mode, push, sync_after,
-            commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
+            git_add_all, commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
             '\n'.join(lines[idx:]))
 
 
@@ -5901,7 +5905,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -6434,7 +6438,7 @@ def do_apply(patch_id=None):
     global ANSWERS
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push, sync_after,
-     commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
+     git_add_all, commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
      remaining) = read_directives(content)
     if did is not None: patch_id = did
     if asks:
@@ -6927,6 +6931,8 @@ def do_apply(patch_id=None):
                     if Path(context_name).exists() and '<!-- AUTO:START -->' in read(Path(context_name)):
                         paths.add(context_name)
                         break
+                if git_add_all:
+                    subprocess.run(['git', 'add', '-u'], capture_output=True)
                 stageable = []
                 for path in sorted(paths):
                     if _patch_path_error(path):
@@ -7579,7 +7585,7 @@ def do_capabilities():
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD PYTHON DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
-          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF #@CMD_GREP #@CMD_TAIL")
+          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF #@CMD_GREP #@CMD_TAIL #@GIT_ADD_ALL")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
     print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
     print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")
@@ -8147,7 +8153,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if ('VERSION = "2.0.11"') in ctx:
+            if ('VERSION = "2.0.12"') in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
