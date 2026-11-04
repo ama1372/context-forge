@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P163 |
-| Last tag | `p163-testing-discipline` |
-| Time | 2026-11-04 16:09 |
-| MSG-SEED | `03d47289` |
+| Last patch | P164 |
+| Last tag | `p164-data-safety` |
+| Time | 2026-11-04 16:10 |
+| MSG-SEED | `6b036aba` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4579,6 +4579,163 @@ except Exception as e:
 - `# TODO: <description>`
 - `# FIXME: <description>`
 - `# HACK: <description>`
+
+### 21-6. Schema First Rule
+
+> **All tables are created at application startup, before any feature code can run. Never lazily, never inline in an add command.**
+
+A lazy schema creates a class of bug that is invisible during development and devastating in production: a fresh install has no tables until each feature is visited at least once. The consequences are silent:
+
+- A "diagnostics" page shows "no such table" on a brand-new install but works fine on the developer's machine.
+- A backup taken on day one misses every lazy table — the restore looks complete but is not.
+- A migration script that assumes the table exists fails on first run.
+- Every feature depends on "the user already visited this page once", which is never written down and never tested.
+
+**The rule:**
+
+1. Every `CREATE TABLE IF NOT EXISTS` statement lives in the project's single initialization function, called once before the main loop starts.
+2. Add commands perform inserts, not DDL. An add command that creates a table is a red flag.
+3. The per-command `IF NOT EXISTS` guard may remain as belt-and-suspenders for one release cycle, then removed.
+4. Any new table added by a patch must be added to the initialization function **in the same patch** (Section 17-10).
+
+**Verification:** a fresh install (empty database file) must pass every flow test on the first try. If a flow test requires "visiting page X first", the schema is not first — it is lazy.
+
+### 21-7. Startup Guarantee
+
+> **The user's first action after install must not fail because the schema is not ready. The application is fully usable from second zero.**
+
+This is the user-facing corollary of Section 21-6. It is listed separately because the reasoning is different:
+
+- **Schema First** is about *code structure* — where the DDL lives.
+- **Startup Guarantee** is about *user experience* — the first interaction must succeed.
+
+**Checklist for every new release:**
+
+- [ ] Fresh install on a clean machine (no prior data, no cached schema).
+- [ ] First action attempted: does it succeed?
+- [ ] Second action attempted (one that touches a different table): does it succeed?
+- [ ] Backup taken immediately after install: does the resulting file contain every table the app knows about?
+- [ ] Restore that backup on a second clean machine: does every feature work?
+
+If any of these fails, the schema is not startup-safe. Fix Section 21-6 before the release.
+
+### 21-8. Temporal Integrity
+
+> **Any value that can change over time must be versioned. Past calculations must not be corrupted by future edits.**
+
+The failure mode: a project computes a financial result from a rate. Six months later, the rate is edited in place. Every past report now recalculates differently. The user's March profit report from March is different from the March profit report viewed in September. Both claim to be authoritative. Both are wrong.
+
+**Three questions before any computed feature:**
+
+1. **Can this value change over time?** — If yes, version it. `effective_from`, `effective_to` (nullable for "still active"), and never edit the old version in place.
+2. **Does this calculation depend on a past value?** — If yes, read the version that was *effective at the moment of the calculation*, not the current version. The moment of the calculation is stored on the record itself.
+3. **Will a future edit corrupt past reports?** — If yes, freeze the computed values inside the transaction row. The transaction is the historical record; the current config is only for *new* transactions.
+
+**Forbidden patterns:**
+
+- ❌ `UPDATE config SET rate = ?` — this erases history.
+- ❌ Recomputing all reports after a rate change — past reports become unreliable.
+- ❌ Assuming "the current rate" reflects the past — it does not.
+
+**Correct patterns:**
+
+- ✅ A versioned config table with `effective_from` and `effective_to` columns. Old rows stay.
+- ✅ Transactions that carry the computed value at write time, not the rate. The rate is historical; the value is immutable.
+- ✅ A "change rate" action that inserts a new row, does not update the existing one.
+
+**Where to apply this:** prices, rates, percentages, salaries, tax rules, currency exchange rates, commission structures, any number that appears in a past report and could appear in a future one.
+
+**Where it may not apply:** purely presentational preferences (theme, language) — those may be edited in place because no historical report depends on them.
+
+### 21-9. Single Source for Complex Logic
+
+> **Every piece of complex logic lives in exactly one file, with a test that proves it correct. Never re-implement in another file.**
+
+Complex logic — date conversion, currency arithmetic, tax calculation, permission checks, string normalization — is easy to get subtly wrong. If two files implement the same rule, and one is fixed while the other is not, the project has two truths.
+
+**The rule:**
+
+1. One canonical file per piece of complex logic.
+2. A test that exercises the canonical file against known-correct inputs and outputs.
+3. Every other file imports the canonical one. No copy-paste, no "simplified version", no "I'll just do it inline here".
+4. If a caller needs a variant, the variant lives in the canonical file — not in the caller.
+
+**Anti-patterns that break this rule:**
+
+- Two files each converting dates with slightly different formulas. On leap years, one is wrong.
+- A "quick" currency format function inside one page that rounds differently than the shared one.
+- A permission check duplicated at three layers because "the model is not imported here".
+
+**The audit:** before adding a function that looks like a rule, search the project for the rule's name. If a function already exists, use it. If it exists but is wrong, fix it in one place. Section 21-10 (Deduplication) covers the process.
+
+### 21-10. Silent Wrapping = Bug (context matters)
+
+> **Ignoring an error is sometimes correct (migrations). Ignoring an error in a create/update path is always a bug.**
+
+Some operations legitimately ignore errors:
+
+- `CREATE TABLE IF NOT EXISTS` — "already exists" is not a failure.
+- `ALTER TABLE ADD COLUMN` — "column already exists" is not a failure.
+- Best-effort cleanup after a failure — the failure to clean up is secondary to the original failure.
+
+But an *insert* or *update* that silently fails is a data-integrity bug that hides until the user notices missing data. The pattern that causes it:
+
+- Wrapping the query in a `try/catch` that swallows the exception and returns success.
+- Ignoring the result code without checking it (`let _ = ...` in Rust, `try: ... except: pass` in Python).
+- Logging the error but proceeding as if it succeeded.
+
+**The rule:**
+
+1. **Migrations:** ignore errors. Idempotent operations are the point.
+2. **Create / update / delete:** propagate the error. The caller must know it failed.
+3. **Best-effort cleanup:** log, do not swallow. The user should see *why* the cleanup failed even if the operation is considered complete.
+4. **Reads:** propagate the error; do not return empty results when the query failed — the caller cannot distinguish "empty" from "broken".
+
+**How to check:** after every patch that touches a write path, run the flow test (Section 17-7). If the flow test fails to see the new record (Section 17-8), the write path is silently swallowing an error. Find the swallow, fix it.
+
+### 21-11. Known Limits Registry
+
+> **Every library, tool, and framework has limits. Write them down. Not knowing them costs more than learning them.**
+
+Examples of limits that have cost projects hours:
+
+- A query builder that supports tuples up to N fields. Beyond N, the build fails but only when the tuple is instantiated — often far from the definition.
+- A JSON parser that treats `null` and missing as different but the model treats them as same.
+- A Markdown parser that nests fences incorrectly. Nested fences corrupt documents silently.
+- A terminal that treats `<` specially inside double quotes. Complex shell one-liners break without an obvious error.
+- A CLI flag that filters before it limits, so `--grep "X" --head N` returns "first N matches", not "N lines after X".
+
+**The registry:** keep a table in this section (filled by the project), one row per known limit:
+
+| Component | Limit | Consequence | Workaround |
+|-----------|-------|-------------|-----------|
+| *(name)* | *(what fails)* | *(what the user sees)* | *(how to avoid)* |
+
+**When to add a row:**
+
+1. When the AI spends more than 3 tool calls diagnosing a failure that turns out to be a library limit.
+2. When a bug is fixed by "working around" the library rather than using it correctly.
+3. When the same mistake happens twice in the same project.
+
+**When to remove a row:** when the library upgrades and the limit is gone. The registry is not permanent — it reflects reality.
+
+### 21-12. Data Migration Discipline
+
+> **Every schema change that touches an existing install is a migration, even if it is only one column. Migrations are idempotent, logged, and reversible.**
+
+Not every project has a formal migration system, but every project has schema changes after the first release. Three rules:
+
+1. **Idempotent:** running the migration twice produces the same result as once. `ADD COLUMN` wrapped so that "already exists" is not an error. Data transformations guarded by "if column is at version X".
+2. **Logged:** every migration prints (or logs) "migration N: description — applied" so the operator knows what happened on which install.
+3. **Reversible, or at least forward-safe:** if a migration changes data (converts dates, renames a column), the old data must be recoverable from a backup taken before the migration ran. The migration itself does not need to be reversible; the *state* must be.
+
+**The rule for the AI:**
+
+- Never edit an existing migration. Add a new one.
+- Never run a migration on production data without a backup first.
+- Never skip a migration check "because it will obviously work". A skipped migration is a silent data loss on a fresh install.
+
+**Where migrations live:** the same file that runs the startup schema creation (Section 21-6). Both run at startup, before any feature code. Migrations run in order, then schema-ensure runs (idempotent), then feature code.
 
 ---
 
