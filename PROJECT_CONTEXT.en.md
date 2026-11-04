@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P173 |
-| Last tag | `p170b3-phase-gates` |
-| Time | 2026-11-04 16:30 |
-| MSG-SEED | `1022bd8f` |
+| Last patch | P174 |
+| Last tag | `p170c-hide-not-delete` |
+| Time | 2026-11-04 16:32 |
+| MSG-SEED | `979560d8` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4404,6 +4404,52 @@ The AI states the gate status in every state refresh (Section 14-6) — the gate
 2. **Suggest a rollback:** `git reset --hard <tag-safe>`.
 3. **Explain the reason** — one line.
 4. **After rollback, retry.**
+
+---
+
+### 15-4. Hide, don't delete — for dev-only, test-only, archived code
+
+> **🔴 When a feature is no longer visible to normal users but might be needed later, hide it. Do not delete it.**
+
+Dev-only routes, test routes, archived transports, sample data — these accumulate as a project evolves. The instinct is to delete them ("we don't use them, remove the dead code"). This instinct is wrong.
+
+**Why:**
+
+- A deleted feature cannot be restored without git archaeology.
+- A feature that "we might use later" was specified, tested, and integrated once — re-doing it costs more than hiding it.
+- Deleting test routes means the next AI cannot run the tests that proved the feature worked.
+
+**The three gates before any release:**
+
+1. **Not visible in the sidebar** (or menu). The entry is removed from whatever source lists menu items (Section 24-8 Menu Registry). The route exists; the link does not.
+2. **Not visible as UI.** The page or component renders only when a dev-mode flag is active. Normal users see nothing.
+3. **Not directly accessible without the dev flag.** If the URL is typed, the page redirects to home (or shows "not available"). Normal users cannot reach it.
+
+**Categories and fate:**
+
+| Category | What | Fate |
+|----------|------|------|
+| Dev routes | Internal dashboards, debug pages, admin utilities | Hide (three gates) |
+| Test routes | Smoke tests, flow tests, visual regression | Keep on disk; hide from sidebar and from release UI |
+| Archived features | Features paused but not abandoned | Comment out or hide; the code stays |
+| Sample data | Seed data, demo records, fixtures | Hide from normal users; keep in source for dev |
+| Console logging | Debug output, trace messages | Keep; hidden from user, useful for support |
+
+**Forbidden:**
+
+- ❌ Deleting a dev route "because it's unused".
+- ❌ Removing test files "to clean up".
+- ❌ Deleting archived features without checking the git log for why they were paused.
+- ❌ Deleting console logging "for a cleaner build".
+
+**Correct:**
+
+- ✅ Move hidden routes into a `dev` group in the menu registry.
+- ✅ Add a `dev: true` flag to the menu entry; the sidebar filters.
+- ✅ Guard the page with a dev-mode check that redirects on miss.
+- ✅ Keep the test file on disk, even if it is not run in production.
+
+**Why this matters:** the cheapest state of a feature is "working and hidden" — it costs nothing to keep, and costs nothing to restore. The most expensive is "working and visible to everyone, including users who do not want it". Between those two, "deleted" is the worst of all: it costs nothing now, and costs a weekend to restore when it is needed.
 
 ---
 
