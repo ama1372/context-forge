@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P171 |
-| Last tag | `p170b1-lessons` |
+| Last patch | P172 |
+| Last tag | `p170b2-readiness` |
 | Time | 2026-11-04 16:29 |
-| MSG-SEED | `504bd9cf` |
+| MSG-SEED | `9f49e7e9` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4290,6 +4290,42 @@ A failure that is fixed silently is a failure that will happen again. The AI fix
 3. **When facing a bug, the AI checks the ledger first.** "Have we seen this before?" is 1 line of search; re-diagnosing is 20 minutes.
 
 **Why this matters:** the ledger is the project's memory of its own mistakes. Without it, every AI re-learns the same lessons. With it, every AI starts from where the last one ended.
+
+---
+
+### 14-10. Readiness Matrix — one table, one view of what is actually ready
+
+> **A single table, updated every release: each major area, its percentage, the evidence, what remains. Not a claim — a table.**
+
+A project that has no readiness view drifts between "it feels done" and "it is done". The user sees the app work, the developer sees the tests pass, and nobody knows if the release is actually shippable.
+
+**The matrix format (one table):**
+
+| Area | % | Evidence | Remains |
+|------|---|----------|---------|
+| Core feature A | 100 | tests A1, A2, A3 passing | — |
+| Core feature B | 80 | tests B1, B2 passing; B3 pending | B3, edge cases |
+| Feature C | 40 | tests C1 passing; C2-C4 pending | C2-C4, UI polish |
+| Platform X | 90 | local verified; device untested | device test |
+| Documentation | 100 | sections 1-10 reviewed | — |
+| Release process | 100 | signed, tagged, reproducible | — |
+
+**Rules:**
+
+1. **Every row has evidence.** A "%" without evidence is a guess. Evidence is a test name, a device run, a signed artifact, a review.
+2. **Every row has "remains".** Even 100% rows should say "—" explicitly, not blank. A blank cell looks like "not filled in", not "nothing remains".
+3. **Percentages are honest.** 90% means "one known area at 10% missing", not "feel 90%". A 90% with 10 pending tests is 80% and the table says 80%.
+4. **The matrix is updated every release**, not every patch. Between releases, the changes are the patches themselves (Section 14-8 — snapshots).
+
+**What the matrix is NOT:**
+
+- **Not a promise date.** No dates in the table. "100% by Friday" is a promise; the matrix is evidence-based.
+- **Not a marketing view.** The matrix is for the team, not for users. Showing users a "40% ready" feature they can already use is confusing.
+- **Not permanent.** Rows are added, merged, retired as the project evolves. A row that becomes stale is updated, not deleted.
+
+**Where the matrix lives:** in Section 13 (Session Tracker), as a subsection. Or in the project's README if it has one. Not in chat, not in a separate file the AI has to remember to read.
+
+**The AI's duty:** before claiming any feature "works", it names the row. Before claiming any release "ready", it checks every row at 100% or has a documented reason why a lower row is shippable.
 
 ---
 
