@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P179 |
-| Last tag | `p170h-verified` |
-| Time | 2026-11-04 16:55 |
-| MSG-SEED | `13e066cd` |
+| Last patch | P180 |
+| Last tag | `p170i-self-discipline` |
+| Time | 2026-11-04 16:58 |
+| MSG-SEED | `68be42ee` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -257,6 +257,142 @@ Structural changes include: adding a section, removing a section, renaming a hea
 **Where the record lives:** in `_work/ctx_delta.txt`, appended to the CTX-DELTA block. The tag suffix `-verified` marks a run where all four checks were green. A tag without that suffix may still be green — the suffix is a convention, not a guarantee.
 
 **Why this section exists:** the document grows. Long documents rot silently — a fence missing its pair, a section number duplicated by a careless patch, a tool that drifted from its embedded source. Four commands catch these rot patterns in under 30 seconds. Not running them is the failure mode; the checks themselves are trivial.
+
+---
+
+## Section 0-A-8 — Self-discipline (meta-rules for the AI)
+
+> **🔴 Section 0-A-1 through 0-A-7 define the project's rules. Section 0-A-8 defines the AI's behavior in producing patches. It is the meta-layer: how the AI should work, not what it should work on.**
+
+The previous sections describe the target. This one describes the aim. A patch that violates 0-A-8 is technically compliant with 0-A-1 through 0-A-7 yet is still wrong — because the AI did not push itself, or shrank in the face of pressure, or guessed an anchor it had not seen.
+
+### 0-A-8-1. Patch ambition — push yourself
+
+> **The AI is expected to produce substantial patches. A patch under 20 lines is usually a symptom of insufficient design, not of careful caution.**
+
+Section 4-16 says "prefer longer input.txt" — this subsection enforces it. The user is paying for completed work per round trip, not for messages. Every tiny patch is a round trip the user must run, wait for, and send back. Four tiny patches cost the user four times more effort than one substantial patch.
+
+**Before sending any patch, the AI asks itself:**
+
+1. **Is there a larger logical unit of work I can complete in this same message?** — If yes, complete it before sending. The patch grows; the round trips drop.
+2. **Am I sending this small to "test if the anchor works"?** — If yes, use `--file X` or `--grep "…"` first. Never send a patch to test an anchor.
+3. **Am I splitting one feature into four patches for fear of failure?** — If yes, do not split. Send the whole feature. If it fails, the failure is at one anchor; fixing one anchor is cheaper than four round trips.
+4. **What was the last substantial patch I sent?** — If more than 3 patches ago, the AI has drifted into tiny-patch mode. Stop, design the next patch at full size.
+
+**When small patches ARE appropriate:**
+
+- Typo fix, one-line bug fix, single-file edit under 10 lines — the work itself is small.
+- After a failure — isolate the failing block from the working blocks (Section 0-A-8-2).
+- During a multi-part series where each patch has a distinct purpose (Section 0-A-8-2 explains the pattern).
+
+**When small patches are NOT appropriate:**
+
+- A "documentation update" that could have been batched with the feature patch (Section 19-4 — bundle strategy already says commit backend/frontend/context separately, not four ways).
+- A "config change" that could be inside the same file as the feature.
+- A "test addition" that could ship with the feature it tests (Section 17-10 — coverage in same patch).
+
+**The default patch size:** one complete logical unit of work. Where "complete" means: the code, the test, the context update, the commit message — all in one message. Not one-third of the unit.
+
+**The discipline:** if the AI catches itself sending a 15-line patch because "it feels safer", it should stop and expand. The safer path is not smaller patches — it is correct anchors and full-scope patches.
+
+### 0-A-8-2. The overcorrection trap — never shrink after failure
+
+> **🔴 When a patch fails, the instinct is to shrink. This is wrong. The correct response is to fix the root cause and re-send at the ORIGINAL size.**
+
+The failure pattern that costs the most patches in the entire project's history: a large patch fails on one anchor. The AI concludes "I should be more careful", and sends three tiny patches instead. The three tiny patches fail on their anchors too (because the AI never verified the actual text). Six patches later, the same feature is still not shipped.
+
+**What actually happened when a patch fails:**
+
+- The anchor did not match the file. Nothing more. The AI's design was correct; the AI's memory of the file was wrong.
+- The fix: fetch the real text via `--file X` or `--grep "…"`, replace the anchor, re-send the whole patch.
+- The root cause is always the same: anchor from memory (Section 0-A-8-3). Not: "my design was too ambitious".
+
+**What the AI must NOT do after a failure:**
+
+- ❌ Send a smaller version of the same patch "to see if it works this time".
+- ❌ Split the patch into one FILE block per patch "to isolate the failure".
+- ❌ Remove sections of the patch "in case they caused the failure".
+- ❌ Apologize at length and propose a plan — the user does not need the plan, they need the patch.
+
+**What the AI MUST do after a failure:**
+
+- ✅ Read `output.txt` — the `SUGGEST` line names the nearest match and its line number.
+- ✅ Run `--file X --lines A-B` or `--grep "…"` to fetch the exact text near the failure.
+- ✅ Replace the FIND anchor with the exact text.
+- ✅ Re-send the WHOLE patch (same size, same scope) with the corrected anchor.
+- ✅ One-line note: "Anchor from memory was wrong; corrected using --file. Same patch, same size."
+
+**Why this is critical:** every overcorrection costs at least 2 extra patches (one to shrink, one to expand back). The P165-P167 sequence (three failed patches in a row, each smaller than the last) is the canonical example — three round trips, zero work shipped, because the AI shrank instead of fetching the file.
+
+**The counterweight to Section 4-16:** 4-16 says "prefer longer input.txt". This subsection says "after a failure, keep it long — fix the anchor, do not shrink". Without this counterweight, "prefer longer" is ignored after every failure.
+
+### 0-A-8-3. Anchor discipline — never from memory
+
+> **🔴 If the AI has not SEEN the exact line in this conversation, it cannot use it as an anchor. Not "I remember it", not "it was in the last patch", not "it should be there". Only what is in `--file X` output within this chat.**
+
+Section 4-4 states this. Section 0-A-8-3 enforces it — because the rule being stated has not been enough to prevent its violation.
+
+**The proof:**
+
+- P165 failed: anchor was `---\n\n## Section 20 — DeepSeek`. The `—` (em-dash) was not the character in the file. The AI assumed the character.
+- P166 failed: anchor was `## Section 20 — DeepSeek and the Others`. Same em-dash problem, second guess.
+- P167 failed: anchor was four `<<<OR-FIND>>>` variants of the same line. All four missed because the title text itself was mangled.
+- P168 succeeded: anchor was `## Section 20` (ASCII prefix only). No em-dash, no title.
+
+**Cost:** three failed patches, ~3000 tokens, three context reloads, the user's frustration documented in a single message ("خراب رسید برای همین نزدمش").
+
+**The rule:** before any `<<<FIND>>>`, the AI must be able to point to the exact line in a `--file X` or `--grep "…"` output that appeared in the same conversation, AFTER the most recent patch that could have modified that area. Not from memory, not from a previous conversation, not from "what the document should say".
+
+**What "seen" means:**
+
+- ✅ The line appeared in `--file X --lines A-B` output in this chat.
+- ✅ The line appeared in `--grep "…"` output in this chat.
+- ✅ The line appeared in the last `output.txt` autodump (failed patch suggestions).
+- ❌ The AI wrote the line from memory.
+- ❌ The AI read the line in a previous chat and "remembers" it.
+- ❌ The AI looked at a patch from 6 patches ago and assumed the text is the same.
+
+**The check:** if the AI cannot cite "I saw this exact line at line N of file X, in this chat", it does not have the anchor. It has a guess. Fetch the real line first.
+
+**When `--file` is not enough (rare):** if the file has multiple near-identical lines, the FIND may match the wrong one. Use `--file X --lines A-B` with a narrow range to confirm the exact one, then use a longer FIND that includes surrounding context.
+
+**The enforcement:** the `#@IF: contains PROJECT_CONTEXT.en.md <substring>` guard in the patch header serves as a mechanical check. If the AI is unsure of the anchor, it puts a shorter, safer substring in the guard, and appends `#@NEED: file X --grep "…"` so a mismatch yields the real text for the next attempt.
+
+### 0-A-8-4. Conditional rules — not every rule applies to every project
+
+> **🔴 Some rules in this document are conditional on the project having the technology or context they assume. When not applicable, they are "not applicable", not "not done".**
+
+A document that pretends every rule applies everywhere forces the AI to perform compliance theater. It also prevents projects from honestly documenting their gaps: "we don't have a mobile UI, so mobile modal full-screen is not applicable" is honest; "we did mobile modal full-screen" when there is no mobile UI is theater.
+
+**Current conditional rules** (this list grows when a new rule is added that is not universally applicable):
+
+| Rule | Section | Applies when | Does NOT apply when |
+|------|---------|-------------|---------------------|
+| Static analysis | 30-7 | Project has a linter tool (any of: clippy, eslint, pylint, golangci-lint, etc.) | Project has no linter, or linter is not configured |
+| Competitive research | 19-10 | Feature has an analog in other products (most user-facing features) | Bug fix, refactor, internal tool, documentation change |
+| Mobile modal full-screen | 24-10 | Project renders UI on mobile (WebView, native app, mobile browser) | Desktop-only, CLI-only, backend-only project |
+
+**How the AI handles a conditional rule that does not apply:**
+
+1. **State explicitly** in the state refresh (Section 14-6) or the readiness matrix (Section 14-10): "30-7 static analysis: not applicable (no linter configured)". This is a positive statement, not a gap.
+2. **Do not force compliance.** A project without a linter does not need to install one "to comply with 30-7". The rule exists to guide choice; it is not an obligation.
+3. **If the situation changes** (a linter is added, a mobile target is added, a competitive feature is on the roadmap), the rule re-activates. Update the state.
+
+**What the AI must never do:**
+
+- ❌ Mark a conditional rule as "done" when it was skipped. "Done" means done.
+- ❌ Mark it as "in progress" when the situation does not apply. That implies work is underway when it is not.
+- ❌ Force the technology (install a linter, add a mobile target) purely to comply with a conditional rule.
+- ❌ Skip mentioning it at all — silence looks like a gap the user should worry about.
+
+**What the AI must do:**
+
+- ✅ Acknowledge the rule and its status: "not applicable" (with the reason) or "applicable" (with the plan).
+- ✅ When the project's scope changes to include the technology, re-evaluate in the same patch.
+- ✅ When a new conditional rule is added to the document, add a row to this table so the list stays complete.
+
+**Why this section exists:** a document without an explicit "conditional" list is dishonest. It pretends every rule applies to every project, which produces either false compliance (marking things done) or false gaps (marking things missing that do not apply). Listing the three current conditional rules makes the document honest about its own scope.
+
 
 ---
 
