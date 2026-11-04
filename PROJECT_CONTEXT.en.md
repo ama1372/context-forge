@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P168 |
-| Last tag | `p168-feature-discipline` |
-| Time | 2026-11-04 16:18 |
-| MSG-SEED | `66c89c69` |
+| Last patch | P169 |
+| Last tag | `p169-ux-quality` |
+| Time | 2026-11-04 16:20 |
+| MSG-SEED | `52e0cf34` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4966,6 +4966,224 @@ def install_crash_logger():
 - [ ] Version updated.
 - [ ] Changelog written.
 - [ ] Docs complete.
+
+---
+
+### 24-5. UX Quality Checklist — mandatory before shipping any user-facing change
+
+> **A feature that ships but confuses the user is not a feature. It is a support ticket. These ten checks are the difference.**
+
+Every change that a user can see (a new page, a new button, a new field, a new message) must pass these ten checks. They are ordered by frequency of failure in real projects.
+
+| # | Check | What "fail" looks like |
+|---|-------|------------------------|
+| 1 | **Loading state** if the action takes > 200ms | User taps twice, creating duplicate records |
+| 2 | **Empty state** with an icon, one-line message, and a next-step action | User sees a blank panel and assumes the app is broken |
+| 3 | **Errors go to a toast or banner**, never a blocking `alert()` | Alert blocks the UI, cannot be dismissed gracefully |
+| 4 | **Success is confirmed** — a toast, a state change, a refresh | Silent success; user repeats the action, creating duplicates |
+| 5 | **Destructive actions require explicit confirmation** | One tap on "delete" removes a year of data |
+| 6 | **Validation is inline** on the field, not after submit | User fills the form, submits, and only then learns field 2 was invalid |
+| 7 | **Every interactive element has a label** — visible text, `aria-label`, or a `<label for>` link | Screen-reader users cannot use the page; smoke tests flag it |
+| 8 | **Dates use the project's standard formatter** — one function, one output | Two date formats on the same screen; user thinks data is corrupted |
+| 9 | **Numeric inputs format while typing** — thousands separators, correct digit script | Long numbers are unreadable; parse bugs from missing separators |
+| 10 | **Mobile-first layout** at the project's smallest supported width | Horizontal scroll on phones; buttons cut off; modals unusable |
+
+**Rule:** every user-facing patch states which of these ten it touches and how each was verified. "I did not think about #7" is a failure, not a blank.
+
+**When a project has a smoke test (Section 17-6)**, these ten checks are the smoke test's payload — the DOM analysis exists to catch them. If a project has no smoke test, this checklist is the substitute for the current patch only, and the gap is logged for the next testing milestone (Section 17-13).
+
+### 24-6. Persona-Parallel Design — one file per persona, not one file with N tabs
+
+> **When different personas need different views of the same entity, give each persona its own view file. Do not build one page with ten tabs, half of which are "not for you".**
+
+The failure mode is familiar: a project detail page starts with 3 tabs, grows to 8, then 12. Each new persona adds a tab. Every user sees every tab. The page becomes a museum of features that were useful once, to someone.
+
+The pattern that fixes it:
+
+1. **One shell file** — handles routing, loads the entity, provides the shared header (name, stats, close button).
+2. **One view file per persona** — the shell dispatches to the right view based on the active persona.
+3. **Each view has 2–3 tabs**, no more. If a view needs a fourth tab, it is probably two personas' views, not one.
+4. **Duplication between views is acceptable.** Two files with the same `load()` function is cheaper than one file with `if persona === 'X'` in twelve places (Section 0-C-20 Rule 1 — two is fine, three is a signal).
+
+**What this buys:**
+
+- A user sees only their views, not everyone's.
+- A change to one persona's view does not risk breaking another.
+- A new persona is one new file, not another `if` branch in the shell.
+- Each view is short enough to read in one sitting.
+
+**What it costs:**
+
+- Shared logic (loading, error handling, tab styling) is duplicated per view. Acceptable (Section 0-C-20 Rule 1). If duplication reaches three, extract the shared part into a shell or a `lib/` helper — Rule 3 kicks in.
+
+**Anti-pattern:** `{#if persona === 'contractor'}<ContractorTab />{:else if persona === 'buyer'}<BuyerTab />{:else}...{/if}` at the top of one page, with all tabs rendered above the conditional. The tabs still exist for everyone; only the content swaps. This is the museum, not the split.
+
+**The test:** open the page as each persona. Count how many tabs are visible. If persona A sees more than 3 tabs, the shell has not been split. Split it.
+
+### 24-7. Progressive Disclosure — first 5 decisions visible, the rest folded
+
+> **A page shows the 5 decisions that 90% of users make. The rest live behind an accordion, a "more options" toggle, or a separate tab.**
+
+A page that shows every option at once forces every user to scan every option before deciding. The result is decision fatigue: users pick the first option, or they leave.
+
+The pattern:
+
+1. **Identify the 5 primary decisions** — the choices a user must make to complete the task. Not the choices they *could* make.
+2. **Show those five first**, unadorned. No accordions above them, no "advanced settings" toggle in the middle.
+3. **Everything else goes into a fold** — a `<details>` element, a "more options" link, or a separate "advanced" section. The fold is at the bottom, after the primary decisions and the submit button.
+4. **The fold is remembered** — if the user opened it, it opens again next time. Do not collapse on every navigation.
+
+**What belongs in the fold:**
+
+- Advanced settings (timeouts, retry counts, log verbosity).
+- Rarely-used fields (legacy compatibility, developer overrides).
+- Debugging tools (raw IDs, JSON views, "run this command").
+- Secondary actions (export, duplicate, archive).
+
+**What does NOT belong in the fold:**
+
+- The primary submit button.
+- The required fields.
+- Any error message that affects the primary action.
+- Any field the user must fill to complete the task (see Section 24-5 item 6).
+
+**Why this matters:** every field visible on a page is a decision the user must consciously skip. Skipping 10 fields costs more attention than filling 3. The fold is not "hiding features" — it is showing the user the right features, in the right order.
+
+**Where to apply:** forms, settings pages, dashboards, entity detail pages. Anywhere a user makes more than 3 choices in a row, the fourth through Nth belong in a fold.
+
+### 24-8. Menu Registry — one file, one source of truth for navigation
+
+> **Navigation lives in one file, not scattered across components. Every menu item, every persona, every route — one declaration, read by every consumer.**
+
+A scattered menu has three failure modes:
+
+1. **Divergence** — a menu item is added in the sidebar but not in the search, or vice versa. Users find the feature by one path but not another.
+2. **Permission drift** — an item is visible to persona A in one place and persona B in another. Some users see it, others do not.
+3. **Deletion blindness** — a route is deleted but the menu still points to it. The user clicks and gets a 404 or a silent no-op.
+
+The pattern:
+
+1. **A single file declares every navigation entry** — route, label, icon, which personas see it, which group it belongs to.
+2. **Every consumer reads the same file** — sidebar, mobile navigation, search overlay, command palette, breadcrumb, sitemap, documentation.
+3. **Filtering by persona is done in one place** — a pure function `visibleItems(persona)` that every consumer calls. Not repeated `if` chains.
+4. **Adding a route is one entry in the file**, not a search-and-replace across the codebase.
+
+**What the file must contain per entry:**
+
+- `path` — the route.
+- `label` — the user-visible name.
+- `icon` — the visual marker.
+- `group` — which accordion / section it belongs to.
+- `personas` — a list of persona IDs allowed to see it.
+- `dev` — a boolean, true if this is developer-only (Section 0-A-5, Tier 3 hide).
+
+**What the file must NOT contain:**
+
+- Persona-specific logic inside the entry (e.g., `if persona === 'x' ? 'Show' : 'Hide'`). Personas are a list, not a closure.
+- Route handlers. The file points to a route; the route file contains the handler.
+- Data-loading logic. The file is metadata; the consumer loads.
+
+**The audit:** when a new route is added, the same patch must add a registry entry (or an explicit `dev: true`). A route that is not in the registry is invisible to every consumer — it might as well not exist. Section 0-A-3 (Out of Scope) and Section 17-10 (Test Coverage) both reference this rule.
+
+### 24-9. Weighted Progress Rollup — average by weight, not by count
+
+> **When a parent has children with different sizes, the parent's progress is the weighted average of its children. Not the flat average.**
+
+Three subtasks, each reported as "50% done":
+
+- Subtask A is 1% of the total work.
+- Subtask B is 4% of the total work.
+- Subtask C is 95% of the total work.
+
+Flat average says 50% done. Weighted average says (0.01×50 + 0.04×50 + 0.95×50) / 1.00 = 50%. Same answer here — because they are all at 50%. But:
+
+- Subtask A is 100%, B is 100%, C is 0%.
+- Flat average: 200/3 = 66%.
+- Weighted average: (0.01×100 + 0.04×100 + 0.95×0) / 1.00 = 5%.
+
+The weighted answer is the truth. The flat answer is a lie that hides the fact that 95% of the work is untouched.
+
+**The rule:**
+
+1. **Weight each child by a real cost metric** — estimated cost, estimated hours, line count, or, if none is available, 1 (which falls back to flat average and is honest about not knowing).
+2. **Sum the weights × progress**, divide by the sum of the weights.
+3. **Never average by count** unless the children are known to be equal in cost. "I'll just use count" is the failure.
+4. **Never hide the weight** from the user — display the weight or a size indicator next to each child, so the rollup is auditable.
+
+**Where to apply:** project progress (tasks with costs), dashboards (metrics with traffic), reports (categories with volume), any "overall progress" or "overall score" that rolls up from children.
+
+**Where NOT to apply:** equal-cost children (equal-sized categories, equal-weight survey items). If the project guarantees equality, flat average is correct. But **verify the guarantee**, do not assume it.
+
+**The test:** change one child's progress to 100% and another (larger) child's progress to 0%. Does the parent's rollup move by the larger child's weight? If it moves equally regardless of which child changed, the rollup is flat and wrong.
+
+### 24-10. Mobile Modal Full-Screen — small screens get the whole screen
+
+> **On screens narrower than ~500px, a modal becomes full-screen. Not 90% of a cramped viewport with a squeezed inner grid.**
+
+A modal designed on desktop (`max-width: 700px; width: 90%; padding: 2rem`) collapses into unusability on a phone:
+
+- 90% of 360px is 324px. Inner padding takes 64px. Content area is 260px.
+- Tab bars, form rows, and side-by-side fields assume more width than exists.
+- The user scrolls horizontally inside a modal — which is broken by design.
+
+**The rule:**
+
+1. **Below 500px viewport width**, the modal uses `width: 100%; height: 100%; border-radius: 0; margin: 0`. It looks like a page, because it is.
+2. **Above 500px**, keep the current centered modal. Do not force full-screen on desktop.
+3. **Tab bars switch from `flex: 1` to `overflow-x: auto; flex-wrap: nowrap`** — scrollable tabs beat chopped labels.
+4. **The close button stays visible** — at the top-right of the header, sticky, regardless of scroll position.
+
+**Why 500px:** the smallest common phone width is 360px (in portrait). The largest "not-quite-desktop" is ~500px (small tablets, phone landscape). The breakpoint is a heuristic — verify with the project's actual target devices.
+
+**The test:** open every modal at 360px width, in the project's smoke test. If any modal overflows horizontally, the breakpoint is not applied. Add the CSS, verify.
+
+**What to avoid:** `width: 90vw; max-width: 700px` — this is the pattern that fails on phones. The 90vw shrinks but never becomes 100%, and the inner content still assumes desktop widths.
+
+### 24-11. Single Entry Point — one way in, not three
+
+> **For every user-facing action, there is exactly one place to start it. Not a button and a menu item and a keyboard shortcut and a floating icon.**
+
+Two entry points for the same action is not "convenience" — it is two paths that can diverge. One gets updated, the other does not. Users see one version, others see another. Bug reports say "the button works" and "the menu is broken" about the same underlying feature.
+
+**The rule:**
+
+1. **One primary entry point per action** — typically a button on the relevant page, or a menu item in a stable menu.
+2. **Secondary entries are shortcuts to the same handler**, not independent implementations. A keyboard shortcut, a command palette entry, a contextual menu item — all dispatch to the same function.
+3. **Duplicate floating actions are a red flag.** Two floating buttons for the same thing means one was added, then the other was added by a different patch. Remove one (Section 2-70 — hide from view, do not delete from source, so the intent is preserved).
+4. **Every entry point is verified in the smoke test.** A keyboard shortcut that opens a page is tested by opening the page. A menu item that starts a flow is tested by starting the flow.
+
+**The audit:** for every user-facing action in the project, list every entry point. If a list has more than one item and they do not share a handler, the action is at risk of divergence. Fix in the next patch that touches the action.
+
+**The failure the rule prevents:** P547 (Section 2-68) broke the app because a regex corrupted every arrow function. If the project had one entry point per action, the failure would have been localized. With three entry points per action, the corruption broke every path at once — and the build passed because the syntax was "valid enough" to compile in Rust while being invisible in Svelte.
+
+### 24-12. Persona vs Role — presentation is not permission
+
+> **Persona decides what a user sees. Role decides what a user can do. They are not the same thing, and conflating them is a security bug.**
+
+A project serves multiple user types. Two concepts hide under "user type":
+
+- **Persona** — how the app presents itself. Layout, default tabs, filter, palette. A contractor sees a WBS; a buyer sees a single contract. Same data, different view.
+- **Role** — what the user is *permitted* to do. An admin can delete; a member cannot. Same view, different buttons.
+
+**The rule:**
+
+1. **Persona filters views.** If persona is A, show A's tabs. If B, show B's tabs. No permission check, just presentation.
+2. **Role gates actions.** Every write, delete, approve, or export has a role check on the backend (Section 38-4 — UI state is not authorization). Persona does not grant permission.
+3. **The two combine, they do not substitute.** A user is `(persona=contractor, role=member)` — sees the contractor view, cannot delete anything. A user is `(persona=owner, role=admin)` — sees the owner view, can delete.
+4. **Never gate a permission on a persona.** "Only contractors can approve" is a bug if the permission is role-based. "Only owners see the financial tab" is a presentation rule, not a permission.
+
+**Where the distinction is tested:**
+
+- **Persona test:** open the app as each persona, verify the tabs and layout match expectations (Section 24-6).
+- **Role test:** attempt a forbidden action as each role, verify it is rejected on the backend (Section 17-7 flow tests, with `--role` param).
+
+**What NOT to do:**
+
+- ❌ Use `if persona === 'admin'` to gate a delete button. `persona` is presentation; the delete should be gated by `role`, and the button hidden separately if the role lacks permission — but the backend still rejects.
+- ❌ Use `if role === 'contractor'` to show contractor tabs. `role` is permission; the tabs should be gated by `persona`, and if the persona is a UI concept, its data comes with the view.
+- ❌ Merge the two into one "user type" field. Every project that does this eventually ships a security bug because the same check is used for two different purposes.
+
+**The audit:** for every user-visible action, name the persona that sees it and the role that permits it. If one field does both jobs, split it before shipping.
 
 ---
 
