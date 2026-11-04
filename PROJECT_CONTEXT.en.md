@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P172 |
-| Last tag | `p170b2-readiness` |
-| Time | 2026-11-04 16:29 |
-| MSG-SEED | `9f49e7e9` |
+| Last patch | P173 |
+| Last tag | `p170b3-phase-gates` |
+| Time | 2026-11-04 16:30 |
+| MSG-SEED | `1022bd8f` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4326,6 +4326,49 @@ A project that has no readiness view drifts between "it feels done" and "it is d
 **Where the matrix lives:** in Section 13 (Session Tracker), as a subsection. Or in the project's README if it has one. Not in chat, not in a separate file the AI has to remember to read.
 
 **The AI's duty:** before claiming any feature "works", it names the row. Before claiming any release "ready", it checks every row at 100% or has a documented reason why a lower row is shippable.
+
+---
+
+### 14-11. Phase Gates — every phase ends with a gate, no phase ends mid-flight
+
+> **A phase (milestone, release candidate, version) ends with a gate: a defined checklist of proof that the phase is complete. The next phase does not start until the gate is green.**
+
+A project that has phases without gates has phases that blur into each other. "Phase 2 done" becomes "Phase 2 mostly done, but the export feature is half-written and will be finished in Phase 3". Phase 3 then starts with Phase 2's debt. Every phase accumulates debt.
+
+**The gate checklist (per phase, defined at phase start):**
+
+1. **All features in the phase are either shipped or explicitly deferred** (Section 0-A-3 — Out of Scope). No "we'll finish it in the next phase" without a written deferral.
+2. **All tests for the phase pass** — the level defined at phase start (Section 17-4 for the levels).
+3. **The phase tag exists** — `git tag phase-N-done` or equivalent.
+4. **The state refresh is written** (Section 14-6) — the phase does not end with drift.
+5. **The readiness matrix reflects the phase** (Section 14-10) — every row is at its honest percentage, evidence is named.
+6. **The next phase's checklist is written** — before the current phase closes, the next phase's exit criteria are known.
+7. **User approval** — the user confirms the phase is complete (not just the AI).
+
+**The gate is not a checklist at the end — it is defined at the start.** A phase whose exit criteria are written only when the phase is "done" is a phase where "done" is negotiable.
+
+**What happens when the gate is red:**
+
+1. **The phase does not close.** The tag is not created.
+2. **The reason is logged.** For example: "Phase 2 gate blocked: feature B requires device test, no device available."
+3. **The project either:** (a) resolves the block, (b) explicitly downgrades the block to a documented deferral, or (c) redefines the phase to exclude the block.
+
+**Option (c) is legitimate**, but the exclusion is written down. "We are calling Phase 2 done, deferring B to Phase 3" is a legitimate gate close — as long as B is in Section 0-A-3 (Out of Scope for Phase 2) before the tag is created.
+
+**What the gate is NOT:**
+
+- **Not a wish list.** "We would like to also have X" is not a gate criterion.
+- **Not a deadline.** Time-boxed gates ("Phase 2 by end of Q3") are roadmaps, not gates. A gate closes when the criteria are met; a roadmap says when the team hopes to meet them.
+- **Not the AI's decision alone.** The AI proposes "gate green"; the user confirms. (Section 0-A-1 — user defines the project.)
+
+**Phase gate vocabulary:**
+
+- **`phase-open`** — phase N has started, gate criteria written.
+- **`phase-green`** — all criteria met, evidence named, user confirmed.
+- **`phase-closed`** — tag created, state refreshed, next phase opened.
+- **`phase-blocked`** — one or more criteria not met, reason logged, phase does not close.
+
+The AI states the gate status in every state refresh (Section 14-6) — the gate is not remembered, it is read from the tracker.
 
 ---
 
