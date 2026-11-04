@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P164 |
-| Last tag | `p164-data-safety` |
-| Time | 2026-11-04 16:10 |
-| MSG-SEED | `6b036aba` |
+| Last patch | P168 |
+| Last tag | `p168-feature-discipline` |
+| Time | 2026-11-04 16:18 |
+| MSG-SEED | `66c89c69` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4504,6 +4504,135 @@ Ask the user for:
 
 **Shall we start?**
 ```
+
+### 19-3. Persona walkthrough is mandatory, not optional
+
+> **No new feature starts without walking it through at least two personas. If you cannot name who benefits and what they see, the feature is not ready to build.**
+
+Section 0-C-26 defines the *persona mode* (the AI stops being a coder and stands in for the user). Section 19-3 makes it **mandatory before implementation**, not optional after.
+
+**Why this is a discipline, not a nice-to-have:** a feature that ships but confuses the target user is not a feature — it is a support ticket factory. The cheapest moment to catch confusion is before writing code.
+
+**The pre-feature walkthrough — three questions, one paragraph:**
+
+1. **Who is this for?** — At least one persona by name (not "the user"). If you cannot name one, do not build it.
+2. **What does this persona do today?** — The current state, in one sentence. If there is no current state, the feature is a first-time experience — that is a different bar (onboarding, empty states).
+3. **What changes for this persona when the feature ships?** — Not the technical change; the human change. If the answer is "nothing visible", the feature is infrastructure and should say so.
+
+**Failure modes caught by this walkthrough:**
+
+- A feature that only makes sense to the developer ("this is faster", "this is cleaner") but does nothing for the persona.
+- A feature that solves a problem the persona does not have (assumption caught before code).
+- A feature that confuses an existing workflow for a different persona (cross-persona regression).
+- A feature that requires onboarding the persona does not have (onboarding gap).
+
+**Recording:** the walkthrough is one paragraph in the same message as the design patch (Section 19-2). Not a separate document. If the walkthrough reveals the feature is wrong, delete the design and do not build it.
+
+### 19-4. Bundle Strategy — backend / frontend / context, separate commits
+
+> **A feature ships in bundles: backend + tests in one commit, frontend in the next, context update after both. Each commit must be independently revertible.**
+
+Bundling backend and frontend into one commit sounds efficient. It is not. When the frontend breaks (a syntax error, a missing import), reverting the whole commit reverts the working backend too. The next AI then re-does the backend from scratch.
+
+**The correct bundling:**
+
+| Commit | Contains | Revert impact |
+|--------|----------|---------------|
+| 1 — backend | schema, commands, backend tests | reverts only backend; frontend unchanged (was not using it yet) |
+| 2 — frontend | UI, wiring to commands | reverts only UI; backend remains for the retry |
+| 3 — context | this document update, ADR, roadmap | reverts only docs; neither code layer affected |
+
+**When a bundle is small enough to be one commit:** when it is a one-line change, a documentation fix, or a bug fix that has already been flow-tested (Section 17-7). Everything else uses the three-commit pattern.
+
+**Why not "one big commit":** the observed failure mode is a feature that ships, breaks something unrelated, and the user reverts "the feature commit" — which takes out the parts of the feature that were correct. Then the AI re-implements them from memory (Section 4-4 — anchors from memory are the top failure source).
+
+**Tagging:** the tag goes on the **last commit of the bundle**, not the first. A tag marks a shipped state; the state is not "shipped" until frontend and context are in place.
+
+### 19-5. Audit-first, deduplicate-before-add
+
+> **Before adding a function, a page, or a section, search the project for one that already does the same thing. If it exists, use it or fix it — do not duplicate.**
+
+Every project of any age has near-duplicates. Three implementations of date formatting. Two versions of a settings page. Four copies of the same helper. Each new implementation adds a fourth, then a fifth.
+
+**The audit before every new function:**
+
+1. Search the project for the function name or its concept (Section 4-14's NEED directive is the tool).
+2. If the exact function exists, use it. Do not copy-paste.
+3. If a similar function exists, decide: extend it, or inline the caller and delete the old one (Section 0-C-20 Rule 4 — replace means delete).
+4. If nothing exists, add the new function with a test (Section 17-10).
+
+**The audit before every new page:**
+
+1. Search the project for the page's purpose (not its title — its purpose).
+2. If a page exists that serves the purpose, extend it — do not create a sibling.
+3. If the purpose is genuinely different, create the page **and add a link from the existing page** so users do not have to guess.
+
+**The audit before every new section in this document:**
+
+Section 0-A-6's audit-first rule applies to the document itself. When adding a rule, search for one that already says it. If a rule exists but is weak, amend it in place (Section 0-A-6 form 3) rather than adding a duplicate.
+
+**The `--find-dup` tool:** run `python run.py --find-dup --meaningful` before any patch that adds functions. The report is a signal (Section 0-C-20-5), not a verdict — some duplicates are coincidental. But every duplicate that represents the same knowledge must be extracted, not replicated.
+
+### 19-6. Assumed defaults protocol
+
+> **If the AI must assume a value the user did not specify, it writes the assumption in the same message — before the patch. The user can override before running.**
+
+Designing a feature always requires assumptions. "Should the default be A or B?" — the user did not say. Guessing silently produces a feature the user did not want.
+
+**The protocol:**
+
+1. **List every assumption** the design depends on. Format: `assumed: <what> = <value>, because <one-line reason>`.
+2. **Do not bury assumptions in the patch.** They go in the design message, before the patch, so the user reads them and can say "no, use the other value" before running anything.
+3. **State the override path.** "If this is wrong, say `<override>` and I will update the patch."
+4. **Do not assume defaults that change behavior silently.** For example, "assumed the button saves on click" is fine (obvious from the button). "Assumed the price is in USD" is not (silent currency bug).
+
+**What counts as an assumption worth stating:**
+
+- Any numeric default (window size, timeout, limit, price).
+- Any string default that appears in the UI (labels, placeholders, error messages).
+- Any structural default (which table a new field belongs to, which page a new link appears on).
+- Any behavioral default (what happens on empty input, on error, on timeout).
+
+**What does not need stating:**
+
+- Standards the project already documented (Section 2-4 red lines, Section 15 rules).
+- Conventions the codebase follows universally (naming style, file layout).
+
+**If the user overrides:** the AI applies the override, does not debate. Section 0-A-4 (Forbidden Questions) covers "should I proceed" — the answer is "yes, with the override the user specified".
+
+### 19-7. Version bump discipline
+
+> **Version numbers change in the same patch as the change they describe. Not in a separate "release" patch. Not by the AI's own judgment about whether it is "big enough".**
+
+Every project has a version number somewhere: in a manifest, a config file, a header comment, or all three. When that number changes, three rules apply:
+
+1. **The AI never bumps the user's project version** without an explicit tag directive or user request. The user's project version is a public contract — it changes at user-chosen release points, not at the AI's discretion.
+2. **When the user does request a bump, the bump lands in the same patch as the change it describes.** Not deferred to a later "release" patch. Not split across two commits.
+3. **The version change is documented in the patch's commit message**, not assumed. A commit message that names the new version — e.g. "bump to v2.3.0 — new feature X" — is the pattern; "we will bump later" is not.
+
+**The AI's own tool version (Section 0-C-17-6):** the AI may bump its own tool's version when patching the tool — that is an internal marker, not a project release. But the project's version is not the tool's.
+
+**The "wait until release" trap:** a common failure mode is "let's keep the version at X and bump at release". Then release comes, the version is bumped, and every commit between "bump decision" and "bump commit" is ambiguous — did it ship under version X or X+1? The fix is: bump in the same patch as the change, tag the same patch. No ambiguity.
+
+**Versions in three places** (common in any project): the manifest (authoritative), the UI (must match the manifest), and the docs (may lag one minor). After every bump, verify all three agree. A UI that shows the old version is a support ticket waiting.
+
+### 19-8. Concrete over abstract
+
+> **When giving an example, use a real path, a real function name, a real snippet. Abstract examples teach nothing and confuse newcomers.**
+
+A patch that names the real file (src/main.py) and the real function (handle_submit) is infinitely more useful than one that names a placeholder and an ellipsis. The first can be copy-pasted into the project; the second must be translated.
+
+**The rule:**
+
+1. Every example in a design message or in this document uses a real-looking name: `src/main.py`, `src/lib/utils.js`, `handle_submit`, `parse_date`. Not `<file>`, `<path>`, `<function>`.
+2. Every anchor in a patch is the exact text from the real file, not a template. Section 4-4 (never build from memory) enforces this at the mechanical level; 19-8 enforces it at the design level.
+3. Every error message in a design doc shows the exact wording the user will see: `Cannot connect to database: connection refused` — not `<error>`.
+
+**Exception:** when teaching a *pattern* to a general audience (Section 0-C-13-4 for language-neutral tool rewrites, for example), abstract is appropriate. The rule is: concrete when the reader is a specific user working on a specific file, abstract when the reader is any user on any project.
+
+**Why this matters:** every minute a user spends translating an abstract example into their actual code is a minute of friction. The AI's job is to reduce friction, not to be "clean" in its presentation.
+
+---
 
 ## Section 20 — Coding Agents and Chat Fallback
 
