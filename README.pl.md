@@ -157,3 +157,16 @@ Wszystko jest wersjonowane przez git. Cofnij jedną komendą. Dokument wyjaśnia
 ---
 
 *Zbudowane dla ludzi, którzy chcą wysyłać, a nie pilnować okna czatu.*
+---
+
+## 🌐 Universal Continuity: Chat Patches & Coding Agents
+
+This protocol is **universal**. It works perfectly whether you use:
+1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
+2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+
+### Why is it essential for both?
+- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
+- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
+- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
+- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.

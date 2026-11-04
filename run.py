@@ -59,7 +59,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.7"
+VERSION = "2.0.13"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -510,6 +510,7 @@ def read_directives(text):
     dump_mode = None
     push = False
     sync_after = False
+    git_add_all = False
     commit_if = None
     next_step = None
     roadmap = []
@@ -552,6 +553,8 @@ def read_directives(text):
         if m: dump_mode = m.group(1).lower(); idx += 1; continue
         if s in ('#@PUSH:', '#@PUSH'):
             push = True; idx += 1; continue
+        if s in ('#@GIT_ADD_ALL:', '#@GIT_ADD_ALL'):
+            git_add_all = True; idx += 1; continue
         if s in ('#@SYNC:', '#@SYNC'):
             sync_after = True; idx += 1; continue
         m = re.match(r'^#@CMD_GREP:\s*(.+)$', s)
@@ -587,12 +590,12 @@ def read_directives(text):
         idx += 1
     return (patch_id, cmd_args, post_cmds, needs,
             commit_msg, tag_name, nodump, dump_mode, push, sync_after,
-            commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
+            git_add_all, commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
             '\n'.join(lines[idx:]))
 
 
 NEED_COMMANDS = {
-    'status', 'tree', 'hash', 'git', 'errors', 'capabilities',
+    'status', 'tree', 'hash', 'git', 'git-audit', 'errors', 'capabilities',
     'version', 'all', 'file', 'files', 'check', 'verify',
     'find-dup', 'dump', 'ctx',
 }
@@ -771,7 +774,7 @@ def read_cmd_directive_only():
     except Exception:
         return None
     if not content: return None
-    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
+    _, cmd_args, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = read_directives(content)
     if not cmd_args: return None
     lines = content.split('\n')
     new_lines, removed = [], False
@@ -954,7 +957,8 @@ def apply_patch(path, patches, out, fail_files=None):
         out.append(f"  [FAIL] file not found: {path}")
         if fail_files is not None: fail_files.add(path)
         return 0, len(patches), 0
-    raw = read(p); fe = eol(raw); text = lf(raw)
+    # Read raw bytes to preserve the source file's actual LF/CRLF convention.
+    text, fe = read_raw(p)
     ok = fail = skip = 0
     for i, (alts, r) in enumerate(patches, 1):
         rl = lf(r)
@@ -1068,6 +1072,33 @@ def _git_head():
         return (r.stdout or '').strip() or '-'
     except Exception:
         return '-'
+
+
+def _patch_path_error(raw):
+    """Fail closed on paths outside this checkout or naming secret files.
+
+    CMD/PYTHON are executable code, not a sandbox. Only use trusted patches.
+    """
+    value = str(raw).strip().replace('\\', '/')
+    if not value or '\x00' in value:
+        return 'empty or invalid path'
+    if value.startswith('/') or re.match(r'^[A-Za-z]:', value):
+        return 'absolute path'
+    parts = value.split('/')
+    if '..' in parts or '.git' in [part.lower() for part in parts]:
+        return 'parent traversal or Git metadata'
+    name = parts[-1].lower()
+    if (name in SKIP_SECRET_NAMES or
+            (name.startswith(SKIP_SECRET_PREFIXES) and name != SECRET_EXAMPLE) or
+            Path(name).suffix in SKIP_SECRET_EXTS or '.ssh' in [p.lower() for p in parts]):
+        return 'protected secret path'
+    try:
+        root = Path('.').resolve()
+        target = (root / value).resolve()
+        target.relative_to(root)
+    except (ValueError, OSError, RuntimeError):
+        return 'path escapes project root'
+    return None
 
 
 def _check_tracked_secrets():
@@ -1256,7 +1287,8 @@ def _project_guard(content):
     if got == want:
         return None
     if got is None:
-        return f"this patch has no '#@PROJECT: {want}' line. Nothing was applied."
+        return (f"this patch has no '#@PROJECT: {want}' line. Nothing was applied. "
+                "Add that directive near the top of input.txt and rerun the complete patch.")
     return f"this patch is for '{got}', but this folder is '{want}'. Nothing was applied."
 
 def do_apply(patch_id=None):
@@ -1275,7 +1307,7 @@ def do_apply(patch_id=None):
     global ANSWERS
     (did, _, post_cmds, needs,
      commit_msg, tag_name, nodump, dump_mode, push, sync_after,
-     commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
+     git_add_all, commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
      remaining) = read_directives(content)
     if did is not None: patch_id = did
     if asks:
@@ -1339,6 +1371,22 @@ def do_apply(patch_id=None):
                 out.append(f"[RESUME] load failed: {e}")
 
     ops = parse(content)
+    # Validate the entire file-operation batch before touching project files.
+    # This does not sandbox the deliberately executable CMD/PYTHON blocks.
+    for op in ops:
+        kind = op.get('kind')
+        targets = []
+        if kind in ('file', 'create', 'delete', 'mkdir', 'dump'):
+            targets = [op.get('path', '')]
+        elif kind == 'move':
+            targets = [op.get('src', ''), op.get('dst', '')]
+        for target in targets:
+            reason = _patch_path_error(target)
+            if reason:
+                out.append(f"[REFUSED] {kind}: {reason}; no operations applied")
+                txt = '\n'.join(out)
+                write(OUTPUT, txt); print(txt)
+                return 3
     _status_begin(f"[P{patch_id}] applying {len(ops)} op(s)")
     if BACKUP:
         _do_backup()
@@ -1723,12 +1771,53 @@ def do_apply(patch_id=None):
         out.append("[GIT] commit skipped - POST verification failed")
 
     if should_commit:
+        # Any pre-staged content may be unrelated. Refuse to commit it.
+        # Users may unstage or commit their own work separately.
+        try:
+            already_staged = subprocess.run(
+                ['git', 'diff', '--cached', '--name-only', '-z'],
+                capture_output=True, timeout=10)
+            if already_staged.returncode == 0 and already_staged.stdout:
+                out.append('[GIT] commit skipped: pre-staged files detected; no unrelated changes committed')
+                should_commit = False
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    if should_commit:
         try:
             r0 = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'],
                                 capture_output=True, text=True)
             if r0.returncode == 0 and r0.stdout.strip() == 'true':
                 msg = commit_msg if commit_msg else f"patch {patch_id}: {ts}"
-                subprocess.run(['git', 'add', '-A'], capture_output=True)
+                # Stage only explicitly patched paths and the auto-updated
+                # master context. Never absorb unrelated README or user edits.
+                paths = set()
+                for op in ops:
+                    if op['kind'] in ('file', 'create', 'delete'):
+                        paths.add(op['path'])
+                    elif op['kind'] == 'move':
+                        paths.update((op['src'], op['dst']))
+                for context_name in ('PROJECT_CONTEXT.en.md', 'PROJECT_CONTEXT.md'):
+                    if Path(context_name).exists() and '<!-- AUTO:START -->' in read(Path(context_name)):
+                        paths.add(context_name)
+                        break
+                if git_add_all:
+                    subprocess.run(['git', 'add', '-u'], capture_output=True)
+                stageable = []
+                for path in sorted(paths):
+                    if _patch_path_error(path):
+                        raise RuntimeError('unsafe Git staging path refused')
+                    tracked = subprocess.run(
+                        ['git', 'ls-files', '--error-unmatch', '--', path],
+                        capture_output=True, timeout=10).returncode == 0
+                    if tracked or Path(path).exists():
+                        stageable.append(path)
+                if not stageable:
+                    out.append('[GIT] no declared file changes to stage')
+                    raise RuntimeError('nothing safe to stage')
+                added = subprocess.run(['git', 'add', '-A', '--'] + stageable,
+                                       capture_output=True, text=True, timeout=30)
+                if added.returncode != 0:
+                    raise RuntimeError('git add failed: ' + added.stderr[:120])
                 r1 = subprocess.run(['git', 'commit', '-m', msg],
                                     capture_output=True, text=True)
                 out.append("")
@@ -2002,6 +2091,49 @@ def do_git():
             print(f"[WARN] {e}")
 
 
+def do_git_audit():
+    """Offline, read-only Git diagnostic; never fetches or prints remote URLs."""
+    def query(*args):
+        return subprocess.run(['git'] + list(args), capture_output=True,
+                              text=True, encoding='utf-8', errors='replace',
+                              timeout=10)
+    print('[GIT-AUDIT] offline, read-only (no fetch, pull or push)')
+    try:
+        root = query('rev-parse', '--show-toplevel')
+        if root.returncode != 0:
+            print('[GIT-AUDIT] not a Git repository'); return 0
+        print('[GIT-AUDIT] branch: ' + (query('branch', '--show-current').stdout.strip() or '(detached)'))
+        remotes = query('remote')
+        aliases = remotes.stdout.splitlines() if remotes.returncode == 0 else []
+        print('[GIT-AUDIT] remotes: ' + (', '.join(aliases) if aliases else '(none)'))
+        for label, args in (
+            ('staged', ('diff', '--cached', '--name-only', '-z')),
+            ('unstaged', ('diff', '--name-only', '-z')),
+            ('untracked', ('ls-files', '--others', '--exclude-standard', '-z')),
+        ):
+            result = query(*args)
+            if result.returncode == 0:
+                print(f'[GIT-AUDIT] {label}: {len([x for x in result.stdout.split(chr(0)) if x])} file(s)')
+        sensitive = _check_tracked_secrets()
+        if sensitive:
+            print(f'[GIT-AUDIT] WARNING: {len(sensitive)} tracked path(s) look like secrets; review before push')
+        upstream = query('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}')
+        if upstream.returncode != 0:
+            print('[GIT-AUDIT] upstream: none (or unavailable)')
+        else:
+            name = upstream.stdout.strip()
+            print('[GIT-AUDIT] upstream: ' + name)
+            counts = query('rev-list', '--left-right', '--count', 'HEAD...@{upstream}')
+            parts = counts.stdout.split() if counts.returncode == 0 else []
+            if len(parts) == 2 and all(part.isdigit() for part in parts):
+                print(f'[GIT-AUDIT] cached tracking: ahead {parts[0]}, behind {parts[1]}')
+        print('[GIT-AUDIT] counts use LOCAL refs only; remote may have advanced since the last fetch')
+        return 0
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print('[GIT-AUDIT] unavailable: ' + type(exc).__name__)
+        return 0
+
+
 def do_diff():
     root = Path('.').resolve()
     cache = load_cache()
@@ -2093,11 +2225,15 @@ def _write_ctx_delta(patch_id, tag_name, commit_msg, next_step, roadmap, paths):
 
 
 def do_file(name, flags=None):
+    reason = _patch_path_error(name)
+    if reason:
+        print(f'[REFUSED] file read: {reason}')
+        return 1
     p = Path(name)
     if not p.is_absolute():
         p = Path('.').resolve() / name
-    if not p.exists():
-        print(f"[FAIL] file not found: {name}"); return
+    if not p.exists() or not p.is_file():
+        print(f"[FAIL] file not found: {name}"); return 1
     raw = read(p)
     filtered = filter_content(raw, flags or [])
     print(f"FILE: {name}")
@@ -2108,12 +2244,15 @@ def do_file(name, flags=None):
         print(f"SHOWN: {len(filtered.splitlines())} of {len(raw.splitlines())} lines")
     print("---CONTENT---")
     print(filtered)
+    return 0
 
 
 def do_files(names):
+    result = 0
     for i, name in enumerate(names):
         if i > 0: print()
-        do_file(name)
+        result = max(result, do_file(name))
+    return result
 
 
 def do_errors():
@@ -2303,18 +2442,19 @@ def do_capabilities():
     print(f"run.py v{VERSION}")
     print("TREE: --tree [--json]")
     print("GIT:  --git-hint (OS-specific install instructions)")
+    print("AUDIT: --git-audit (offline, read-only; no remote contact)")
     print("HEALTH: --health (bootstrap + check-md + self-test + git)")
     print("DOCTOR: --doctor (environment check, sync status, leaked secrets)")
     print("SYNC:   --sync-section35 (embed current run.py into Section 35)")
     print("FLAGS: --version --init --bootstrap --git-hint --capabilities --status --tree --hash "
-          "--git --file --files --errors --diff --ctx "
+          "--git --git-audit --file --files --errors --diff --ctx "
           "--check-md --check-sections --slim-context "
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
           "--progress --no-progress "
           "dump[--full] check verify find-dup apply clean")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD PYTHON DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
-          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF #@CMD_GREP #@CMD_TAIL")
+          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF #@CMD_GREP #@CMD_TAIL #@GIT_ADD_ALL")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
     print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
     print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")
@@ -2882,7 +3022,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if 'VERSION = "2.0.7"' in ctx:
+            if ('VERSION = "2.0.13"') in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -2905,15 +3045,16 @@ def do_doctor():
     except FileNotFoundError:
         print("  [WARN] Git not installed (rollback safety disabled)")
 
-    # Check 3: Secrets
-    print("\n[3] Checking for leaked secrets...")
-    secrets = ['.env', 'id_rsa', 'id_ed25519', 'credentials.json']
-    leaked = [s for s in secrets if Path(s).exists()]
+    # Check 3: tracked secrets, not merely files safely kept in .gitignore.
+    print("\n[3] Checking for tracked secret-like files...")
+    leaked = _check_tracked_secrets()
     if leaked:
-        print(f"  [WARN] Found sensitive files: {', '.join(leaked)}")
-        print("         Ensure they are in .gitignore!")
+        print(f"  [WARN] {len(leaked)} secret-like path(s) tracked by Git")
+        print("         Check Git index/history; ignore rules alone do not untrack files.")
+    elif leaked is None:
+        print("  [INFO] Git index unavailable; cannot verify tracked secrets")
     else:
-        print("  [OK] No obvious secrets in root")
+        print("  [OK] No secret-like filenames tracked by Git")
 
     print("\n" + "=" * 50)
     print("DIAGNOSIS COMPLETE")
@@ -3052,6 +3193,7 @@ def dispatch(args):
         return 0
     if cmd == '--hash':                 do_hash(); return 0
     if cmd in ('--git', '-g'):          do_git(); return 0
+    if cmd == '--git-audit':           return do_git_audit()
     if cmd == '--errors':               do_errors(); return 0
     if cmd == '--check-md':
         i = args.index('--check-md')
@@ -3111,12 +3253,12 @@ def dispatch(args):
         i = args.index('--file')
         if i + 1 < len(args):
             rest = args[i+1:]
-            do_file(rest[0], rest[1:]); return 0
+            return do_file(rest[0], rest[1:])
         print("[FAIL] --file needs a path"); return 1
     if cmd == '--files':
         i = args.index('--files')
         names = [a for a in args[i+1:] if not a.startswith('--')]
-        if names: do_files(names); return 0
+        if names: return do_files(names)
         print("[FAIL] --files needs paths"); return 1
 
     if cmd == '--auto-verify':

@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P160 |
-| Last tag | `runpy-2-0-12` |
+| Last patch | P161 |
+| Last tag | `runpy-2-0-13` |
 | Time | 2026-11-04 15:50 |
-| MSG-SEED | `4ed4b361` |
+| MSG-SEED | `c672106c` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -5190,7 +5190,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.12"
+VERSION = "2.0.13"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -8153,7 +8153,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if ('VERSION = "2.0.12"') in ctx:
+            if ('VERSION = "2.0.13"') in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
