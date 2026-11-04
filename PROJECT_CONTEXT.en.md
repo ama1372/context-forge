@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P162 |
-| Last tag | `p162-foundation` |
-| Time | 2026-11-04 16:07 |
-| MSG-SEED | `bb59a704` |
+| Last patch | P163 |
+| Last tag | `p163-testing-discipline` |
+| Time | 2026-11-04 16:09 |
+| MSG-SEED | `03d47289` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4270,6 +4270,167 @@ Answer these 5 questions:
 3. **When did it fail?** (after which change)
 4. **What was expected?**
 5. **What actually happened?**
+
+### 17-4. Four levels of verification
+
+> **One level of check is never enough. Each level catches a class of bug the others miss.**
+
+Not every check catches every bug. A project that only runs a compile check will ship runtime failures. A project that only runs UI checks will miss data corruption. The four levels below form the *minimum* discipline.
+
+| Level | Command / action | Catches |
+|-------|------------------|---------|
+| 1. Compile | the project's build command (`cargo check`, `npm run build`, `go build`, `tsc`, …) | syntax errors, missing imports, type mismatches |
+| 2. Static analysis | linter + `--check-md` + `--self-test` | style violations, nested fences, tool integrity |
+| 3. Runtime — DOM | page-load analysis (rendered elements, labels, overflow, render bugs) | invisible buttons, missing accessibility labels, layout collapse, `[object Object]`, `NaN` in text |
+| 4. Runtime — Flow | real read/write actions against the running system | backend commands broken, data does not persist, chains fail, silent write failures |
+| 5. Manual | user clicks through the primary flow | everything else — visual polish, perceived speed, confusing labels, unexpected prompts |
+
+**Rule:** a patch is not "done" until it has passed the level(s) that its changes affect. A patch that only touches documentation only needs level 2. A patch that touches backend source needs 1 + 4. A patch that touches frontend source needs 1 + 3.
+
+### 17-5. Level 1 — Compile, never skip
+
+Every patch must run the project's build command before commit.
+
+- **Compile is non-negotiable.** A patch that does not compile is broken, regardless of how correct the logic looks.
+- **If the build is slow** (> 1 minute), that is not a reason to skip it. Put it in the same `input.txt` block, run once at the end. `run.py --long` gives a 4-hour timeout (Section 0-C-27).
+- **The build command lives in `_work/config.json`** (`build_cmd` / `test_cmd`). `#@POST: check` runs it. Do not hardcode build commands in chat — that is exactly what Section 0-C-10 forbids.
+
+**Anti-pattern:** "the change is tiny, the build will pass". The smallest change can break type inference, macro expansion, or import resolution. P547-class bugs (a regex corrupting 81 files silently) were only caught by the full frontend build, not by a Rust check that looked at a different language.
+
+### 17-6. Level 3 — DOM analysis is not user acceptance
+
+A rendered page can be structurally correct and still useless. DOM analysis catches:
+
+- **Invisible interactive elements** — `display: none`, `opacity: 0`, zero-size, off-screen. A button that exists but cannot be clicked is a bug.
+- **Missing labels** — form fields without `aria-label`, `<label for>` linkage, or visible text. Accessibility is not optional.
+- **Overflow** — elements wider than their container. On mobile, this is almost always a user-facing bug.
+- **Render bugs** — literal `[object Object]`, `NaN`, `undefined` in user-visible text. These are almost always a serialization mistake.
+- **Floating overlap** — two floating buttons covering each other. Common when a feature is added but the old feature was not removed (Section 2-70 — hide, don't delete).
+
+**DOM analysis does NOT prove:** that a save succeeds, that a list refreshes, that a form submits to the right endpoint, that data persists across reloads. Those need Level 4.
+
+### 17-7. Level 4 — Flow tests verify real behavior
+
+> **Any patch that touches backend source must be validated with a real action, not just a compile.**
+
+A "flow test" is a sequence of real actions that exercises one complete user-facing path:
+
+1. **Create** — call the add/create action with realistic data.
+2. **Read** — call the list/get action and confirm the new record appears with the expected fields.
+3. **Update** — modify one field; call the get action; confirm the change persisted.
+4. **Delete** — remove; call the get action; confirm the record is gone.
+5. **Cleanup** — remove any records the test created, even if the test failed mid-way.
+
+**Every flow must clean up after itself.** A flow test that leaves orphan records corrupts the next run and hides bugs behind accumulated state. Use a unique tag per run (random suffix) so cleanup is unambiguous.
+
+**Flow tests for chains:** if the project has relationships (parent → child → grandchild), a flow test must exercise the chain. Adding a payment to a contract requires a property, a unit, a tenant, a contract — each must be created and verified before the payment.
+
+### 17-8. Count-before-after diagnostic
+
+> **When a "save" action seems to succeed but nothing appears in the list, the cause is one of two things: the write silently failed, or the read silently filtered it out.**
+
+The cheap way to distinguish:
+
+1. Before the write, count the existing records (`N`).
+2. Perform the write.
+3. Count again (`M`).
+4. **If `N === M`** — the write did not happen. Cause: silent exception, missing transaction commit, constraint violation swallowed by a catch. The bug is in the write path.
+5. **If `M > N`** — the write succeeded. Cause: the read query filters the record out (wrong join, wrong scope, wrong filter). The bug is in the read path.
+
+Without this check, the AI guesses. With it, the fix is targeted. Every flow test that has both "add" and "list" should include this check — it costs 2 lines and saves 2 patches.
+
+### 17-9. Round-trip verification for computed features
+
+> **If a feature computes a value, the test must prove the computed value is retrievable — not just stored.**
+
+A feature "computes X" means: given inputs, it produces a value that later reads must return. A test that only checks "the write did not throw" does not prove the compute ran.
+
+The round-trip:
+
+1. Create the record with inputs that trigger the computation.
+2. Read the record back.
+3. **Assert the computed field** has the expected value (not `null`, not the default, not the input).
+
+Example (abstract): if a system computes a fee from a rate, the test must set the rate, create a record, read back, and verify the fee. If the fee is missing from the read response, either the compute did not run (bug in write) or the read did not return the column (bug in select). Both are real bugs the test now catches.
+
+**Rule:** any feature with a compute step ships with a round-trip test in the same patch.
+
+### 17-10. Test coverage discipline — schema-first
+
+> **Every new table, endpoint, or module ships with its test in the same patch. Not "next patch". Not "when we have time".**
+
+If a patch adds a persistent entity, the same patch must extend the project's self-test / flow test to cover it.
+
+**Checklist for a new entity:**
+
+- [ ] Schema created (Section 21-X Schema First — all tables at startup, not lazily).
+- [ ] `CREATE TABLE IF NOT EXISTS` present in the startup init, not only in the add command.
+- [ ] A flow test that creates → reads → updates → deletes the entity.
+- [ ] If the entity has a computed field, a round-trip assertion (Section 17-9).
+- [ ] If the entity is part of a chain, the flow test exercises the chain.
+- [ ] Cleanup at the end of the test.
+
+**Why in the same patch:** a test written "later" usually means "never". The entity ships untested, and the first bug hides for weeks. This section exists because the observed failure mode is: an entity is added, documented, tagged, then a bug is found six patches later with no test infrastructure to prove it fixed.
+
+### 17-11. Stop-the-bleed — tests are signals, not gates
+
+> **A failing test is information, not a wall. Fixing every failing test before starting the next feature is the wrong tradeoff.**
+
+Testing is not free. There is a real failure mode where the AI spends 20 patches chasing green without shipping anything of value. Prevent it:
+
+1. **A failing test that has been reproduced is logged as an ISSUE** with a priority (Tier 1/2/3 per Section 0-A-5). Not fixed in the same patch.
+2. **The next feature patch proceeds** unless the failing test blocks it directly.
+3. **The failing test is fixed in the next patch that touches the same area.** If the area is not touched again, the test stays failing — and that is OK if the priority is low and the failure is documented.
+4. **Before any release tag**, all ISSUEs with priority Tier 1 or Tier 2 must be resolved. Tier 3 may remain if documented.
+
+**Why this rule matters:** a project that fixes every test failure before moving forward ships late. A project that ships features and fixes bugs in the next relevant patch ships on time. The observed failure mode is: 20 consecutive patches with zero user-facing value while tests are chased to green.
+
+**Not the same as "ignore tests":** the failure *is* logged, has a priority, and blocks release. It just does not block the next feature.
+
+### 17-12. Test honesty — what each level does NOT cover
+
+> **Every test level has blind spots. Stating them is not a weakness; it is a promise not to over-claim.**
+
+| Level | Does NOT cover |
+|-------|----------------|
+| 1. Compile | runtime logic errors, data corruption, user confusion |
+| 2. Static analysis | semantic correctness, integration failures |
+| 3. DOM analysis | data persistence, backend correctness, actual user flow |
+| 4. Flow tests | visual regressions, cross-device rendering, performance, accessibility with a real screen reader |
+| 5. Manual | regression on paths not clicked, edge cases never tried |
+
+**Rule:** when claiming "the feature works", state which levels were run and which were not. A green flow test is not a green manual test. A green DOM test is not a green flow test. Never collapse them into one claim.
+
+**The four-verdict vocabulary:**
+
+- **Verified** — level passed with real evidence (log, screenshot, count).
+- **Untested** — level not run.
+- **Failed** — level ran and did not pass; logged as ISSUE.
+- **Not applicable** — level does not apply to this change.
+
+Using these four words consistently prevents "it works" from hiding "I did not try it".
+
+### 17-13. Test expansion roadmap
+
+> **Tests grow in the same direction as the project. State the current level and the next level; do not claim "complete testing".**
+
+Testing is never "done". A project at any moment has:
+
+- **Current** — the level of testing in place today.
+- **Next** — the level to add in the next milestone, with a named trigger.
+- **Deferred** — levels explicitly out of scope for now, with a reason.
+
+**Example (any project):**
+
+| Level | Current | Next | Deferred |
+|-------|---------|------|----------|
+| 1. Compile | in place, runs on every patch | — | — |
+| 2. Static analysis | partially in place (`--check-md`, `--self-test`) | linter for the project's language | — |
+| 3. DOM analysis | not in place | add when frontend has > 5 pages | — |
+| 4. Flow tests | one flow covered (smoke) | add one flow per new feature (Section 17-10) | — |
+| 5. Manual | ad-hoc | a written checklist before each release (Section 24) | — |
+
+**Rule:** the roadmap is a table in this section (filled by the project's own Session Tracker, Section 13), updated every time a level is added or a new class of failure appears that no level catches. If a bug is found that no existing level would have caught, a new level or a new check inside an existing level must be added, and the roadmap updated in the same patch.
 
 ---
 
