@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P169 |
-| Last tag | `p169-ux-quality` |
-| Time | 2026-11-04 16:20 |
-| MSG-SEED | `52e0cf34` |
+| Last patch | P170 |
+| Last tag | `p170a-continuity` |
+| Time | 2026-11-04 16:25 |
+| MSG-SEED | `0f751919` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4139,6 +4139,120 @@ The AI **never** invents a variant of the rule document. The document is copied 
 - ❌ "Which phase should I continue?"
 - ❌ "Explain the project."
 - ✅ "I read the document. Ready. What's the last error?"
+
+---
+
+### 14-5. Compact Report Format — 30-80 lines, not 1000
+
+> **Any diagnostic, test, or audit output destined for the AI is 30-80 lines. Errors and warnings are detailed; info and success are aggregated. Anything longer is data, not a report.**
+
+A report the AI receives has one job: to inform the next decision. A 1000-line report is not more informative — it is less, because the signal drowns. The AI reads the first 200 lines, skims the rest, and misses the one line that matters.
+
+**The compact format (all sections, in order):**
+
+1. **Summary line** — one line, what ran, how many passed, how many failed.
+2. **Backend / compile results** — one line per group (e.g., "cargo: OK 47/47", "npm build: OK").
+3. **Errors** — every error, full detail. Errors are actionable; they must not be aggregated.
+4. **Warnings** — every warning, full detail. Same reason.
+5. **Info** — grouped by kind. Show at most 3 instances per kind; report the count of the rest.
+6. **Skipped / Not tested** — one line, what was not attempted and why.
+7. **Diagnostic metadata** — file name, size, run duration, run id. Two lines maximum.
+
+**Rules:**
+
+- Never send raw log files to the AI. Send the compact report; keep the raw log on disk for reference.
+- Never aggregate errors into a count. "12 errors" hides which 12 and what they say.
+- Aggregate info by kind, not by line. "18 hidden buttons" is a count; "18 hidden buttons: [three examples]" is a report.
+- Never include a success line for something that was not tested. "I did not test X" is honest; "X: OK" when X was skipped is a lie that hides a bug.
+
+**Where the report is generated:** the diagnostic tool itself produces the compact form as its primary output. The verbose form is a secondary flag for the developer, not the default. If the tool cannot produce a compact form, wrap it with a small script that does — sending raw output to the AI burns tokens on every message.
+
+**The AI's duty:** when the user sends a report that is longer than 80 lines, ask for a compact version. Do not skim the 1000-line output and guess which lines mattered. The report is a contract: if it is too long, the tool that produced it needs Section 14-5 applied.
+
+### 14-6. Session Sync Discipline — every 5-10 patches, a state refresh
+
+> **Every 5-10 patches, the AI refreshes the project's state in one consolidated block. Not every patch, not never. The rhythm prevents context drift without flooding the context.**
+
+A project that spans hundreds of messages accumulates drift. A variable that used to be named X is Y. A page that used to live at Z is at W. A rule that used to say "always A" says "usually A" after three clarifications. The drift is invisible until a patch is built against the old state and fails.
+
+**The cadence:**
+
+- **Every 5-10 patches** (or every 50-100 messages, whichever comes first), a state refresh.
+- **At every phase boundary** (Section 14-11 — Phase Gates), a state refresh is mandatory.
+- **When the user asks "where are we?"**, a state refresh. Do not answer from memory.
+
+**What the refresh contains (one block, ~30-60 lines):**
+
+1. **Session Tracker** (Section 13) — current tag, current phase, current goal, current blockers.
+2. **Working list** — features that work today, verified.
+3. **Half-finished list** — features whose backend exists but frontend does not, or vice versa (Section 19-4 — bundle strategy tracks this).
+4. **Not-started list** — features in the roadmap that are not yet touched.
+5. **Known broken list** — features that are broken and their ISSUE IDs.
+6. **Next three patches** — what the AI proposes next, in priority order.
+
+**What the refresh does NOT contain:**
+
+- A re-summary of every feature that works. The Session Tracker already says "v1.4.0 shipped with A, B, C".
+- A re-list of every ISSUE. The tracker lists them; the refresh only lists the ones that block the next three patches.
+- A plan for the next 20 patches. Three is enough; more is speculative.
+
+**Where it goes:** in the response to the user, in the same message as the next patch. Not a separate file (Section 0-A-1 — single document). Not a chat message alone (Section 0-C-10 — every message has a patch). The refresh replaces the "summary" line of a patch message — instead of "📌 P170: added X", it is "📌 P170 (state refresh): added X. Working: A, B, C. Next: X, Y, Z."
+
+**Why not every patch:** a state refresh every patch is noise. If nothing changed since the last refresh, the refresh says "no change" and wastes tokens. Every 5-10 is the rhythm where something has actually accumulated.
+
+**Why not never:** a project without periodic refresh has no memory past the last 3 patches. The next AI reads the last 300 lines of the document and cannot tell if features A, B, C actually work or were just planned.
+
+### 14-7. Handoff package — for switching AI mid-project
+
+> **When switching AI mid-project, the handoff is one file: the current patch ID, the last safe tag, the last 3-5 patches (with their commit messages), and the current state refresh. Not the entire conversation.**
+
+A user switching AI mid-project has one goal: to keep the project moving. Re-sending the entire history is the wrong response — it burns tokens on both sides and forces the new AI to re-read a conversation it will never catch up on.
+
+**The handoff package contents:**
+
+1. **This document** — the whole of it, as-is. It is the constitution; the new AI needs it.
+2. **`_work/ctx_delta.txt`** — the last patch's TAG, WORK, NEXT, ROADMAP, FILES. ~1 KB.
+3. **`_work/handoff.json`** (if the project produces it) — current patch ID, last safe tag, the last 3-5 patches with their commit messages, the last applied `input.txt` content, the last 5 commits.
+4. **A one-line message** — "Continuing. Last tag: `<tag>`. Next: `<one line>`."
+
+**What the handoff does NOT contain:**
+
+- The entire conversation history.
+- A re-summary of every feature.
+- A re-list of every bug.
+- The full `output.txt` from the last 10 runs.
+
+**The `handoff` command:** if the project's tool has a `handoff` subcommand, run it. It writes `_work/handoff.json` with the four parts above, ready to send. If the project's tool does not have it, the AI produces the same JSON by reading `_work/ctx_delta.txt`, `git log -5 --oneline`, and the last archived `input.txt`.
+
+**The new AI's first message:** it must not ask "what is the project" (Section 0-A-4 — forbidden questions). It reads this document, reads the handoff package, and replies in one line: "📌 Read the handoff. Last tag: `<tag>`. Continuing from `<NEXT>`." Then it continues — Section 0-C-25 governs what happens next.
+
+**The user's role:** the user's only job in the handoff is to send the package. Not to explain, not to summarize, not to answer "what were we doing?" (which is forbidden, Section 0-A-4). If the new AI asks forbidden questions, the user says "Project context, please" (Section 0-C-19-2) and the AI re-reads.
+
+### 14-8. Per-patch snapshot — 3-5 bullets after every patch
+
+> **Every patch ends with a 3-5 bullet snapshot: what was done, what it proves, what remains. Not a summary of the whole project — a summary of this patch.**
+
+A patch's commit message says one line. The diff says what changed. Neither says *why*, *what it proves*, or *what comes next*. That is the snapshot's job.
+
+**The snapshot format (4 lines, at the end of the patch message or in the patch's commit body):**
+
+1. **What was done** — one bullet, one line. The feature, the fix, the refactor.
+2. **What was verified** — which test level passed (Section 17-4). "Compile green, DOM green" is a snapshot; "the feature works" is a claim.
+3. **What was not verified** — explicitly. "Not tested: flow test not run, manual not run." The four-verdict vocabulary (Section 17-12) applies here.
+4. **What comes next** — the immediate next step. Not the roadmap; the next patch's target.
+
+**Where the snapshot lives:**
+
+- In the AI's reply to the user, under the patch or its summary line.
+- In the commit's body (not just the subject) — `git log` shows it, `git show` shows it, `git blame` shows why.
+- **Not** in this document. The document is the state; the snapshot is the transition. Snapshots accumulate; the document stays current.
+
+**Why 3-5 bullets, not 1, not 20:**
+
+- **1 bullet** ("done: added X") says nothing about verification or next steps.
+- **20 bullets** is a re-summary of the whole project, not the patch. That is what Section 14-6 (session refresh) is for, and it happens every 5-10 patches.
+
+3-5 is the rhythm: enough to understand the patch in 10 seconds, not enough to drown the next patch.
 
 ---
 
