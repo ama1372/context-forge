@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P174 |
-| Last tag | `p170c-hide-not-delete` |
-| Time | 2026-11-04 16:32 |
-| MSG-SEED | `979560d8` |
+| Last patch | P175 |
+| Last tag | `p170d-debugging` |
+| Time | 2026-11-04 16:51 |
+| MSG-SEED | `31eef905` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -5799,6 +5799,90 @@ If the project crashes or files are corrupted:
 3. **Retry.** This time with the correct anchor.
 
 **Golden rule:** every failure is a lesson. Don't make the same mistake twice.
+
+---
+
+### 30-5. Debugging infrastructure — what is available
+
+> **Before debugging, know what tools exist. Most bugs are five minutes of the wrong tool, not five hours of the wrong bug.**
+
+Different bugs need different tools. A compile error is not a runtime error is not a layout bug is not a data bug. This section lists what is available at each layer.
+
+| Layer | Tool | What it shows |
+|-------|------|---------------|
+| Compile | the project's build command | syntax, imports, type mismatches |
+| Static | the project's linter | style, unused code, a11y warnings |
+| Runtime — browser UI | WebView2 DevTools (Windows) / browser DevTools (web) | console, network, elements, sources, live edits |
+| Runtime — desktop shell | the shell's DevTools (if the framework exposes them) | shell-level errors, IPC calls |
+| Runtime — backend | the backend's log / debug output | request traces, slow operations |
+| Data | `--file <data-file>` on the data source | actual stored data, row by row |
+| Network | the browser's network panel, or the tool's traffic log | requests, responses, timing |
+| Tests | the test runner's output | which test, which assertion, which line |
+
+**Rule:** name the tool before starting the debugging. "It doesn't work" with no tool is not a debugging session — it is a guess.
+
+### 30-6. Opening DevTools — the primary runtime tool
+
+> **The browser DevTools are the first line of defense for any runtime bug the user can see. Learn to open them before learning any other tool.**
+
+Most runtime debugging happens in the DevTools panel of whatever browser engine renders the app's UI. The exact keyboard shortcut depends on the shell, but the panels are the same:
+
+| Panel | When to use it |
+|-------|----------------|
+| **Console** | JavaScript errors, `console.log` output, uncaught promises, warnings |
+| **Elements** | DOM tree, CSS inspection, live edits, hidden elements |
+| **Sources** | Breakpoints on `.js` / `.ts` / framework source, step through execution |
+| **Network** | Requests, responses, timing, headers, cookies |
+| **Application** | localStorage, sessionStorage, cookies, service workers, caches |
+
+**Opening the DevTools:**
+
+- **Web app in browser:** `F12`, `Ctrl+Shift+I` (Windows/Linux), `Cmd+Option+I` (macOS), or right-click → "Inspect Element".
+- **Desktop shell with WebView2 (Windows):** right-click anywhere → "Inspect Element". If it does not appear, the shell has disabled DevTools for this build (dev builds usually allow it; production builds usually do not).
+- **Desktop shell with WebView2 (production):** DevTools are disabled — use the dev build for debugging.
+- **Mobile device:** the mobile framework's remote debugging (WebView remote debugging, or the shell's inspector). Often the fastest way is to reproduce the bug in the desktop browser first.
+
+**The four things to check first, in order:**
+
+1. **Console** — is there an error? Which file, which line?
+2. **Elements** — is the element present but hidden? Is a parent `display: none`?
+3. **Network** — did the request fire? Did it return what the code expects?
+4. **Application** — is the state in localStorage what the code assumes?
+
+Most "it doesn't work" bugs are answered by these four, in that order, in under two minutes.
+
+### 30-7. Static analysis — catching problems before running
+
+> **Static analysis (linter, type checker, unused-code scan) catches the class of bug that runs fine but is wrong. Run it before shipping, not after the user reports the bug.**
+
+Static analysis is not a substitute for runtime testing (Section 17-4) — it is a complementary layer. It catches:
+
+- **Unused imports and exports** — dead code, potential typos.
+- **Unused CSS selectors** — styles that used to be needed and are not anymore.
+- **Missing accessibility attributes** — labels, roles, tabindex.
+- **Type mismatches** (in typed languages) — arguments, return values, nullability.
+- **Suspicious patterns** — `==` vs `===`, `var` vs `let`, empty catch blocks.
+
+**The project's linter command** lives in the build config or a dedicated script. Common patterns:
+
+    npm run lint
+    cargo clippy
+    pylint src/
+    eslint src/
+    golangci-lint run
+
+**When to run it:**
+
+1. **Before every release tag** — full lint, all warnings resolved or documented.
+2. **During development** — the editor's built-in linter is enough; full lint at commit is not mandatory.
+3. **After a large refactor** — lint catches what the tests miss.
+
+**When NOT to block on it:**
+
+- The linter may report pre-existing warnings that are not part of the current change. Do not fix all of them to unblock the current patch (Section 17-11 — stop-the-bleed).
+- The linter may be configured to enforce a style that the project does not follow. Fix the config, not the code.
+
+**What static analysis does NOT catch:** runtime logic errors, integration failures, user confusion, performance problems. It is one layer, not the whole.
 
 ---
 
