@@ -5,10 +5,10 @@
 
 | Field | Value |
 |-------|-------|
-| Last patch | P176 |
-| Last tag | `p170e-extensibility` |
-| Time | 2026-11-04 16:51 |
-| MSG-SEED | `dca28a3b` |
+| Last patch | P177 |
+| Last tag | `p170f-research` |
+| Time | 2026-11-04 16:52 |
+| MSG-SEED | `020b583f` |
 <!-- AUTO:END -->
 
 > A project-agnostic continuity protocol for direct-chat patches and repository-aware coding agents.
@@ -4949,6 +4949,43 @@ When a user needs metadata the developer did not anticipate, they add a custom f
 - Any feature where the developer says "users probably want X" — check if X should be data, not code.
 
 **The test:** ask "what if a user wants 3 of these instead of 6?" If the answer is "we would change the code", the feature needs Layer 1. If the answer is "they can edit it", the feature already has it. If the answer is "we never thought about it", it needs all three.
+
+### 19-10. Competitive research discipline — research before build
+
+> **Before building a feature, research how other products solve it. Not to copy — to know what the baseline is. Then build something at least as good, with the project's own reason to exist.**
+
+Building a feature blind produces two failure modes: features nobody asked for, and features that fail on problems other products solved ten years ago. Both are avoidable with 30 minutes of research before design.
+
+**When to research:**
+
+- Every new feature that has an analog in other products (most features).
+- Every feature whose shape is not obvious ("should this be a modal or a page?").
+- Every feature that adds a new kind of data or workflow.
+
+**What to research:**
+
+1. **How do three competitors solve this?** — same category, same shape, or adjacent.
+2. **What do users complain about in those solutions?** — the reviews, the forums, the bug trackers. The gaps are the opportunities.
+3. **What is the minimum viable version?** — the version that solves the problem without the ten features the competitors added.
+4. **What is the project's own reason to exist?** — the reason the project is different. The feature must serve that reason, not the competitor's.
+
+**How to record it:**
+
+- **A short summary, not pasted articles.** Three to five bullets, each one line. The full articles stay in the browser, not in the document.
+- **Cite the source.** A link, a name, a date. "I read somewhere" is not a source.
+- **Save the summary in the design message** (Section 19-2) before the patch. Not in the patch itself — the summary informs the design, the patch implements it.
+- **If the summary changes the design, say so.** "I planned modal, but three competitors use a full page — the design below uses a page."
+
+**What the research is NOT:**
+
+- **Not copying.** The research informs the design, it does not dictate it. The competitor's choice may be wrong for this project.
+- **Not a claim of "industry standard".** Three competitors is a signal, not a standard. Say "three of three use X" — do not say "X is the industry standard" unless the standards body says so.
+- **Not a delay.** Thirty minutes of reading is faster than a week of building the wrong thing. The research pays for itself the first time.
+- **Not always mandatory.** A pure bug fix, a one-line refactor, an internal tool — no research needed. The rule is for user-facing features with an analog.
+
+**The failure mode this prevents:** a project that builds a feature that a competitor shipped two years ago, that users have already left behind. Or a project that builds a feature nobody asked for because nobody was asked.
+
+**The other failure mode this prevents:** a project that refuses to look at competitors "because we are different". Every project is different. Every project is also solving the same human problems. The different part is the reason to exist — the same part is the baseline that must be met.
 
 ---
 
