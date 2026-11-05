@@ -50,8 +50,8 @@ Ein **einzelnes Dokument** (`PROJECT_CONTEXT.en.md`), das du in jeden KI-Chat ei
 
 - ✅ **Niemals den Kontext verliert** — jede Antwort trägt den Projektstatus weiter.
 - ✅ **Niemals deinen Code per Hand ändert** — sendet einen Patch, du fügst ein, ein Befehl wendet an.
-- ✅ **Niemals Tokens verbrennt** — fragt nur nach der Datei, die er braucht, nicht nach dem ganzen Projekt.
-- ✅ **Niemals dein Konto sperrt** — eingebautes Anti-Limit-Protokoll.
+- ✅ **Spart Tokens** — fragt nur nach der Datei, die er braucht (`--status`, `--file`), nicht nach dem ganzen Projekt.
+- ✅ **Hilft gegen Nachrichten-Limits** — `run.py` warnt, wenn du zu schnell sendest, und die Arbeit wird in weniger Nachrichten gebündelt.
 - ✅ **Niemals 10 Befehle verlangt** — einfügen, einen Befehl ausführen, fertig.
 - ✅ **Niemals vergisst, wo ihr wart** — der nächste Chat macht genau da weiter.
 - ✅ **Lässt mehrere KIs gleichzeitig arbeiten** — Claude, ChatGPT und DeepSeek an einem Projekt, ohne sich gegenseitig zu überschreiben (Team-Modus).
@@ -65,7 +65,7 @@ Ein **einzelnes Dokument** (`PROJECT_CONTEXT.en.md`), das du in jeden KI-Chat ei
 1. **Speichere `PROJECT_CONTEXT.en.md` im Projektstammverzeichnis.**
 2. **(Empfohlen)** Speichere `run.py` im selben Ordner. Kein `run.py`? Sag der KI: *"Erzeuge run.py aus Abschnitt 35."*
 3. **Einmal einrichten:** `python run.py --init`
-4. **Öffne einen DeepSeek-Chat** (oder Claude / ChatGPT / Gemini). Füge das **ganze Dokument** als erste Nachricht ein. Sag: *"Neues Projekt. Mein Ziel: <eine Zeile>."*
+4. **Öffne einen DeepSeek-Chat** (oder Claude / ChatGPT / Gemini). Sende das **ganze Dokument** als erste Nachricht (als Datei anhängen, wenn der Chat das erlaubt). Sag: *"Neues Projekt. Mein Ziel: <eine Zeile>."* Das Dokument ist groß (~530 KB, rund 150k Tokens); lehnt dein Chat es ab, sende eine schlankere Kopie, erstellt mit `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), oder ergänze `--profile moderate` (~260 KB).
 5. **Schleife:** KI sendet einen Block → kopiere in `_work/input.txt` → führe `python run.py` aus → sende `_work/output.txt` zurück. Wiederhole.
 6. **Halte die Schleife, bis dein Projekt fertig ist.** Lass die KI dich nicht rausziehen — keine Shell-Befehle im Chat, keine Schnellskripte. Die Antwort ist immer: *"Leg es in input.txt."*
 
@@ -80,7 +80,7 @@ Ein **einzelnes Dokument** (`PROJECT_CONTEXT.en.md`), das du in jeden KI-Chat ei
 2. (Optional) **VS Code** installieren.
 3. `PROJECT_CONTEXT.en.md` und `run.py` herunterladen, in einen Ordner legen, in VS Code öffnen.
 4. Terminal: `python run.py` → Ordner `_work/` wird erstellt.
-5. In DeepSeek `PROJECT_CONTEXT.en.md` als erste Nachricht einfügen, Ziel nennen.
+5. In DeepSeek `PROJECT_CONTEXT.en.md` als erste Nachricht senden (oder als Datei anhängen) und das Ziel nennen. Zu lang für deinen Chat? Siehe Schnellstart Schritt 4 (`--slim-context`).
 6. **Schleife:** KI sendet Block → in `_work/input.txt` einfügen → `python run.py` → `_work/output.txt` zurücksenden.
 7. Alle 10–20 Nachrichten die KI an das Projekt erinnern.
 8. Bei Drift: **"Projektkontext, bitte."**
@@ -92,13 +92,13 @@ Vollversion (Englisch): siehe `README.md`.
 | Vorher | Nachher |
 |--------|---------|
 | Chat verliert Kontext | Kontext überlebt jede Nachricht |
-| 5000 Tokens pro Antwort | ~300 Tokens pro Antwort |
+| Du fügst bei jeder Nachricht das ganze Projekt ein | Die KI fragt nur nach den nötigen Dateien |
 | KI rät | KI weiß |
 | 10 Befehle pro Änderung | 1 Befehl pro Änderung |
-| Konto gesperrt | Konto sicher |
+| Sperren wegen „zu vieler Nachrichten“ | Tempo-Warnungen und weniger, vollständigere Nachrichten |
 | "Wo waren wir?" | "Hier ist der nächste Patch." |
 
-**40–80% weniger Tokens. Null Kontextverlust. Null manuelle Bearbeitung.**
+**Weniger Tokens. Kontext, der einen neuen Chat übersteht. Keine Handarbeit am Code.**
 
 ---
 
@@ -110,7 +110,7 @@ Lass Claude, ChatGPT, DeepSeek und Coding-Agenten **gleichzeitig am selben Proje
 - **Datei-Reservierung** — jede KI reserviert genau die Dateien, die sie bearbeitet; wollen zwei dieselbe Datei, bekommt sie nur eine.
 - **Erzwungen, nicht nur empfohlen** — `run.py` lehnt jeden Patch ab, der eine nicht reservierte Datei berührt.
 - **Ein Koordinator, viele Worker** — eine KI prüft und merged und genehmigt nie ihre eigene Arbeit; wichtige Entscheidungen triffst du.
-- **Die Arbeit läuft weiter, während du pausierst** — genehmige eine Aufgabenliste, starte `team away on`, und installierte Agenten nehmen sich die nächste freie Aufgabe; bis zu deiner Rückkehr wird nichts gepusht, und `team pause` stoppt alle.
+- **Die Arbeit läuft weiter, während du pausierst** — genehmige eine Aufgabenliste, starte `team away on`, und installierte Agenten nehmen sich die nächste freie Aufgabe; bis zu deiner Rückkehr lehnt `run.py` jeden Push ab, und `team pause` stoppt alle.
 - **Chat oder installierter Agent** — Chat-KIs erledigen alles über `input.txt` (`#@CLAIM:`); Agenten führen die Befehle selbst aus.
 
     python run.py team init
@@ -139,7 +139,7 @@ Das Regel-Dokument ist **nur auf Englisch** — damit jede KI es identisch analy
 ## Dateien, die du bekommst
 
 - `PROJECT_CONTEXT.en.md` — das Regel-Dokument (füge es in deine KI ein)
-- `run.py` — das Werkzeug (die KI gibt es dir bei der ersten Nutzung)
+- `run.py` — das Werkzeug (lade es aus diesem Repository, oder die KI baut es aus Abschnitt 35 neu)
 - `README.md` + Übersetzungen — diese Seite, mehrsprachig
 - `LICENSE` — MIT, mach was du willst
 
@@ -151,13 +151,13 @@ Das Regel-Dokument ist **nur auf Englisch** — damit jede KI es identisch analy
 Nicht viel. Wenn du eine Nachricht einfügen und einen Befehl ausführen kannst, reicht es.
 
 **Welche KI ist am besten?**
-DeepSeek — folgt dem Protokoll am präzisesten. Claude, ChatGPT, Gemini funktionieren auch.
+Jedes starke Chat-Modell: DeepSeek, Claude, ChatGPT, Gemini. Jedes Modell driftet in langen Chats ab — dann sag "Projektkontext, bitte." Für mehrere KIs gleichzeitig oder Arbeit in deiner Abwesenheit nutze einen installierten Agenten (Claude Code, Codex, Cursor…).
 
 **Ist es kostenlos?**
 Dokument und Werkzeug sind MIT. Die KI-API kostet, was dein Anbieter verlangt.
 
 **Und wenn etwas kaputtgeht?**
-Alles ist mit git versioniert. Ein Befehl macht rückgängig. Das Dokument erklärt wie.
+Nutzt der Ordner git (empfohlen), committet `run.py` jeden angewendeten Patch, und `python run.py revert P<id>` kehrt zum Stand vor diesem Patch zurück (spätere Patches werden ebenfalls rückgängig gemacht).
 
 ---
 
@@ -184,5 +184,5 @@ Dieses Protokoll funktioniert gleich, egal ob du nutzt:
 
 - **Kein Kontextverlust** — der Projektstand steht immer im Dokument.
 - **Jederzeit einen neuen Chat starten** — ohne alles neu zu erklären.
-- **Bis zu 80 % weniger Tokens** — die KI fordert nur die nötigen Dateien an (`--status`, `--file`).
+- **Weniger Tokens** — die KI fordert nur die nötigen Dateien an (`--status`, `--file`).
 - **Mehrere KIs gleichzeitig** — der Team-Modus verhindert Kollisionen (siehe oben).

@@ -50,8 +50,8 @@ Ett **enda dokument** (`PROJECT_CONTEXT.en.md`) som du klistrar in i vilken AI-c
 
 - ✅ **Aldrig tappar kontexten** — varje svar bär projektets tillstånd framåt.
 - ✅ **Aldrig redigerar din kod för hand** — skickar en patch, du klistrar in, ett kommando tillämpar.
-- ✅ **Aldrig bränner tokens** — ber bara om filen den behöver, inte hela projektet.
-- ✅ **Aldrig blockerar ditt konto** — inbyggt anti-gränsprotokoll.
+- ✅ **Sparar tokens** — ber bara om filen den behöver (`--status`, `--file`), inte hela projektet.
+- ✅ **Hjälper dig undvika meddelandegränser** — `run.py` varnar när du skickar för snabbt, och arbetet samlas i färre meddelanden.
 - ✅ **Aldrig ber dig köra 10 kommandon** — klistra in, kör ett, klart.
 - ✅ **Aldrig glömmer var ni var** — nästa chatt fortsätter precis där du slutade.
 - ✅ **Låter flera AI arbeta samtidigt** — Claude, ChatGPT och DeepSeek i samma projekt utan att skriva över varandras arbete (Teamläge).
@@ -65,7 +65,7 @@ Ett **enda dokument** (`PROJECT_CONTEXT.en.md`) som du klistrar in i vilken AI-c
 1. **Lägg `PROJECT_CONTEXT.en.md` i projektets rot.**
 2. **(Rekommenderas)** Lägg `run.py` i samma mapp. Har du inte? Säg till AI:n: *"Generera run.py från Sektion 35."*
 3. **Ställ in en gång:** `python run.py --init`
-4. **Öppna en DeepSeek-chatt** (eller Claude / ChatGPT / Gemini). Klistra in **hela dokumentet** som första meddelande. Säg: *"Nytt projekt. Mitt mål: <en rad>."*
+4. **Öppna en DeepSeek-chatt** (eller Claude / ChatGPT / Gemini). Skicka **hela dokumentet** som första meddelande (bifoga som fil om chatten tillåter det). Säg: *"Nytt projekt. Mitt mål: <en rad>."* Dokumentet är stort (~530 KB, ungefär 150k tokens); om chatten vägrar, skicka en lättare kopia skapad med `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), eller lägg till `--profile moderate` (~260 KB).
 5. **Slinga:** AI:n skickar ett block → kopiera till `_work/input.txt` → kör `python run.py` → skicka `_work/output.txt` tillbaka. Upprepa.
 6. **Håll slingan tills projektet är klart.** Låt inte AI:n dra ut dig — inga shell-kommandon i chatten, inga snabba skript. Svaret är alltid: *"Lägg det i input.txt."*
 
@@ -80,7 +80,7 @@ Ett **enda dokument** (`PROJECT_CONTEXT.en.md`) som du klistrar in i vilken AI-c
 2. (Valfritt) Installera **VS Code**.
 3. Ladda ner `PROJECT_CONTEXT.en.md` och `run.py`, lägg i samma mapp, öppna i VS Code.
 4. Terminal: `python run.py` → mappen `_work/` skapas.
-5. I DeepSeek, klistra in `PROJECT_CONTEXT.en.md` som första meddelande, säg ditt mål.
+5. I DeepSeek, skicka `PROJECT_CONTEXT.en.md` som första meddelande (eller bifoga som fil) och ange ditt mål. För långt för din chatt? Se steg 4 i snabbstarten (`--slim-context`).
 6. **Slinga:** AI skickar ett block → kopiera till `_work/input.txt` → kör `python run.py` → skicka `_work/output.txt` tillbaka.
 7. Var 10–20 meddelande, påminn AI:n om ditt projekt.
 8. Om AI:n driver iväg, säg: **"Projektkontext, tack."**
@@ -92,13 +92,13 @@ Full version (engelska): se `README.md`.
 | Före | Efter |
 |------|-------|
 | Chatten tappar kontext | Kontexten överlever varje meddelande |
-| 5000 tokens per svar | ~300 tokens per svar |
+| Du klistrar in hela projektet i varje meddelande | AI:n ber bara om de filer som behövs |
 | AI:n gissar | AI:n vet |
 | 10 kommandon per ändring | 1 kommando per ändring |
-| Konto blockerat | Konto säkert |
+| Spärrar för "för många meddelanden" | Tempovarningar och färre, fylligare meddelanden |
 | "Var var vi?" | "Här är nästa patch." |
 
-**40–80% färre tokens. Noll kontextförlust. Noll manuella redigeringar.**
+**Färre tokens. Kontext som klarar en ny chatt. Inga handredigeringar.**
 
 ---
 
@@ -110,7 +110,7 @@ Låt Claude, ChatGPT, DeepSeek och kodagenter arbeta **i samma projekt samtidigt
 - **Filreservation** — varje AI reserverar exakt de filer den ska redigera; om två vill ha samma fil får bara en den.
 - **Tvingande, inte bara råd** — `run.py` vägrar varje patch som rör en fil som inte är reserverad.
 - **En samordnare, många arbetare** — en AI granskar och slår ihop och godkänner aldrig sitt eget arbete; viktiga beslut fattar du.
-- **Arbetet fortsätter medan du vilar** — godkänn en uppgiftslista, kör `team away on`, så tar installerade agenter nästa lediga uppgift; inget pushas förrän du är tillbaka, och `team pause` stoppar alla.
+- **Arbetet fortsätter medan du vilar** — godkänn en uppgiftslista, kör `team away on`, så tar installerade agenter nästa lediga uppgift; tills du är tillbaka vägrar `run.py` varje push, och `team pause` stoppar alla.
 - **Chatt eller installerad agent** — chatt-AI gör allt via `input.txt` (`#@CLAIM:`); agenter kör kommandona själva.
 
     python run.py team init
@@ -145,7 +145,7 @@ Regeldokumentet är **endast på engelska** — så att varje AI tolkar det iden
 ## Filer du får
 
 - `PROJECT_CONTEXT.en.md` — regeldokumentet (klistra in i din AI)
-- `run.py` — verktyget (AI:n ger vid första användning)
+- `run.py` — verktyget (ladda ner det från detta kodförråd, eller låt AI:n bygga om det från avsnitt 35)
 - `README.md` + översättningar — denna sida, 24 språk
 - `LICENSE` — MIT, gör vad du vill
 
@@ -157,13 +157,13 @@ Regeldokumentet är **endast på engelska** — så att varje AI tolkar det iden
 Inte mycket. Om du kan klistra in ett meddelande och köra ett kommando kan du använda detta.
 
 **Vilken AI är bäst?**
-DeepSeek — följer protokollet mest exakt. Claude, ChatGPT, Gemini fungerar också.
+Vilken stark chattmodell som helst: DeepSeek, Claude, ChatGPT, Gemini. Alla modeller driver iväg i långa chattar — säg då "Projektkontext, tack." För flera AI samtidigt, eller arbete medan du är borta, använd en installerad agent (Claude Code, Codex, Cursor…).
 
 **Är det gratis?**
 Dokumentet och verktyget är MIT. AI-API:t enligt din leverantör.
 
 **Vad händer om något går sönder?**
-Allt är versionshanterat med git. Rulla tillbaka med ett kommando. Dokumentet förklarar hur.
+Om mappen använder git (rekommenderas) committar `run.py` varje tillämpad patch, och `python run.py revert P<id>` går tillbaka till läget före den patchen (senare patchar ångras också).
 
 ---
 
@@ -190,5 +190,5 @@ Protokollet fungerar likadant oavsett om du använder:
 
 - **Ingen kontextförlust** — projektets läge finns alltid i dokumentet.
 - **Starta en ny chatt när som helst** — fortsätt utan att förklara igen.
-- **Upp till 80 % färre tokens** — AI:n ber bara om de filer den behöver (`--status`, `--file`).
+- **Färre tokens** — AI:n ber bara om de filer den behöver (`--status`, `--file`).
 - **Flera AI samtidigt** — Teamläget hindrar krockar (se ovan).

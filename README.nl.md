@@ -50,8 +50,8 @@ Een **enkel document** (`PROJECT_CONTEXT.en.md`) dat je in elke AI-chat plakt �
 
 - ✅ **Nooit de context verliest** — elk antwoord draagt de projectstatus verder.
 - ✅ **Nooit je code met de hand aanpast** — stuurt een patch, jij plakt, één commando past toe.
-- ✅ **Nooit tokens verbrandt** — vraagt alleen het bestand dat het nodig heeft, niet het hele project.
-- ✅ **Nooit je account blokkeert** — ingebouwd anti-limietprotocol.
+- ✅ **Bespaart tokens** — vraagt alleen het bestand dat nodig is (`--status`, `--file`), niet het hele project.
+- ✅ **Helpt berichtlimieten te vermijden** — `run.py` waarschuwt als je te snel verstuurt, en werk wordt gebundeld in minder berichten.
 - ✅ **Nooit 10 commando's vraagt** — plakken, één uitvoeren, klaar.
 - ✅ **Nooit vergeet waar jullie waren** — de volgende chat gaat verder waar je stopte.
 - ✅ **Laat meerdere AI's tegelijk werken** — Claude, ChatGPT en DeepSeek aan één project zonder elkaars werk te overschrijven (Teammodus).
@@ -65,7 +65,7 @@ Een **enkel document** (`PROJECT_CONTEXT.en.md`) dat je in elke AI-chat plakt �
 1. **Plaats `PROJECT_CONTEXT.en.md` in de projectroot.**
 2. **(Aanbevolen)** Zet `run.py` in dezelfde map. Niet? Zeg tegen de AI: *"Genereer run.py uit Sectie 35."*
 3. **Eenmalig instellen:** `python run.py --init`
-4. **Open een DeepSeek-chat** (of Claude / ChatGPT / Gemini). Plak het **hele document** als eerste bericht. Zeg: *"Nieuw project. Mijn doel: <één regel>."*
+4. **Open een DeepSeek-chat** (of Claude / ChatGPT / Gemini). Stuur het **hele document** als eerste bericht (voeg het toe als bestand als de chat dat toestaat). Zeg: *"Nieuw project. Mijn doel: <één regel>."* Het document is groot (~530 KB, ongeveer 150k tokens); weigert je chat het, stuur dan een lichtere kopie gemaakt met `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), of voeg `--profile moderate` toe (~260 KB).
 5. **Loop:** AI stuurt een blok → kopieer naar `_work/input.txt` → voer `python run.py` uit → stuur `_work/output.txt` terug. Herhaal.
 6. **Houd de loop tot je project klaar is.** Laat de AI je er niet uit trekken — geen shell-commando's in de chat, geen snelle scripts. Het antwoord is altijd: *"Zet het in input.txt."*
 
@@ -80,7 +80,7 @@ Een **enkel document** (`PROJECT_CONTEXT.en.md`) dat je in elke AI-chat plakt �
 2. (Optioneel) Installeer **VS Code**.
 3. Download `PROJECT_CONTEXT.en.md` en `run.py`, zet in één map, open in VS Code.
 4. Terminal: `python run.py` → map `_work/` wordt aangemaakt.
-5. In DeepSeek, plak `PROJECT_CONTEXT.en.md` als eerste bericht, noem je doel.
+5. Stuur in DeepSeek `PROJECT_CONTEXT.en.md` als eerste bericht (of voeg het toe als bestand) en noem je doel. Te lang voor je chat? Zie stap 4 van de snelstart (`--slim-context`).
 6. **Loop:** AI stuurt een blok → kopieer naar `_work/input.txt` → voer `python run.py` uit → stuur `_work/output.txt` terug.
 7. Elke 10–20 berichten, herinner de AI aan je project.
 8. Als de AI afdwaalt, zeg: **"Projectcontext, alsjeblieft."**
@@ -92,13 +92,13 @@ Volledige versie (Engels): zie `README.md`.
 | Voor | Na |
 |------|-----|
 | Chat verliest context | Context overleeft elk bericht |
-| 5000 tokens per antwoord | ~300 tokens per antwoord |
+| Je plakt elk bericht het hele project | De AI vraagt alleen de nodige bestanden |
 | AI gokt | AI weet |
 | 10 commando's per wijziging | 1 commando per wijziging |
-| Account geblokkeerd | Account veilig |
+| Blokkades door "te veel berichten" | Snelheidswaarschuwingen en minder, vollere berichten |
 | "Waar waren we?" | "Hier is de volgende patch." |
 
-**40–80% minder tokens. Nul contextverlies. Nul handmatige aanpassingen.**
+**Minder tokens. Context die een nieuwe chat overleeft. Geen handmatige wijzigingen.**
 
 ---
 
@@ -110,7 +110,7 @@ Laat Claude, ChatGPT, DeepSeek en coding-agents **tegelijk aan hetzelfde project
 - **Bestanden reserveren** — elke AI reserveert precies de bestanden die hij gaat bewerken; als twee hetzelfde bestand willen, krijgt er maar één het.
 - **Afgedwongen, niet alleen aangeraden** — `run.py` weigert elke patch die een niet-gereserveerd bestand raakt.
 - **Eén coördinator, veel uitvoerders** — één AI controleert en merget en keurt nooit zijn eigen werk goed; belangrijke beslissingen neem jij.
-- **Het werk gaat door terwijl je pauzeert** — keur een takenlijst goed, start `team away on`, en geïnstalleerde agents pakken steeds de volgende vrije taak; er wordt niets gepusht tot je terug bent, en `team pause` stopt iedereen.
+- **Het werk gaat door terwijl je pauzeert** — keur een takenlijst goed, start `team away on`, en geïnstalleerde agents pakken steeds de volgende vrije taak; tot je terug bent weigert `run.py` elke push, en `team pause` stopt iedereen.
 - **Chat of geïnstalleerde agent** — chat-AI's doen alles via `input.txt` (`#@CLAIM:`); agents voeren de commando's zelf uit.
 
     python run.py team init
@@ -145,7 +145,7 @@ Het regel-document is **alleen Engels** — zodat elke AI het identiek parseert 
 ## Bestanden die je krijgt
 
 - `PROJECT_CONTEXT.en.md` — het regel-document (plak in je AI)
-- `run.py` — de tool (AI geeft bij eerste gebruik)
+- `run.py` — het hulpmiddel (download het uit deze repository, of de AI bouwt het opnieuw uit sectie 35)
 - `README.md` + vertalingen — deze pagina, 24 talen
 - `LICENSE` — MIT, doe wat je wilt
 
@@ -157,13 +157,13 @@ Het regel-document is **alleen Engels** — zodat elke AI het identiek parseert 
 Niet veel. Als je een bericht kunt plakken en één commando kunt uitvoeren, kun je dit gebruiken.
 
 **Welke AI is het beste?**
-DeepSeek — volgt het protocol het nauwkeurigst. Claude, ChatGPT, Gemini werken ook.
+Elk sterk chatmodel: DeepSeek, Claude, ChatGPT, Gemini. Elk model dwaalt af in lange chats — zeg dan "Projectcontext, alsjeblieft." Voor meerdere AI's tegelijk, of werk terwijl je weg bent, gebruik je een geïnstalleerde agent (Claude Code, Codex, Cursor…).
 
 **Is het gratis?**
 Het document en de tool zijn MIT. De AI-API volgens je provider.
 
 **En als er iets breekt?**
-Alles is geversioneerd met git. Draai terug met één commando. Het document legt uit hoe.
+Gebruikt de map git (aanbevolen), dan commit `run.py` elke toegepaste patch, en `python run.py revert P<id>` gaat terug naar de staat vóór die patch (latere patches worden ook ongedaan gemaakt).
 
 ---
 
@@ -190,5 +190,5 @@ Dit protocol werkt hetzelfde, of je nu gebruikt:
 
 - **Geen contextverlies** — de projectstatus staat altijd in het document.
 - **Start op elk moment een nieuwe chat** — ga verder zonder opnieuw uit te leggen.
-- **Tot 80% minder tokens** — de AI vraagt alleen de bestanden die nodig zijn (`--status`, `--file`).
+- **Minder tokens** — de AI vraagt alleen de nodige bestanden (`--status`, `--file`).
 - **Meerdere AI's tegelijk** — de Teammodus voorkomt botsingen (zie hierboven).

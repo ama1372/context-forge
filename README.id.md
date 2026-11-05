@@ -50,8 +50,8 @@ Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.en.md`) yang kamu tempel ke chat AI
 
 - ✅ **Tidak pernah kehilangan konteks** — setiap balasan membawa status proyek maju.
 - ✅ **Tidak pernah mengedit kodemu dengan tangan** — mengirim patch, kamu tempel, satu perintah menerapkan.
-- ✅ **Tidak pernah membakar token** — hanya meminta file yang dibutuhkan, bukan seluruh proyek.
-- ✅ **Tidak pernah memblokir akunmu** — protokol anti-limit bawaan.
+- ✅ **Menghemat token** — hanya meminta file yang dibutuhkan (`--status`, `--file`), bukan seluruh proyek.
+- ✅ **Membantu menghindari batas pesan** — `run.py` memperingatkan saat kamu mengirim terlalu cepat, dan pekerjaan digabung ke lebih sedikit pesan.
 - ✅ **Tidak pernah meminta 10 perintah** — tempel, jalankan satu, selesai.
 - ✅ **Tidak pernah lupa di mana kamu berada** — chat berikutnya melanjutkan tepat dari tempatmu berhenti.
 - ✅ **Membuat beberapa AI bekerja bersamaan** — Claude, ChatGPT, dan DeepSeek di satu proyek tanpa saling menimpa pekerjaan (Mode Tim).
@@ -65,7 +65,7 @@ Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.en.md`) yang kamu tempel ke chat AI
 1. **Simpan `PROJECT_CONTEXT.en.md` di akar proyek.**
 2. **(Disarankan)** Simpan `run.py` di folder yang sama. Tidak ada? Katakan ke AI: *"Buat run.py dari Bagian 35."*
 3. **Setup sekali:** `python run.py --init`
-4. **Buka chat DeepSeek** (atau Claude / ChatGPT / Gemini). Tempel **seluruh dokumen** sebagai pesan pertama. Katakan: *"Proyek baru. Tujuan saya: <satu baris>."*
+4. **Buka chat DeepSeek** (atau Claude / ChatGPT / Gemini). Kirim **seluruh dokumen** sebagai pesan pertama (lampirkan sebagai file jika chat mengizinkan). Katakan: *"Proyek baru. Tujuanku: <satu baris>."* Dokumennya besar (~530 KB, sekitar 150 ribu token); jika chat menolaknya, kirim salinan yang lebih ringan buatan `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), atau tambahkan `--profile moderate` (~260 KB).
 5. **Loop:** AI mengirim blok → salin ke `_work/input.txt` → jalankan `python run.py` → kirim `_work/output.txt` kembali. Ulangi.
 6. **Pertahankan loop sampai proyek selesai.** Jangan biarkan AI menarikmu keluar — tidak ada perintah shell di chat, tidak ada skrip cepat. Jawabannya selalu: *"Taruh di input.txt."*
 
@@ -80,7 +80,7 @@ Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.en.md`) yang kamu tempel ke chat AI
 2. (Opsional) Instal **VS Code**.
 3. Unduh `PROJECT_CONTEXT.en.md` dan `run.py`, taruh di satu folder, buka di VS Code.
 4. Terminal: `python run.py` → folder `_work/` dibuat.
-5. Di DeepSeek, tempel `PROJECT_CONTEXT.en.md` sebagai pesan pertama, sebutkan tujuanmu.
+5. Di DeepSeek, kirim `PROJECT_CONTEXT.en.md` sebagai pesan pertama (atau lampirkan sebagai file) dan sebutkan tujuanmu. Terlalu panjang untuk chat-mu? Lihat langkah 4 mulai cepat (`--slim-context`).
 6. **Loop:** AI mengirim blok → salin ke `_work/input.txt` → jalankan `python run.py` → kirim `_work/output.txt` kembali.
 7. Setiap 10–20 pesan, ingatkan AI tentang proyekmu.
 8. Jika AI menyimpang, katakan: **"Konteks proyek, tolong."**
@@ -92,13 +92,13 @@ Versi lengkap (Inggris): lihat `README.md`.
 | Sebelum | Sesudah |
 |---------|---------|
 | Chat kehilangan konteks | Konteks bertahan di setiap pesan |
-| 5000 token per balasan | ~300 token per balasan |
+| Menempel seluruh proyek di setiap pesan | AI hanya meminta file yang dibutuhkan |
 | AI menebak | AI tahu |
 | 10 perintah per perubahan | 1 perintah per perubahan |
-| Akun diblokir | Akun aman |
+| Diblokir karena "terlalu banyak pesan" | Peringatan kecepatan dan pesan lebih sedikit, lebih lengkap |
 | "Di mana kita tadi?" | "Ini patch berikutnya." |
 
-**40–80% lebih sedikit token. Nol kehilangan konteks. Nol edit manual.**
+**Lebih sedikit token. Konteks yang bertahan di chat baru. Tanpa edit manual.**
 
 ---
 
@@ -110,7 +110,7 @@ Jalankan Claude, ChatGPT, DeepSeek, dan agen coding **di proyek yang sama pada s
 - **Klaim file** — setiap AI mengklaim tepat file yang akan diubahnya; jika dua AI menginginkan file yang sama, hanya satu yang mendapatkannya.
 - **Dipaksakan, bukan sekadar saran** — `run.py` menolak setiap patch yang menyentuh file yang belum diklaim.
 - **Satu koordinator, banyak pekerja** — satu AI meninjau dan menggabungkan, dan tidak pernah menyetujui pekerjaannya sendiri; keputusan penting tetap milikmu.
-- **Pekerjaan berlanjut saat kamu istirahat** — setujui daftar tugas, jalankan `team away on`, dan agen terpasang terus mengambil tugas kosong berikutnya; tidak ada yang di-push sampai kamu kembali, dan `team pause` menghentikan semuanya.
+- **Pekerjaan berlanjut saat kamu istirahat** — setujui daftar tugas, jalankan `team away on`, dan agen terpasang terus mengambil tugas kosong berikutnya; `run.py` menolak setiap push sampai kamu kembali, dan `team pause` menghentikan semuanya.
 - **Chat atau agen terpasang** — AI chat melakukan semuanya lewat `input.txt` (`#@CLAIM:`); agen menjalankan perintah sendiri.
 
     python run.py team init
@@ -145,7 +145,7 @@ Dokumen aturan **hanya bahasa Inggris** — agar setiap AI memparsenya identik, 
 ## File yang kamu dapatkan
 
 - `PROJECT_CONTEXT.en.md` — dokumen aturan (tempel ke AI-mu)
-- `run.py` — alat (diberikan AI saat pertama kali digunakan)
+- `run.py` — alatnya (unduh dari repositori ini, atau AI membangunnya ulang dari Bagian 35)
 - `README.md` + terjemahan — halaman ini, 24 bahasa
 - `LICENSE` — MIT, lakukan sesukamu
 
@@ -157,13 +157,13 @@ Dokumen aturan **hanya bahasa Inggris** — agar setiap AI memparsenya identik, 
 Tidak banyak. Jika kamu bisa menempel pesan dan menjalankan satu perintah, kamu bisa pakai ini.
 
 **AI mana yang terbaik?**
-DeepSeek — paling tepat mengikuti protokol. Claude, ChatGPT, Gemini juga bekerja.
+Model chat kuat mana pun: DeepSeek, Claude, ChatGPT, Gemini. Semua model melenceng di chat panjang — saat itu katakan "Konteks proyek, tolong." Untuk beberapa AI sekaligus, atau kerja saat kamu pergi, pakai agen terpasang (Claude Code, Codex, Cursor…).
 
 **Apakah gratis?**
 Dokumen dan alatnya MIT. API AI sesuai tarif penyediamu.
 
 **Bagaimana jika ada yang rusak?**
-Semuanya diberi versi dengan git. Kembali dengan satu perintah. Dokumen menjelaskan caranya.
+Jika folder memakai git (disarankan), `run.py` membuat commit untuk setiap patch yang diterapkan, dan `python run.py revert P<id>` kembali ke keadaan sebelum patch itu (patch sesudahnya juga dibatalkan).
 
 ---
 
@@ -190,5 +190,5 @@ Protokol ini bekerja sama baiknya, baik kamu memakai:
 
 - **Konteks tidak pernah hilang** — status proyek selalu ada di dokumen.
 - **Mulai chat baru kapan saja** — lanjutkan tanpa menjelaskan ulang.
-- **Hingga 80% lebih sedikit token** — AI hanya meminta file yang dibutuhkan (`--status`, `--file`).
+- **Lebih sedikit token** — AI hanya meminta file yang dibutuhkan (`--status`, `--file`).
 - **Beberapa AI sekaligus** — Mode Tim mencegah bentrokan (lihat di atas).

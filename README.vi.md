@@ -50,8 +50,8 @@ Một **tài liệu duy nhất** (`PROJECT_CONTEXT.en.md`) bạn dán vào bất
 
 - ✅ **Không bao giờ mất ngữ cảnh** — mỗi phản hồi mang trạng thái dự án tiến lên.
 - ✅ **Không bao giờ sửa code của bạn bằng tay** — gửi một patch, bạn dán, một lệnh áp dụng.
-- ✅ **Không bao giờ đốt token** — chỉ yêu cầu tập tin nó cần, không phải toàn bộ dự án.
-- ✅ **Không bao giờ khóa tài khoản của bạn** — giao thức chống giới hạn tích hợp.
+- ✅ **Tiết kiệm token** — chỉ yêu cầu tệp nó cần (`--status`, `--file`), không phải cả dự án.
+- ✅ **Giúp bạn tránh giới hạn tin nhắn** — `run.py` cảnh báo khi bạn gửi quá nhanh, và công việc được gom vào ít tin nhắn hơn.
 - ✅ **Không bao giờ yêu cầu 10 lệnh** — bạn dán, chạy một, xong.
 - ✅ **Không bao giờ quên bạn đang ở đâu** — chat tiếp theo tiếp tục đúng nơi bạn dừng.
 - ✅ **Cho nhiều AI cùng làm việc một lúc** — Claude, ChatGPT và DeepSeek trên cùng một dự án mà không ghi đè công việc của nhau (Chế độ Nhóm).
@@ -65,7 +65,7 @@ Một **tài liệu duy nhất** (`PROJECT_CONTEXT.en.md`) bạn dán vào bất
 1. **Lưu `PROJECT_CONTEXT.en.md` vào thư mục gốc dự án.**
 2. **(Khuyến nghị)** Lưu `run.py` cùng thư mục. Chưa có? Nói với AI: *"Tạo run.py từ Mục 35."*
 3. **Cấu hình một lần:** `python run.py --init`
-4. **Mở chat DeepSeek** (hoặc Claude / ChatGPT / Gemini). Dán **toàn bộ tài liệu** làm tin nhắn đầu tiên. Nói: *"Dự án mới. Mục tiêu: <một dòng>."*
+4. **Mở một cuộc trò chuyện DeepSeek** (hoặc Claude / ChatGPT / Gemini). Gửi **toàn bộ tài liệu** làm tin nhắn đầu tiên (đính kèm dạng tệp nếu chat cho phép). Nói: *"Dự án mới. Mục tiêu của tôi: <một dòng>."* Tài liệu khá lớn (~530 KB, khoảng 150 nghìn token); nếu chat từ chối, hãy gửi bản nhẹ hơn tạo bằng `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), hoặc thêm `--profile moderate` (~260 KB).
 5. **Vòng lặp:** AI gửi một khối → sao chép vào `_work/input.txt` → chạy `python run.py` → gửi `_work/output.txt` trả lại. Lặp lại.
 6. **Giữ vòng lặp cho đến khi dự án xong.** Đừng để AI kéo bạn ra — không lệnh shell trong chat, không script nhanh. Câu trả lời luôn là: *"Đặt vào input.txt."*
 
@@ -80,7 +80,7 @@ Một **tài liệu duy nhất** (`PROJECT_CONTEXT.en.md`) bạn dán vào bất
 2. (Tùy chọn) Cài **VS Code**.
 3. Tải `PROJECT_CONTEXT.en.md` và `run.py`, đặt vào một thư mục, mở trong VS Code.
 4. Terminal: `python run.py` → thư mục `_work/` được tạo.
-5. Trong DeepSeek, dán `PROJECT_CONTEXT.en.md` làm tin nhắn đầu tiên, nêu mục tiêu.
+5. Trong DeepSeek, gửi `PROJECT_CONTEXT.en.md` làm tin nhắn đầu tiên (hoặc đính kèm tệp) và nêu mục tiêu. Quá dài với chat của bạn? Xem bước 4 phần bắt đầu nhanh (`--slim-context`).
 6. **Vòng lặp:** AI gửi khối → sao chép vào `_work/input.txt` → chạy `python run.py` → gửi `_work/output.txt` trở lại.
 7. Mỗi 10–20 tin nhắn, nhắc AI về dự án.
 8. Nếu AI lệch, nói: **"Ngữ cảnh dự án, làm ơn."**
@@ -92,13 +92,13 @@ Phiên bản đầy đủ (tiếng Anh): xem `README.md`.
 | Trước | Sau |
 |-------|-----|
 | Chat mất ngữ cảnh | Ngữ cảnh sống sót mỗi tin nhắn |
-| 5000 token mỗi phản hồi | ~300 token mỗi phản hồi |
+| Dán cả dự án vào mỗi tin nhắn | AI chỉ yêu cầu những tệp cần thiết |
 | AI đoán | AI biết |
 | 10 lệnh mỗi thay đổi | 1 lệnh mỗi thay đổi |
-| Tài khoản bị khóa | Tài khoản an toàn |
+| Bị chặn vì "quá nhiều tin nhắn" | Cảnh báo tốc độ và ít tin nhắn hơn, đầy đủ hơn |
 | "Chúng ta đang ở đâu?" | "Đây là patch tiếp theo." |
 
-**Giảm 40–80% token. Không mất ngữ cảnh. Không sửa tay.**
+**Ít token hơn. Ngữ cảnh vẫn còn khi mở chat mới. Không sửa tay.**
 
 ---
 
@@ -110,7 +110,7 @@ Cho Claude, ChatGPT, DeepSeek và các agent lập trình **làm việc trên c�
 - **Giữ chỗ tệp** — mỗi AI giữ chỗ chính xác những tệp nó sẽ sửa; nếu hai AI cùng muốn một tệp, chỉ một AI nhận được.
 - **Bắt buộc, không chỉ là lời khuyên** — `run.py` từ chối mọi bản vá chạm vào tệp chưa được giữ chỗ.
 - **Một điều phối viên, nhiều người làm** — một AI xem xét và hợp nhất, không bao giờ tự duyệt công việc của mình; quyết định quan trọng là của bạn.
-- **Công việc tiếp tục khi bạn nghỉ** — duyệt danh sách việc, chạy `team away on`, và các agent đã cài sẽ tiếp tục nhận việc trống tiếp theo; không có gì được push cho đến khi bạn quay lại, và `team pause` dừng tất cả.
+- **Công việc tiếp tục khi bạn nghỉ** — duyệt danh sách việc, chạy `team away on`, và các agent đã cài sẽ tiếp tục nhận việc trống tiếp theo; `run.py` từ chối mọi lệnh push cho đến khi bạn quay lại, và `team pause` dừng tất cả.
 - **Chat hay agent đã cài** — AI chat làm mọi thứ qua `input.txt` (`#@CLAIM:`); agent tự chạy lệnh.
 
     python run.py team init
@@ -145,7 +145,7 @@ Tài liệu quy tắc **chỉ tiếng Anh** — để mọi AI phân tích giố
 ## Tập tin bạn nhận được
 
 - `PROJECT_CONTEXT.en.md` — tài liệu quy tắc (dán vào AI của bạn)
-- `run.py` — công cụ (AI đưa khi dùng lần đầu)
+- `run.py` — công cụ (tải từ kho này, hoặc AI dựng lại từ Mục 35)
 - `README.md` + bản dịch — trang này, 24 ngôn ngữ
 - `LICENSE` — MIT, làm gì cũng được
 
@@ -157,13 +157,13 @@ Tài liệu quy tắc **chỉ tiếng Anh** — để mọi AI phân tích giố
 Không nhiều. Nếu bạn biết dán một tin nhắn và chạy một lệnh, bạn dùng được.
 
 **AI nào tốt nhất?**
-DeepSeek — tuân thủ giao thức chính xác nhất. Claude, ChatGPT, Gemini cũng hoạt động.
+Bất kỳ mô hình chat mạnh nào: DeepSeek, Claude, ChatGPT, Gemini. Mọi mô hình đều lạc hướng trong chat dài — khi đó hãy nói "Ngữ cảnh dự án, làm ơn." Để dùng nhiều AI cùng lúc, hoặc làm việc khi bạn vắng mặt, hãy dùng agent đã cài (Claude Code, Codex, Cursor…).
 
 **Miễn phí không?**
 Tài liệu và công cụ là MIT. API AI theo giá nhà cung cấp.
 
 **Nếu có gì hỏng?**
-Mọi thứ được đánh phiên bản với git. Quay lại bằng một lệnh. Tài liệu giải thích cách.
+Nếu thư mục dùng git (khuyến nghị), `run.py` commit mỗi bản vá đã áp dụng, và `python run.py revert P<id>` quay về trạng thái trước bản vá đó (các bản vá sau cũng bị hoàn tác).
 
 ---
 
@@ -190,5 +190,5 @@ Giao thức này hoạt động như nhau dù bạn dùng:
 
 - **Không mất ngữ cảnh** — trạng thái dự án luôn nằm trong tài liệu.
 - **Mở chat mới bất cứ lúc nào** — tiếp tục mà không cần giải thích lại.
-- **Tiết kiệm đến 80% token** — AI chỉ yêu cầu những tệp cần thiết (`--status`, `--file`).
+- **Ít token hơn** — AI chỉ yêu cầu những tệp cần thiết (`--status`, `--file`).
 - **Nhiều AI cùng lúc** — Chế độ Nhóm ngăn chúng xung đột (xem ở trên).

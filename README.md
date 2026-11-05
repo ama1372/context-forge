@@ -3,7 +3,7 @@
 </div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#)
 [![GitHub stars](https://img.shields.io/github/stars/ama1372/context-forge?style=social)](https://github.com/ama1372/context-forge/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/ama1372/context-forge?style=social)](https://github.com/ama1372/context-forge/network/members)
@@ -58,8 +58,8 @@ A **single document** (`PROJECT_CONTEXT.en.md`) you paste into any AI chat — D
 
 - ✅ **Never loses context** — every reply carries the project's state forward.
 - ✅ **Never edits your code by hand** — it sends a patch, you paste, one command applies it.
-- ✅ **Never burns tokens** — it asks only for the file it needs, not the whole project.
-- ✅ **Never blocks your account** — built-in anti-rate-limit protocol.
+- ✅ **Saves tokens** — asks only for the file it needs (`--status`, `--file`), not the whole project.
+- ✅ **Helps you avoid rate limits** — `run.py` warns when you send too fast, and work is batched into fewer messages.
 - ✅ **Never asks you to run 10 commands** — you paste, run one command, done.
 - ✅ **Never forgets where you were** — next chat picks up from exactly where you left.
 - ✅ **Lets several AIs work at once** — Claude, ChatGPT and DeepSeek on one project without overwriting each other (Team Mode).
@@ -73,7 +73,7 @@ A **single document** (`PROJECT_CONTEXT.en.md`) you paste into any AI chat — D
 1. **Save `PROJECT_CONTEXT.en.md` in your project root.**
 2. **(Recommended)** Save `run.py` in the same folder. No `run.py`? Ask the AI: *"Bootstrap run.py from Section 35."*
 3. **Set up once:** `python run.py --init`
-4. **Open a DeepSeek chat** (or Claude / ChatGPT / Gemini). Paste the **whole document** as your first message. Say: *"New project. My goal: <one line>."*
+4. **Open a DeepSeek chat** (or Claude / ChatGPT / Gemini). Send the **whole document** as your first message (attach it as a file if your chat allows). Say: *"New project. My goal: <one line>."* The document is large (~530 KB, roughly 150k tokens); if your chat refuses it, send a lighter copy made with `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), or add `--profile moderate` (~260 KB).
 5. **Loop:** AI sends a block → copy into `_work/input.txt` → run `python run.py` → send `_work/output.txt` back. Repeat.
 6. **Keep the loop until your project is done.** Don't let the AI pull you out — no shell commands in chat, no quick scripts. The answer is always: *"Put it in input.txt."*
 
@@ -113,7 +113,7 @@ Press Enter. A folder named `_work` appears. **That's it.**
 
 **5. `_work/` — where everything happens**
 
-After the command, `_work/` contains two files:
+After the command, `_work/` holds the two files you will use (the tool keeps a few helper files there too):
 
 - `input.txt` — you **paste** whatever the AI gives you here
 - `output.txt` — the **result** lands here; send this **back to the AI**
@@ -122,7 +122,7 @@ From this point on, you only ever touch these two files. Nothing else.
 
 **6. Open a new chat with DeepSeek**
 
-Paste the whole `PROJECT_CONTEXT.en.md` as the **first message**. Then write one line:
+Send the whole `PROJECT_CONTEXT.en.md` as the **first message** (or attach it as a file). Too long for your chat? Use the lighter copy from quick-start step 4. Then write one line:
 
 > "My goal: build a <program / website / tool> that <does what>."
 
@@ -171,13 +171,13 @@ Experienced users write the **entire project spec in the first message** — ful
 | Before | After |
 |--------|-------|
 | Chat loses context | Context survives every message |
-| 5000 tokens per reply | ~300 tokens per reply |
+| You paste the whole project every message | The AI asks only for the files it needs |
 | AI guesses | AI knows |
 | 10 commands per change | 1 command per change |
-| Account blocked | Account safe |
+| "Too many messages" blocks | Speed warnings and fewer, larger messages |
 | "Where were we?" | "Here's the next patch." |
 
-**40–80% less tokens. Zero context loss. Zero manual edits.**
+**Fewer tokens. Context that survives a new chat. No hand edits.**
 
 ---
 
@@ -189,7 +189,7 @@ Run Claude, ChatGPT, DeepSeek and coding agents **on the same project at the sam
 - **File claims** — each AI reserves the exact files it will edit; if two want the same file, only one gets it.
 - **Enforced, not just advised** — `run.py` refuses any patch that touches a file its AI has not claimed.
 - **One coordinator, many workers** — one AI reviews and merges and never approves its own work; you decide everything important.
-- **Keeps working while you rest** — approve a backlog, run `team away on`, and installed agents keep taking the next free task; nothing is pushed until you are back, and `team pause` stops everyone.
+- **Keeps working while you rest** — approve a backlog, run `team away on`, and installed agents keep taking the next free task; `run.py` refuses pushes until you are back, and `team pause` stops everyone.
 - **Chat or installed agent** — chat AIs do everything through `input.txt` (`#@CLAIM:`); agents run the commands themselves.
 
     python run.py team init
@@ -247,7 +247,7 @@ The rule document is **English only** — so every AI parses it identically, and
 ## Files you get
 
 - `PROJECT_CONTEXT.en.md` — the rule document (paste this into your AI)
-- `run.py` — the tool (given to you by the AI on first use)
+- `run.py` — the tool (download it from this repo, or the AI rebuilds it from Section 35)
 - `README.md` + translations — this page, 24 languages
 - `LICENSE` — MIT, do whatever you want
 
@@ -259,13 +259,13 @@ The rule document is **English only** — so every AI parses it identically, and
 Not much. If you can paste a message and run one command, you can use this.
 
 **Which AI works best?**
-DeepSeek — it follows the protocol most precisely. Claude, ChatGPT, Gemini also work.
+Any strong chat model: DeepSeek, Claude, ChatGPT, Gemini. Every model drifts in long chats — then say "Project context, please." For several AIs at once, or work while you are away, use an installed agent (Claude Code, Codex, Cursor…).
 
 **Is it free?**
 The document and tool are MIT. The AI's API is whatever your provider charges.
 
 **What if something breaks?**
-Everything is versioned with git. Roll back with one command. The document explains how.
+If the folder uses git (recommended), `run.py` commits every applied patch, and `python run.py revert P<id>` returns to the state before that patch (later patches are undone too).
 
 ---
 
@@ -292,5 +292,5 @@ This protocol works the same way whether you use:
 
 - **No context loss** — the project state always lives in the document.
 - **Start a new chat anytime** — continue without re-explaining.
-- **Up to 80% fewer tokens** — the AI asks only for the files it needs (`--status`, `--file`).
+- **Fewer tokens** — the AI asks only for the files it needs (`--status`, `--file`).
 - **Several AIs at once** — Team Mode keeps them from colliding (see above).

@@ -50,8 +50,8 @@ Un **singur document** (`PROJECT_CONTEXT.en.md`) pe care îl lipești în orice 
 
 - ✅ **Nu pierde niciodată contextul** — fiecare răspuns duce starea proiectului mai departe.
 - ✅ **Nu editează niciodată codul manual** — trimite un patch, tu lipești, o comandă aplică.
-- ✅ **Nu arde niciodată tokenuri** — cere doar fișierul de care are nevoie, nu întregul proiect.
-- ✅ **Nu blochează niciodată contul tău** — protocol anti-limită integrat.
+- ✅ **Economisește tokeni** — cere doar fișierul de care are nevoie (`--status`, `--file`), nu tot proiectul.
+- ✅ **Te ajută să eviți limitele de mesaje** — `run.py` te avertizează când trimiți prea repede, iar munca e grupată în mai puține mesaje.
 - ✅ **Nu cere niciodată 10 comenzi** — lipești, rulezi una, gata.
 - ✅ **Nu uită niciodată unde erați** — următorul chat continuă exact de unde ai rămas.
 - ✅ **Lasă mai multe AI să lucreze simultan** — Claude, ChatGPT și DeepSeek pe același proiect, fără să-și suprascrie munca (modul Echipă).
@@ -65,7 +65,7 @@ Un **singur document** (`PROJECT_CONTEXT.en.md`) pe care îl lipești în orice 
 1. **Pune `PROJECT_CONTEXT.en.md` în rădăcina proiectului.**
 2. **(Recomandat)** Pune `run.py` în același folder. Nu ai? Spune-i AI-ului: *"Generează run.py din Secțiunea 35."*
 3. **Configurează o dată:** `python run.py --init`
-4. **Deschide un chat DeepSeek** (sau Claude / ChatGPT / Gemini). Lipește **întregul document** ca prim mesaj. Spune: *"Proiect nou. Scopul meu: <o linie>."*
+4. **Deschide un chat DeepSeek** (sau Claude / ChatGPT / Gemini). Trimite **întregul document** ca prim mesaj (atașează-l ca fișier dacă chatul permite). Spune: *"Proiect nou. Obiectivul meu: <un rând>."* Documentul e mare (~530 KB, aproximativ 150k tokeni); dacă chatul îl refuză, trimite o copie mai ușoară creată cu `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), sau adaugă `--profile moderate` (~260 KB).
 5. **Buclă:** AI-ul trimite un bloc → copiază în `_work/input.txt` → rulează `python run.py` → trimite `_work/output.txt` înapoi. Repetă.
 6. **Ține bucla până termini proiectul.** Nu lăsa AI-ul să te scoată — fără comenzi shell în chat, fără scripturi rapide. Răspunsul e mereu: *"Pune-l în input.txt."*
 
@@ -80,7 +80,7 @@ Un **singur document** (`PROJECT_CONTEXT.en.md`) pe care îl lipești în orice 
 2. (Opțional) Instalează **VS Code**.
 3. Descarcă `PROJECT_CONTEXT.en.md` și `run.py`, pune-le într-un folder, deschide-l în VS Code.
 4. Terminal: `python run.py` → se creează folderul `_work/`.
-5. În DeepSeek, lipește `PROJECT_CONTEXT.en.md` ca prim mesaj, spune-ți obiectivul.
+5. În DeepSeek, trimite `PROJECT_CONTEXT.en.md` ca prim mesaj (sau atașează-l ca fișier) și spune-ți obiectivul. Prea lung pentru chatul tău? Vezi pasul 4 de la pornirea rapidă (`--slim-context`).
 6. **Buclă:** AI trimite un bloc → copiază în `_work/input.txt` → rulează `python run.py` → trimite `_work/output.txt` înapoi.
 7. La fiecare 10–20 mesaje, reamintește AI-ului proiectul tău.
 8. Dacă AI-ul deviază, spune: **"Contextul proiectului, te rog."**
@@ -92,13 +92,13 @@ Versiune completă (engleză): vezi `README.md`.
 | Înainte | După |
 |---------|------|
 | Chat-ul pierde contextul | Contextul supraviețuiește fiecărui mesaj |
-| 5000 tokenuri per răspuns | ~300 tokenuri per răspuns |
+| Lipești tot proiectul în fiecare mesaj | AI-ul cere doar fișierele necesare |
 | AI-ul ghicește | AI-ul știe |
 | 10 comenzi per schimbare | 1 comandă per schimbare |
-| Cont blocat | Cont sigur |
+| Blocări „prea multe mesaje” | Avertismente de ritm și mai puține mesaje, mai complete |
 | "Unde eram?" | "Iată următorul patch." |
 
-**40–80% mai puține tokenuri. Zero pierdere de context. Zero editări manuale.**
+**Mai puțini tokeni. Context care rezistă și într-un chat nou. Fără editări de mână.**
 
 ---
 
@@ -110,7 +110,7 @@ Pune Claude, ChatGPT, DeepSeek și agenți de programare **pe același proiect �
 - **Rezervarea fișierelor** — fiecare AI rezervă exact fișierele pe care le va edita; dacă două vor același fișier, doar unul îl primește.
 - **Impus, nu doar recomandat** — `run.py` respinge orice patch care atinge un fișier nerezervat.
 - **Un coordonator, mulți executanți** — un AI revizuiește și integrează și nu își aprobă niciodată propria muncă; deciziile importante sunt ale tale.
-- **Munca continuă cât te odihnești** — aprobă o listă de sarcini, rulează `team away on`, iar agenții instalați preiau următoarea sarcină liberă; nimic nu e trimis până nu revii, iar `team pause` îi oprește pe toți.
+- **Munca continuă cât te odihnești** — aprobă o listă de sarcini, rulează `team away on`, iar agenții instalați preiau următoarea sarcină liberă; până revii, `run.py` refuză orice push, iar `team pause` îi oprește pe toți.
 - **Chat sau agent instalat** — AI-urile din chat fac totul prin `input.txt` (`#@CLAIM:`); agenții rulează singuri comenzile.
 
     python run.py team init
@@ -145,7 +145,7 @@ Documentul de reguli este **doar în engleză** — astfel încât fiecare AI s�
 ## Fișierele pe care le primești
 
 - `PROJECT_CONTEXT.en.md` — documentul de reguli (lipește-l în AI)
-- `run.py` — instrumentul (AI-ul îl dă la prima utilizare)
+- `run.py` — unealta (descarc-o din acest depozit, sau AI-ul o reconstruiește din secțiunea 35)
 - `README.md` + traduceri — această pagină, 24 limbi
 - `LICENSE` — MIT, fă ce vrei
 
@@ -157,13 +157,13 @@ Documentul de reguli este **doar în engleză** — astfel încât fiecare AI s�
 Nu mult. Dacă poți lipi un mesaj și rula o comandă, poți folosi asta.
 
 **Care AI este cel mai bun?**
-DeepSeek — urmează protocolul cel mai precis. Claude, ChatGPT, Gemini funcționează și ele.
+Orice model de chat puternic: DeepSeek, Claude, ChatGPT, Gemini. Orice model deviază în chaturile lungi — atunci spune „Contextul proiectului, te rog.” Pentru mai multe AI simultan, sau lucru cât lipsești, folosește un agent instalat (Claude Code, Codex, Cursor…).
 
 **Este gratuit?**
 Documentul și instrumentul sunt MIT. API-ul AI conform furnizorului tău.
 
 **Și dacă ceva se strică?**
-Totul este versionat cu git. Revino cu o comandă. Documentul explică cum.
+Dacă folderul folosește git (recomandat), `run.py` face commit pentru fiecare patch aplicat, iar `python run.py revert P<id>` revine la starea dinaintea acelui patch (patch-urile ulterioare sunt și ele anulate).
 
 ---
 
@@ -190,5 +190,5 @@ Acest protocol funcționează la fel, indiferent dacă folosești:
 
 - **Fără pierderea contextului** — starea proiectului stă mereu în document.
 - **Pornești un chat nou oricând** — continui fără să explici din nou.
-- **Până la 80% mai puțini tokeni** — AI-ul cere doar fișierele de care are nevoie (`--status`, `--file`).
+- **Mai puțini tokeni** — AI-ul cere doar fișierele de care are nevoie (`--status`, `--file`).
 - **Mai multe AI simultan** — modul Echipă le împiedică să se ciocnească (vezi mai sus).

@@ -50,8 +50,8 @@ Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJE
 
 - ✅ **Asla bağlamı kaybetmez** — her cevap proje durumunu ileri taşır.
 - ✅ **Asla kodunu elle değiştirmez** — yama gönderir, sen yapıştırırsın, bir komut uygular.
-- ✅ **Asla token yakmaz** — sadece ihtiyaç duyduğu dosyayı ister, tüm projeyi değil.
-- ✅ **Asla hesabını engellemez** — dahili anti-limit protokolü.
+- ✅ **Token tasarrufu sağlar** — tüm projeyi değil, yalnızca gereken dosyayı ister (`--status`, `--file`).
+- ✅ **Mesaj sınırlarından kaçınmana yardım eder** — çok hızlı gönderdiğinde `run.py` uyarır ve iş daha az mesajda toplanır.
 - ✅ **Asla 10 komut istemez** — yapıştır, bir tane çalıştır, bitti.
 - ✅ **Nerede olduğunuzu asla unutmaz** — sonraki sohbet tam kaldığınız yerden devam eder.
 - ✅ **Birden çok yapay zekâyı aynı anda çalıştırır** — Claude, ChatGPT ve DeepSeek aynı projede, birbirinin işinin üzerine yazmadan (Takım modu).
@@ -65,7 +65,7 @@ Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJE
 1. **`PROJECT_CONTEXT.en.md` dosyasını proje köküne koy.**
 2. **(Önerilen)** `run.py` dosyasını aynı klasöre koy. Yok mu? AI'ya söyle: *"Bölüm 35'ten run.py oluştur."*
 3. **Bir kez kur:** `python run.py --init`
-4. **Bir DeepSeek sohbeti aç** (veya Claude / ChatGPT / Gemini). **Tüm belgeyi** ilk mesaj olarak yapıştır. Söyle: *"Yeni proje. Hedefim: <tek satır>."*
+4. **Bir DeepSeek sohbeti aç** (veya Claude / ChatGPT / Gemini). **Belgenin tamamını** ilk mesaj olarak gönder (sohbet izin veriyorsa dosya olarak ekle). De ki: *"Yeni proje. Hedefim: <tek satır>."* Belge büyüktür (~530 KB, yaklaşık 150 bin token); sohbet kabul etmezse `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` ile oluşturulan hafif kopyayı (~360 KB) gönder ya da `--profile moderate` ekle (~260 KB).
 5. **Döngü:** AI bir blok gönderir → `_work/input.txt`'e kopyala → `python run.py` çalıştır → `_work/output.txt`'i geri gönder. Tekrarla.
 6. **Proje bitene kadar döngüyü sürdür.** AI'nın seni dışarı çekmesine izin verme — sohbette shell komutu yok, hızlı script yok. Cevap her zaman: *"input.txt'e koy."*
 
@@ -80,7 +80,7 @@ Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJE
 2. (İsteğe bağlı) **VS Code** kurun.
 3. `PROJECT_CONTEXT.en.md` ve `run.py`'yi indirin, bir klasöre koyun, VS Code'da açın.
 4. Terminal: `python run.py` → `_work/` klasörü oluşur.
-5. DeepSeek'te `PROJECT_CONTEXT.en.md`'yi ilk mesaj olarak yapıştırın, hedefinizi söyleyin.
+5. DeepSeek'te `PROJECT_CONTEXT.en.md` dosyasını ilk mesaj olarak gönder (veya dosya olarak ekle) ve hedefini söyle. Sohbetin için çok mu uzun? Hızlı başlangıç 4. adıma bak (`--slim-context`).
 6. **Döngü:** AI blok gönderir → `_work/input.txt`'e yapıştırın → `python run.py` çalıştırın → `_work/output.txt`'i geri gönderin.
 7. Her 10–20 mesajda AI'ya projenizi hatırlatın.
 8. AI saparsa: **"Proje bağlamı, lütfen."**
@@ -92,13 +92,13 @@ Tam sürüm (İngilizce): `README.md`'ye bakın.
 | Önce | Sonra |
 |------|-------|
 | Sohbet bağlamı kaybeder | Bağlam her mesajda yaşar |
-| Yanıt başına 5000 token | Yanıt başına ~300 token |
+| Her mesajda tüm projeyi yapıştırırsın | Yapay zekâ yalnızca gereken dosyaları ister |
 | Yapay zekâ tahmin eder | Yapay zekâ bilir |
 | Değişiklik başına 10 komut | Değişiklik başına 1 komut |
-| Hesap engellendi | Hesap güvende |
+| "Çok fazla mesaj" engelleri | Hız uyarıları ve daha az, daha dolu mesajlar |
 | "Neredeydik?" | "İşte sonraki yama." |
 
-**%40–80 daha az token. Sıfır bağlam kaybı. Sıfır elle düzenleme.**
+**Daha az token. Yeni sohbette de kalan bağlam. Elle düzenleme yok.**
 
 ---
 
@@ -110,7 +110,7 @@ Claude, ChatGPT, DeepSeek ve kodlama ajanlarını **aynı projede aynı anda** �
 - **Dosya rezervasyonu** — her yapay zekâ düzenleyeceği dosyaları tam olarak rezerve eder; ikisi aynı dosyayı isterse yalnızca biri alır.
 - **Tavsiye değil, zorunlu** — `run.py`, rezerve edilmemiş bir dosyaya dokunan her yamayı reddeder.
 - **Bir koordinatör, çok çalışan** — bir yapay zekâ inceler ve birleştirir, kendi işini asla onaylamaz; önemli kararlar sizindir.
-- **Siz dinlenirken iş sürer** — bir görev listesini onaylayın, `team away on` çalıştırın; kurulu ajanlar sıradaki boş görevi almaya devam eder, siz dönene kadar hiçbir şey push edilmez ve `team pause` herkesi durdurur.
+- **Siz dinlenirken iş sürer** — bir görev listesini onaylayın, `team away on` çalıştırın; kurulu ajanlar sıradaki boş görevi almaya devam eder, siz dönene kadar `run.py` her push'u reddeder ve `team pause` herkesi durdurur.
 - **Sohbet ya da kurulu ajan** — sohbet yapay zekâları her şeyi `input.txt` üzerinden yapar (`#@CLAIM:`); ajanlar komutları kendileri çalıştırır.
 
     python run.py team init
@@ -139,7 +139,7 @@ Kural belgesi **yalnızca İngilizce** — böylece her yapay zekâ onu aynı ş
 ## Elde ettiğin dosyalar
 
 - `PROJECT_CONTEXT.en.md` — kural belgesi (bunu yapay zekâna yapıştır)
-- `run.py` — araç (ilk kullanımda yapay zekâ verir)
+- `run.py` — araç (bu depodan indir, ya da yapay zekâ onu Bölüm 35'ten yeniden oluşturur)
 - `README.md` + çeviriler — bu sayfa, çok dilli
 - `LICENSE` — MIT, ne istersen yap
 
@@ -151,13 +151,13 @@ Kural belgesi **yalnızca İngilizce** — böylece her yapay zekâ onu aynı ş
 Pek değil. Bir mesaj yapıştırıp bir komut çalıştırabiliyorsan kullanabilirsin.
 
 **Hangi yapay zekâ en iyi?**
-DeepSeek — protokolü en hassas şekilde takip eder. Claude, ChatGPT, Gemini de çalışır.
+Güçlü herhangi bir sohbet modeli: DeepSeek, Claude, ChatGPT, Gemini. Uzun sohbetlerde her model sapar — o zaman "Proje bağlamı, lütfen." de. Aynı anda birden çok yapay zekâ ya da sen yokken çalışma için kurulu bir ajan kullan (Claude Code, Codex, Cursor…).
 
 **Ücretsiz mi?**
 Belge ve araç MIT. Yapay zekâ API'si sağlayıcının ücreti.
 
 **Bir şey bozulursa?**
-Her şey git ile sürümlenmiştir. Bir komutla geri dön. Belge açıklar.
+Klasör git kullanıyorsa (önerilir), `run.py` uygulanan her yamayı commit eder ve `python run.py revert P<id>` o yamadan önceki duruma döner (sonraki yamalar da geri alınır).
 
 ---
 
@@ -184,5 +184,5 @@ Bu protokol, hangisini kullanırsanız kullanın aynı şekilde çalışır:
 
 - **Bağlam kaybı yok** — projenin durumu her zaman belgede.
 - **İstediğiniz an yeni sohbet** — yeniden anlatmadan devam edin.
-- **%80'e kadar daha az token** — yapay zekâ yalnızca gereken dosyaları ister (`--status`, `--file`).
+- **Daha az token** — yapay zekâ yalnızca gereken dosyaları ister (`--status`, `--file`).
 - **Aynı anda birden çok yapay zekâ** — Takım modu çakışmalarını önler (yukarıya bakın).

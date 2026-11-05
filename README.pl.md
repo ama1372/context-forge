@@ -50,8 +50,8 @@
 
 - ✅ **Nigdy nie traci kontekstu** — każda odpowiedź niesie stan projektu dalej.
 - ✅ **Nigdy nie edytuje twojego kodu ręcznie** — wysyła patch, ty wklejasz, jedna komenda stosuje.
-- ✅ **Nigdy nie pali tokenów** — prosi tylko o plik, którego potrzebuje, nie cały projekt.
-- ✅ **Nigdy nie blokuje twojego konta** — wbudowany protokół anty-limitowy.
+- ✅ **Oszczędza tokeny** — prosi tylko o potrzebny plik (`--status`, `--file`), a nie o cały projekt.
+- ✅ **Pomaga unikać limitów wiadomości** — `run.py` ostrzega, gdy wysyłasz za szybko, a praca jest łączona w mniej wiadomości.
 - ✅ **Nigdy nie prosi o 10 komend** — wklejasz, uruchamiasz jedną, gotowe.
 - ✅ **Nigdy nie zapomina, gdzie byliście** — następny czat kontynuuje dokładnie tam, gdzie skończyłeś.
 - ✅ **Pozwala kilku AI pracować jednocześnie** — Claude, ChatGPT i DeepSeek nad jednym projektem, bez nadpisywania sobie pracy (tryb zespołowy).
@@ -65,7 +65,7 @@
 1. **Umieść `PROJECT_CONTEXT.en.md` w katalogu głównym projektu.**
 2. **(Zalecane)** Umieść `run.py` w tym samym folderze. Nie masz? Powiedz AI: *"Wygeneruj run.py z Sekcji 35."*
 3. **Skonfiguruj raz:** `python run.py --init`
-4. **Otwórz czat DeepSeek** (lub Claude / ChatGPT / Gemini). Wklej **cały dokument** jako pierwszą wiadomość. Powiedz: *"Nowy projekt. Mój cel: <jedna linia>."*
+4. **Otwórz czat DeepSeek** (lub Claude / ChatGPT / Gemini). Wyślij **cały dokument** jako pierwszą wiadomość (dołącz jako plik, jeśli czat na to pozwala). Powiedz: *"Nowy projekt. Mój cel: <jedna linia>."* Dokument jest duży (~530 KB, około 150 tys. tokenów); jeśli czat go odrzuci, wyślij lżejszą kopię utworzoną przez `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB) albo dodaj `--profile moderate` (~260 KB).
 5. **Pętla:** AI wysyła blok → skopiuj do `_work/input.txt` → uruchom `python run.py` → odeślij `_work/output.txt`. Powtarzaj.
 6. **Trzymaj pętlę aż projekt będzie gotowy.** Nie pozwól AI wyciągnąć się z niej — żadnych poleceń shell w czacie, żadnych szybkich skryptów. Odpowiedź zawsze brzmi: *"Włóż do input.txt."*
 
@@ -80,7 +80,7 @@
 2. (Opcjonalnie) Zainstaluj **VS Code**.
 3. Pobierz `PROJECT_CONTEXT.en.md` i `run.py`, umieść w jednym folderze, otwórz w VS Code.
 4. Terminal: `python run.py` → tworzy się folder `_work/`.
-5. W DeepSeek wklej `PROJECT_CONTEXT.en.md` jako pierwszą wiadomość, podaj cel.
+5. W DeepSeek wyślij `PROJECT_CONTEXT.en.md` jako pierwszą wiadomość (lub dołącz jako plik) i podaj cel. Za długi dla twojego czatu? Zobacz krok 4 szybkiego startu (`--slim-context`).
 6. **Pętla:** AI wysyła blok → skopiuj do `_work/input.txt` → uruchom `python run.py` → odeślij `_work/output.txt`.
 7. Co 10–20 wiadomości przypominaj AI o projekcie.
 8. Jeśli AI zbacza, powiedz: **"Kontekst projektu, proszę."**
@@ -92,13 +92,13 @@ Pełna wersja (angielski): zobacz `README.md`.
 | Przed | Po |
 |-------|-----|
 | Czat traci kontekst | Kontekst przetrwa każdą wiadomość |
-| 5000 tokenów na odpowiedź | ~300 tokenów na odpowiedź |
+| Wklejasz cały projekt w każdej wiadomości | AI prosi tylko o potrzebne pliki |
 | AI zgaduje | AI wie |
 | 10 komend na zmianę | 1 komenda na zmianę |
-| Konto zablokowane | Konto bezpieczne |
+| Blokady „za dużo wiadomości” | Ostrzeżenia o tempie i mniej, pełniejszych wiadomości |
 | "Gdzie byliśmy?" | "Oto następny patch." |
 
-**40–80% mniej tokenów. Zero utraty kontekstu. Zero ręcznych edycji.**
+**Mniej tokenów. Kontekst, który przetrwa nowy czat. Bez ręcznych zmian.**
 
 ---
 
@@ -110,7 +110,7 @@ Uruchom Claude, ChatGPT, DeepSeek i agentów programistycznych **nad tym samym p
 - **Rezerwacja plików** — każde AI rezerwuje dokładnie te pliki, które będzie edytować; jeśli dwa chcą tego samego pliku, dostaje go tylko jedno.
 - **Wymuszane, nie tylko zalecane** — `run.py` odrzuca każdą łatkę, która dotyka niezarezerwowanego pliku.
 - **Jeden koordynator, wielu wykonawców** — jedno AI przegląda i scala, i nigdy nie zatwierdza własnej pracy; ważne decyzje należą do ciebie.
-- **Praca trwa, gdy odpoczywasz** — zatwierdź listę zadań, uruchom `team away on`, a zainstalowani agenci biorą kolejne wolne zadanie; nic nie zostanie wypchnięte przed twoim powrotem, a `team pause` zatrzymuje wszystkich.
+- **Praca trwa, gdy odpoczywasz** — zatwierdź listę zadań, uruchom `team away on`, a zainstalowani agenci biorą kolejne wolne zadanie; do twojego powrotu `run.py` odrzuca każdy push, a `team pause` zatrzymuje wszystkich.
 - **Czat albo zainstalowany agent** — AI w czacie robi wszystko przez `input.txt` (`#@CLAIM:`); agenci sami uruchamiają polecenia.
 
     python run.py team init
@@ -145,7 +145,7 @@ Dokument zasad jest **tylko po angielsku** — żeby każde AI parsowało go ide
 ## Pliki, które dostajesz
 
 - `PROJECT_CONTEXT.en.md` — dokument zasad (wklej do AI)
-- `run.py` — narzędzie (AI daje przy pierwszym użyciu)
+- `run.py` — narzędzie (pobierz z tego repozytorium albo AI odtworzy je z sekcji 35)
 - `README.md` + tłumaczenia — ta strona, 24 języki
 - `LICENSE` — MIT, rób co chcesz
 
@@ -157,13 +157,13 @@ Dokument zasad jest **tylko po angielsku** — żeby każde AI parsowało go ide
 Nie bardzo. Jeśli umiesz wkleić wiadomość i uruchomić jedną komendę, dasz radę.
 
 **Które AI jest najlepsze?**
-DeepSeek — najdokładniej podąża za protokołem. Claude, ChatGPT, Gemini też działają.
+Dowolny mocny model czatu: DeepSeek, Claude, ChatGPT, Gemini. Każdy model zbacza w długich czatach — wtedy powiedz „Kontekst projektu, proszę.” Do kilku AI naraz lub pracy pod twoją nieobecność użyj zainstalowanego agenta (Claude Code, Codex, Cursor…).
 
 **Czy to darmowe?**
 Dokument i narzędzie są na MIT. API AI zgodnie z cennikiem twojego dostawcy.
 
 **A jeśli coś się zepsuje?**
-Wszystko jest wersjonowane przez git. Cofnij jedną komendą. Dokument wyjaśnia jak.
+Jeśli folder używa git (zalecane), `run.py` commituje każdą zastosowaną łatkę, a `python run.py revert P<id>` wraca do stanu sprzed tej łatki (późniejsze łatki też są cofane).
 
 ---
 
@@ -190,5 +190,5 @@ Ten protokół działa tak samo, niezależnie od tego, czy używasz:
 
 - **Bez utraty kontekstu** — stan projektu zawsze jest w dokumencie.
 - **Nowy czat w dowolnej chwili** — kontynuuj bez ponownego tłumaczenia.
-- **Do 80% mniej tokenów** — AI prosi tylko o potrzebne pliki (`--status`, `--file`).
+- **Mniej tokenów** — AI prosi tylko o potrzebne pliki (`--status`, `--file`).
 - **Kilka AI naraz** — tryb zespołowy zapobiega kolizjom (patrz wyżej).

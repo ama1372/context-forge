@@ -50,8 +50,8 @@ Un **document unique** (`PROJECT_CONTEXT.en.md`) que vous collez dans n'importe 
 
 - ✅ **Ne perd jamais le contexte** — chaque réponse fait avancer l'état du projet.
 - ✅ **Ne modifie jamais votre code à la main** — envoie un patch, vous collez, une commande applique.
-- ✅ **Ne brûle jamais de tokens** — demande seulement le fichier dont il a besoin, pas tout le projet.
-- ✅ **Ne bloque jamais votre compte** — protocole anti-limite intégré.
+- ✅ **Économise des tokens** — ne demande que le fichier nécessaire (`--status`, `--file`), pas tout le projet.
+- ✅ **Aide à éviter les limites de messages** — `run.py` vous prévient quand vous envoyez trop vite, et le travail est regroupé en moins de messages.
 - ✅ **Ne vous demande jamais 10 commandes** — collez, lancez une commande, terminé.
 - ✅ **N'oublie jamais où vous étiez** — le prochain chat reprend exactement où vous l'avez laissé.
 - ✅ **Fait travailler plusieurs IA en même temps** — Claude, ChatGPT et DeepSeek sur un même projet sans écraser le travail des autres (mode Équipe).
@@ -65,7 +65,7 @@ Un **document unique** (`PROJECT_CONTEXT.en.md`) que vous collez dans n'importe 
 1. **Enregistrez `PROJECT_CONTEXT.en.md` à la racine de votre projet.**
 2. **(Recommandé)** Enregistrez `run.py` dans le même dossier. Pas de `run.py` ? Dites à l'IA : *"Génère run.py depuis la Section 35."*
 3. **Configuration unique :** `python run.py --init`
-4. **Ouvrez un chat DeepSeek** (ou Claude / ChatGPT / Gemini). Collez le **document entier** comme premier message. Dites : *"Nouveau projet. Mon objectif : <une ligne>."*
+4. **Ouvrez un chat DeepSeek** (ou Claude / ChatGPT / Gemini). Envoyez le **document entier** comme premier message (joignez-le en fichier si le chat le permet). Dites : *« Nouveau projet. Mon objectif : <une ligne>. »* Le document est volumineux (~530 Ko, environ 150k tokens) ; si le chat le refuse, envoyez une copie allégée créée avec `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 Ko), ou ajoutez `--profile moderate` (~260 Ko).
 5. **Boucle :** l'IA envoie un bloc → copiez dans `_work/input.txt` → lancez `python run.py` → renvoyez `_work/output.txt`. Répétez.
 6. **Gardez la boucle jusqu'à la fin du projet.** Ne laissez pas l'IA vous en sortir — pas de commandes shell dans le chat, pas de scripts rapides. La réponse est toujours : *"Mets-le dans input.txt."*
 
@@ -80,7 +80,7 @@ Un **document unique** (`PROJECT_CONTEXT.en.md`) que vous collez dans n'importe 
 2. (Optionnel) Installez **VS Code**.
 3. Téléchargez `PROJECT_CONTEXT.en.md` et `run.py`, mettez-les dans un dossier, ouvrez-le dans VS Code.
 4. Terminal : `python run.py` → le dossier `_work/` est créé.
-5. Dans DeepSeek, collez `PROJECT_CONTEXT.en.md` en premier message, dites votre objectif.
+5. Dans DeepSeek, envoyez `PROJECT_CONTEXT.en.md` comme premier message (ou joignez-le en fichier) et donnez votre objectif. Trop long pour votre chat ? Voir l'étape 4 du démarrage rapide (`--slim-context`).
 6. **Boucle :** l'IA envoie un bloc → copiez dans `_work/input.txt` → lancez `python run.py` → renvoyez `_work/output.txt`.
 7. Tous les 10–20 messages, rappelez votre projet à l'IA.
 8. Si l'IA dérive, dites : **« Contexte du projet, s'il te plaît. »**
@@ -92,13 +92,13 @@ Version complète (anglais) : voir `README.md`.
 | Avant | Après |
 |-------|-------|
 | Le chat perd le contexte | Le contexte survit à chaque message |
-| 5000 tokens par réponse | ~300 tokens par réponse |
+| Vous collez tout le projet à chaque message | L'IA ne demande que les fichiers utiles |
 | L'IA devine | L'IA sait |
 | 10 commandes par changement | 1 commande par changement |
-| Compte bloqué | Compte sûr |
+| Blocages « trop de messages » | Alertes de vitesse et messages moins nombreux, plus complets |
 | "Où en étions-nous ?" | "Voici le prochain patch." |
 
-**40–80% de tokens en moins. Zéro perte de contexte. Zéro édition manuelle.**
+**Moins de tokens. Un contexte qui survit à un nouveau chat. Aucune modification à la main.**
 
 ---
 
@@ -110,7 +110,7 @@ Faites travailler Claude, ChatGPT, DeepSeek et des agents de code **sur le même
 - **Réservation de fichiers** — chaque IA réserve exactement les fichiers qu'elle va modifier ; si deux veulent le même, une seule l'obtient.
 - **Imposé, pas seulement conseillé** — `run.py` refuse tout patch qui touche un fichier non réservé.
 - **Un coordinateur, plusieurs exécutants** — une IA relit et fusionne, sans jamais valider son propre travail ; les décisions importantes restent les vôtres.
-- **Le travail continue pendant votre pause** — validez une liste de tâches, lancez `team away on`, et les agents installés prennent la tâche libre suivante ; rien n'est poussé avant votre retour, et `team pause` arrête tout le monde.
+- **Le travail continue pendant votre pause** — validez une liste de tâches, lancez `team away on`, et les agents installés prennent la tâche libre suivante ; `run.py` refuse tout push avant votre retour, et `team pause` arrête tout le monde.
 - **Chat ou agent installé** — les IA de chat font tout via `input.txt` (`#@CLAIM:`) ; les agents lancent les commandes eux-mêmes.
 
     python run.py team init
@@ -139,7 +139,7 @@ Le document de règles est **en anglais uniquement** — pour que chaque IA l'an
 ## Fichiers fournis
 
 - `PROJECT_CONTEXT.en.md` — le document de règles (collez-le dans votre IA)
-- `run.py` — l'outil (l'IA vous le donne à la première utilisation)
+- `run.py` — l'outil (téléchargez-le depuis ce dépôt, ou l'IA le reconstruit à partir de la section 35)
 - `README.md` + traductions — cette page, multilingue
 - `LICENSE` — MIT, faites ce que vous voulez
 
@@ -151,13 +151,13 @@ Le document de règles est **en anglais uniquement** — pour que chaque IA l'an
 Pas beaucoup. Si vous pouvez coller un message et lancer une commande, vous pouvez l'utiliser.
 
 **Quelle IA fonctionne le mieux ?**
-DeepSeek — suit le protocole le plus précisément. Claude, ChatGPT et Gemini fonctionnent aussi.
+N'importe quel modèle de chat performant : DeepSeek, Claude, ChatGPT, Gemini. Tous dérivent dans les longs chats — dites alors « Contexte du projet, s'il vous plaît. » Pour plusieurs IA en même temps, ou du travail en votre absence, utilisez un agent installé (Claude Code, Codex, Cursor…).
 
 **Est-ce gratuit ?**
 Le document et l'outil sont MIT. L'API IA est facturée par votre fournisseur.
 
 **Et si quelque chose casse ?**
-Tout est versionné avec git. Revenez en arrière avec une commande. Le document explique comment.
+Si le dossier utilise git (recommandé), `run.py` fait un commit de chaque patch appliqué, et `python run.py revert P<id>` revient à l'état d'avant ce patch (les patches suivants sont aussi annulés).
 
 ---
 
@@ -184,5 +184,5 @@ Ce protocole fonctionne de la même façon que vous utilisiez :
 
 - **Aucune perte de contexte** — l'état du projet vit toujours dans le document.
 - **Ouvrez un nouveau chat quand vous voulez** — continuez sans tout réexpliquer.
-- **Jusqu'à 80 % de tokens en moins** — l'IA ne demande que les fichiers nécessaires (`--status`, `--file`).
+- **Moins de tokens** — l'IA ne demande que les fichiers nécessaires (`--status`, `--file`).
 - **Plusieurs IA en même temps** — le mode Équipe évite les collisions (voir plus haut).
