@@ -46,7 +46,7 @@
 
 ## यह क्या है?
 
-एक **एकल दस्तावेज़** (`PROJECT_CONTEXT.md`) जिसे आप किसी भी AI चैट में पेस्ट करते हैं — DeepSeek, Claude, ChatGPT, Gemini। यह एक बातूनी AI को एक **अनुशासित प्रोजेक्ट साथी** में बदल देता है जो:
+एक **एकल दस्तावेज़** (`PROJECT_CONTEXT.en.md`) जिसे आप किसी भी AI चैट में पेस्ट करते हैं — DeepSeek, Claude, ChatGPT, Gemini। यह एक बातूनी AI को एक **अनुशासित प्रोजेक्ट साथी** में बदल देता है जो:
 
 - ✅ **कभी संदर्भ नहीं खोता** — हर जवाब प्रोजेक्ट की स्थिति आगे बढ़ाता है।
 - ✅ **कभी आपका कोड हाथ से नहीं बदलता** — एक पैच भेजता है, आप पेस्ट करते हैं, एक कमांड लागू करता है।
@@ -54,6 +54,7 @@
 - ✅ **कभी आपका खाता ब्लॉक नहीं करता** — अंतर्निहित anti-limit प्रोटोकॉल।
 - ✅ **कभी आपसे 10 कमांड नहीं माँगता** — पेस्ट करें, एक कमांड चलाएँ, हो गया।
 - ✅ **कभी नहीं भूलता कि आप कहाँ थे** — अगली चैट ठीक वहीं से शुरू होती है।
+- ✅ **कई AI को एक साथ काम करने देता है** — Claude, ChatGPT और DeepSeek एक ही प्रोजेक्ट पर, एक-दूसरे का काम मिटाए बिना (टीम मोड)।
 
 **एक दस्तावेज़। एक उपकरण। एक कमांड। बस इतना ही।**
 
@@ -98,6 +99,26 @@
 | "हम कहाँ थे?" | "यह अगला पैच है।" |
 
 **40–80% कम टोकन। शून्य संदर्भ हानि। शून्य हस्तचालित संपादन।**
+
+---
+
+## 🤝 एक साथ कई AI — टीम मोड (v2.1 में नया)
+
+Claude, ChatGPT, DeepSeek और कोडिंग एजेंट्स को **एक ही प्रोजेक्ट पर एक ही समय** चलाइए। हर एक अपनी चैट में आपको जवाब देता है — और कोई भी दूसरे का काम मिटा नहीं सकता।
+
+- **एक साझा बोर्ड** `.git/` के अंदर — कभी push नहीं होता, हर AI इसे देखता है।
+- **फ़ाइल आरक्षण** — हर AI ठीक वही फ़ाइलें आरक्षित करता है जिन्हें वह बदलेगा; अगर दो एक ही फ़ाइल चाहें तो सिर्फ़ एक को मिलती है।
+- **सिर्फ़ सलाह नहीं, लागू नियम** — `run.py` ऐसा हर पैच अस्वीकार करता है जो बिना आरक्षण वाली फ़ाइल को छूता है।
+- **एक समन्वयक, कई कार्यकर्ता** — एक AI समीक्षा और मर्ज करता है और अपना काम कभी ख़ुद मंज़ूर नहीं करता; ज़रूरी फ़ैसले आपके हैं।
+- **आप आराम करें, काम चलता रहे** — काम की सूची मंज़ूर करें, `team away on` चलाएँ, और इंस्टॉल किए गए एजेंट अगला खाली काम लेते रहते हैं; आपके लौटने तक कुछ भी push नहीं होता, और `team pause` सबको रोक देता है।
+- **चैट या इंस्टॉल किया गया एजेंट** — चैट AI सब कुछ `input.txt` से करते हैं (`#@CLAIM:`); एजेंट कमांड ख़ुद चलाते हैं।
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+पूरे नियम: `PROJECT_CONTEXT.en.md` के सेक्शन 0-C-47 और 0-C-48।
 
 ---
 
@@ -151,16 +172,17 @@ DeepSeek — प्रोटोकॉल का सबसे सटीक पा
 ---
 
 *उन लोगों के लिए बनाया गया जो शिप करना चाहते हैं, चैट विंडो की देखभाल नहीं।*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 चैट AI और इंस्टॉल किए गए एजेंट्स के लिए एक ही दस्तावेज़
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+यह प्रोटोकॉल एक जैसा काम करता है, चाहे आप इस्तेमाल करें:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **वेब चैट** (ChatGPT, Claude, DeepSeek, Gemini) `input.txt` / `output.txt` लूप के ज़रिए।
+2. **इंस्टॉल किए गए कोडिंग एजेंट** (Claude Code, Codex, Cursor आदि) जो रिपॉज़िटरी ख़ुद पढ़ते हैं और कमांड चलाते हैं।
+
+- **संदर्भ कभी नहीं खोता** — प्रोजेक्ट की स्थिति हमेशा दस्तावेज़ में रहती है।
+- **कभी भी नई चैट शुरू करें** — दोबारा समझाए बिना आगे बढ़ें।
+- **80% तक कम टोकन** — AI सिर्फ़ ज़रूरी फ़ाइलें माँगता है (`--status`, `--file`)।
+- **एक साथ कई AI** — टीम मोड उन्हें टकराने नहीं देता (ऊपर देखें)।

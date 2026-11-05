@@ -46,7 +46,7 @@
 
 ## Vad är det?
 
-Ett **enda dokument** (`PROJECT_CONTEXT.md`) som du klistrar in i vilken AI-chatt som helst — DeepSeek, Claude, ChatGPT, Gemini. Det förvandlar en pratsam AI till en **disciplinerad projektpartner** som:
+Ett **enda dokument** (`PROJECT_CONTEXT.en.md`) som du klistrar in i vilken AI-chatt som helst — DeepSeek, Claude, ChatGPT, Gemini. Det förvandlar en pratsam AI till en **disciplinerad projektpartner** som:
 
 - ✅ **Aldrig tappar kontexten** — varje svar bär projektets tillstånd framåt.
 - ✅ **Aldrig redigerar din kod för hand** — skickar en patch, du klistrar in, ett kommando tillämpar.
@@ -54,6 +54,7 @@ Ett **enda dokument** (`PROJECT_CONTEXT.md`) som du klistrar in i vilken AI-chat
 - ✅ **Aldrig blockerar ditt konto** — inbyggt anti-gränsprotokoll.
 - ✅ **Aldrig ber dig köra 10 kommandon** — klistra in, kör ett, klart.
 - ✅ **Aldrig glömmer var ni var** — nästa chatt fortsätter precis där du slutade.
+- ✅ **Låter flera AI arbeta samtidigt** — Claude, ChatGPT och DeepSeek i samma projekt utan att skriva över varandras arbete (Teamläge).
 
 **Ett dokument. Ett verktyg. Ett kommando. Det är allt.**
 
@@ -98,6 +99,26 @@ Full version (engelska): se `README.md`.
 | "Var var vi?" | "Här är nästa patch." |
 
 **40–80% färre tokens. Noll kontextförlust. Noll manuella redigeringar.**
+
+---
+
+## 🤝 Flera AI samtidigt — Teamläge (nytt i v2.1)
+
+Låt Claude, ChatGPT, DeepSeek och kodagenter arbeta **i samma projekt samtidigt**. Var och en svarar dig i sin egen chatt — och ingen kan skriva över en annans arbete.
+
+- **En gemensam tavla** inuti `.git/` — pushas aldrig och syns för alla AI.
+- **Filreservation** — varje AI reserverar exakt de filer den ska redigera; om två vill ha samma fil får bara en den.
+- **Tvingande, inte bara råd** — `run.py` vägrar varje patch som rör en fil som inte är reserverad.
+- **En samordnare, många arbetare** — en AI granskar och slår ihop och godkänner aldrig sitt eget arbete; viktiga beslut fattar du.
+- **Arbetet fortsätter medan du vilar** — godkänn en uppgiftslista, kör `team away on`, så tar installerade agenter nästa lediga uppgift; inget pushas förrän du är tillbaka, och `team pause` stoppar alla.
+- **Chatt eller installerad agent** — chatt-AI gör allt via `input.txt` (`#@CLAIM:`); agenter kör kommandona själva.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Alla regler: avsnitt 0-C-47 och 0-C-48 i `PROJECT_CONTEXT.en.md`.
 
 ---
 
@@ -157,16 +178,17 @@ Allt är versionshanterat med git. Rulla tillbaka med ett kommando. Dokumentet f
 ---
 
 *Byggt för människor som vill leverera, inte passa ett chattfönster.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Ett dokument för chatt-AI och installerade agenter
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Protokollet fungerar likadant oavsett om du använder:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Webbchattar** (ChatGPT, Claude, DeepSeek, Gemini) via slingan `input.txt` / `output.txt`.
+2. **Installerade kodagenter** (Claude Code, Codex, Cursor med flera) som själva läser kodförrådet och kör kommandon.
+
+- **Ingen kontextförlust** — projektets läge finns alltid i dokumentet.
+- **Starta en ny chatt när som helst** — fortsätt utan att förklara igen.
+- **Upp till 80 % färre tokens** — AI:n ber bara om de filer den behöver (`--status`, `--file`).
+- **Flera AI samtidigt** — Teamläget hindrar krockar (se ovan).

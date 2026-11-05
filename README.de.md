@@ -46,7 +46,7 @@
 
 ## Was ist das?
 
-Ein **einzelnes Dokument** (`PROJECT_CONTEXT.md`), das du in jeden KI-Chat einfügst — DeepSeek, Claude, ChatGPT, Gemini. Es verwandelt eine geschwätzige KI in einen **disziplinierten Projektpartner**, der:
+Ein **einzelnes Dokument** (`PROJECT_CONTEXT.en.md`), das du in jeden KI-Chat einfügst — DeepSeek, Claude, ChatGPT, Gemini. Es verwandelt eine geschwätzige KI in einen **disziplinierten Projektpartner**, der:
 
 - ✅ **Niemals den Kontext verliert** — jede Antwort trägt den Projektstatus weiter.
 - ✅ **Niemals deinen Code per Hand ändert** — sendet einen Patch, du fügst ein, ein Befehl wendet an.
@@ -54,6 +54,7 @@ Ein **einzelnes Dokument** (`PROJECT_CONTEXT.md`), das du in jeden KI-Chat einf�
 - ✅ **Niemals dein Konto sperrt** — eingebautes Anti-Limit-Protokoll.
 - ✅ **Niemals 10 Befehle verlangt** — einfügen, einen Befehl ausführen, fertig.
 - ✅ **Niemals vergisst, wo ihr wart** — der nächste Chat macht genau da weiter.
+- ✅ **Lässt mehrere KIs gleichzeitig arbeiten** — Claude, ChatGPT und DeepSeek an einem Projekt, ohne sich gegenseitig zu überschreiben (Team-Modus).
 
 **Ein Dokument. Ein Werkzeug. Ein Befehl. Das war's.**
 
@@ -98,6 +99,26 @@ Vollversion (Englisch): siehe `README.md`.
 | "Wo waren wir?" | "Hier ist der nächste Patch." |
 
 **40–80% weniger Tokens. Null Kontextverlust. Null manuelle Bearbeitung.**
+
+---
+
+## 🤝 Mehrere KIs gleichzeitig — Team-Modus (neu in v2.1)
+
+Lass Claude, ChatGPT, DeepSeek und Coding-Agenten **gleichzeitig am selben Projekt** arbeiten. Jede antwortet dir in ihrem eigenen Chat — und keine kann die Arbeit einer anderen überschreiben.
+
+- **Ein gemeinsames Board** in `.git/` — wird nie gepusht und ist für jede KI sichtbar.
+- **Datei-Reservierung** — jede KI reserviert genau die Dateien, die sie bearbeitet; wollen zwei dieselbe Datei, bekommt sie nur eine.
+- **Erzwungen, nicht nur empfohlen** — `run.py` lehnt jeden Patch ab, der eine nicht reservierte Datei berührt.
+- **Ein Koordinator, viele Worker** — eine KI prüft und merged und genehmigt nie ihre eigene Arbeit; wichtige Entscheidungen triffst du.
+- **Die Arbeit läuft weiter, während du pausierst** — genehmige eine Aufgabenliste, starte `team away on`, und installierte Agenten nehmen sich die nächste freie Aufgabe; bis zu deiner Rückkehr wird nichts gepusht, und `team pause` stoppt alle.
+- **Chat oder installierter Agent** — Chat-KIs erledigen alles über `input.txt` (`#@CLAIM:`); Agenten führen die Befehle selbst aus.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Alle Regeln: Abschnitte 0-C-47 und 0-C-48 in `PROJECT_CONTEXT.en.md`.
 
 ---
 
@@ -151,16 +172,17 @@ Alles ist mit git versioniert. Ein Befehl macht rückgängig. Das Dokument erkl�
 ---
 
 *Gemacht für Leute, die ausliefern wollen, nicht ein Chat-Fenster hüten.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Ein Dokument für Chat-KIs und installierte Agenten
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Dieses Protokoll funktioniert gleich, egal ob du nutzt:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Web-Chats** (ChatGPT, Claude, DeepSeek, Gemini) über die Schleife `input.txt` / `output.txt`.
+2. **Installierte Coding-Agenten** (Claude Code, Codex, Cursor und andere), die das Repository selbst lesen und Befehle ausführen.
+
+- **Kein Kontextverlust** — der Projektstand steht immer im Dokument.
+- **Jederzeit einen neuen Chat starten** — ohne alles neu zu erklären.
+- **Bis zu 80 % weniger Tokens** — die KI fordert nur die nötigen Dateien an (`--status`, `--file`).
+- **Mehrere KIs gleichzeitig** — der Team-Modus verhindert Kollisionen (siehe oben).

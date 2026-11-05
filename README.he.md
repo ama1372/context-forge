@@ -46,7 +46,7 @@
 
 ## מה זה?
 
-‏**מסמך יחיד** (‎`PROJECT_CONTEXT.md`‎) שאתה מדביק בכל צ'אט ‎AI‎ — ‎DeepSeek‎, ‎Claude‎, ‎ChatGPT‎, ‎Gemini.‎ זה הופך ‎AI‎ פטפטן ל**שותף פרויקט ממושמע** ש:
+‏**מסמך יחיד** (‎`PROJECT_CONTEXT.en.md`‎) שאתה מדביק בכל צ'אט ‎AI‎ — ‎DeepSeek‎, ‎Claude‎, ‎ChatGPT‎, ‎Gemini.‎ זה הופך ‎AI‎ פטפטן ל**שותף פרויקט ממושמע** ש:
 
 - ‏✅ **אף פעם לא מאבד הקשר** — כל תגובה מקדמת את מצב הפרויקט קדימה.
 - ‏✅ **אף פעם לא עורך את הקוד שלך ביד** — שולח תיקון, אתה מדביק, פקודה אחת מיישמת.
@@ -54,6 +54,7 @@
 - ‏✅ **אף פעם לא חוסם את החשבון שלך** — פרוטוקול אנטי-מגבלה מובנה.
 - ‏✅ **אף פעם לא מבקש 10 פקודות** — מדביק, מריץ אחת, סיימת.
 - ‏✅ **אף פעם לא שוכח איפה הייתם** — הצ'אט הבא ממשיך בדיוק מהמקום שהפסקת.
+- ‏✅ **מאפשר לכמה בינות מלאכותיות לעבוד יחד** — Claude, ChatGPT ו-DeepSeek על פרויקט אחד בלי לדרוס זו את עבודתה של זו (מצב צוות).
 
 ‏**מסמך אחד. כלי אחד. פקודה אחת. זה הכל.**
 
@@ -101,6 +102,26 @@
 
 ---
 
+## 🤝 כמה בינות מלאכותיות בו-זמנית — מצב צוות (חדש בגרסה 2.1)
+
+‏הפעל את Claude, ChatGPT, DeepSeek וסוכני קוד **על אותו פרויקט באותו זמן**. כל אחד עונה לך בצ'אט משלו — ואף אחד מהם לא יכול לדרוס את העבודה של אחר.
+
+- ‏**לוח משותף אחד** בתוך `.git/` — לעולם לא נדחף, וכל הבינות רואות אותו.
+- ‏**שריון קבצים** — כל בינה משריינת בדיוק את הקבצים שתערוך; אם שתיים רוצות אותו קובץ, רק אחת מקבלת.
+- ‏**נאכף, לא רק מומלץ** — `run.py` דוחה כל טלאי שנוגע בקובץ שלא שוריין.
+- ‏**מתאם אחד, הרבה עובדים** — בינה אחת בודקת וממזגת ולעולם לא מאשרת את עבודתה; ההחלטות החשובות שלך.
+- ‏**העבודה ממשיכה כשאתה נח** — אשר רשימת משימות והפעל `team away on`; סוכנים מותקנים לוקחים את המשימה הפנויה הבאה, שום דבר לא נדחף עד שתחזור, ו-`team pause` עוצר את כולם.
+- ‏**צ'אט או סוכן מותקן** — בינות צ'אט עושות הכול דרך `input.txt` (`#@CLAIM:`); סוכנים מריצים את הפקודות בעצמם.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+‏הכללים המלאים: סעיפים 0-C-47 ו-0-C-48 ב-`PROJECT_CONTEXT.en.md`.
+
+---
+
 ## עובד עם כל שפה
 
 ‏‎Rust‎, ‎Python‎, ‎Node‎, ‎Go‎, ‎C++‎, כל דבר. אתה אומר ל-‎`run.py`‎ פעם אחת איך לבנות ולבדוק את הפרויקט שלך — הפרוטוקול זהה לכל שפה.
@@ -125,7 +146,7 @@
 
 - ‏‎`PROJECT_CONTEXT.en.md`‎ — מסמך החוקים (הדבק לתוך ה-‎AI‎ שלך)
 - ‏‎`run.py`‎ — הכלי (ה-‎AI‎ נותן בשימוש הראשון)
-- ‏‎`README.md`‎ + תרגומים — העמוד הזה, 19 שפות
+- ‏‎`README.md`‎ + תרגומים — העמוד הזה, 24 שפות
 - ‏‎`LICENSE`‎ — ‎MIT‎, עשה מה שאתה רוצה
 
 ---
@@ -157,16 +178,17 @@
 ---
 
 ‏*נבנה לאנשים שרוצים לשלוח, לא לטפל בחלון צ'אט.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 מסמך אחד לבינות צ'אט ולסוכנים מותקנים
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+‏הפרוטוקול עובד באותה דרך בין אם אתה משתמש ב:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. ‏**צ'אטים באתר** (ChatGPT, Claude, DeepSeek, Gemini) דרך הלולאה `input.txt` / `output.txt`.
+2. ‏**סוכני קוד מותקנים** (Claude Code, Codex, Cursor ואחרים) שקוראים את המאגר ומריצים פקודות בעצמם.
+
+- ‏**אין אובדן הקשר** — מצב הפרויקט תמיד נמצא במסמך.
+- ‏**פתח צ'אט חדש מתי שתרצה** — והמשך בלי להסביר מחדש.
+- ‏**עד 80% פחות טוקנים** — הבינה מבקשת רק את הקבצים שהיא צריכה (`--status`, `--file`).
+- ‏**כמה בינות בו-זמנית** — מצב צוות מונע התנגשויות (ראה למעלה).

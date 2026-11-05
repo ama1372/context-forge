@@ -46,7 +46,7 @@
 
 ## ما هذا؟
 
-‏**مستند واحد** (‎`PROJECT_CONTEXT.md`‎) تلصقه في أي محادثة ذكاء اصطناعي — ‎DeepSeek‎، ‎Claude‎، ‎ChatGPT‎، ‎Gemini.‎ يحوّل ذكاءً اصطناعيًا ثرثارًا إلى **شريك مشروع منضبط** يقوم بـ:
+‏**مستند واحد** (‎`PROJECT_CONTEXT.en.md`‎) تلصقه في أي محادثة ذكاء اصطناعي — ‎DeepSeek‎، ‎Claude‎، ‎ChatGPT‎، ‎Gemini.‎ يحوّل ذكاءً اصطناعيًا ثرثارًا إلى **شريك مشروع منضبط** يقوم بـ:
 
 - ‏✅ **لا يفقد السياق أبدًا** — كل رد يدفع حالة المشروع للأمام.
 - ‏✅ **لا يعدّل كودك يدويًا أبدًا** — يرسل تصحيحًا، تلصقه، أمر واحد يطبّقه.
@@ -54,6 +54,7 @@
 - ‏✅ **لا يحظر حسابك أبدًا** — بروتوكول مقاومة الحدود مدمج.
 - ‏✅ **لا يطلب منك 10 أوامر** — تلصق، تشغّل أمرًا واحدًا، انتهى.
 - ‏✅ **لا ينسى أين كنتم** — المحادثة التالية تستأنف من حيث تركت بالضبط.
+- ‏✅ **يتيح لعدة نماذج ذكاء اصطناعي العمل معًا** — Claude وChatGPT وDeepSeek على مشروع واحد دون أن يكتب أحدها فوق عمل الآخر (وضع الفريق).
 
 ‏**مستند واحد. أداة واحدة. أمر واحد. هذا كل شيء.**
 
@@ -98,6 +99,26 @@
 | "أين كنا؟" | "ها هو التصحيح التالي." |
 
 ‏**رموز أقل بنسبة 40–80%. صفر فقدان سياق. صفر تعديل يدوي.**
+
+---
+
+## 🤝 عدة نماذج ذكاء اصطناعي في وقت واحد — وضع الفريق (جديد في الإصدار 2.1)
+
+‏شغّل Claude وChatGPT وDeepSeek ووكلاء البرمجة **على المشروع نفسه في الوقت نفسه**. كل واحد يرد عليك في محادثته الخاصة — ولا يستطيع أي منهم الكتابة فوق عمل غيره.
+
+- ‏**لوحة مشتركة واحدة** داخل `.git/` — لا تُرفع أبدًا، ويراها كل نموذج.
+- ‏**حجز الملفات** — كل نموذج يحجز الملفات التي سيعدّلها بالضبط؛ إذا أراد اثنان الملف نفسه يحصل عليه واحد فقط.
+- ‏**إلزامي لا مجرد نصيحة** — يرفض `run.py` أي رقعة تلمس ملفًا لم يحجزه صاحبها.
+- ‏**منسّق واحد وعدة عاملين** — نموذج واحد يراجع ويدمج ولا يوافق أبدًا على عمله هو؛ القرارات المهمة لك.
+- ‏**يستمر العمل وأنت ترتاح** — وافق على قائمة المهام وشغّل `team away on`، فيواصل الوكلاء المثبتون أخذ المهمة الحرة التالية؛ لا يُرفع شيء حتى تعود، و`team pause` يوقف الجميع.
+- ‏**محادثة أو وكيل مثبت** — نماذج المحادثة تفعل كل شيء عبر `input.txt` (`#@CLAIM:`)؛ والوكلاء ينفذون الأوامر بأنفسهم.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+‏القواعد الكاملة: القسمان 0-C-47 و0-C-48 في `PROJECT_CONTEXT.en.md`.
 
 ---
 
@@ -151,16 +172,17 @@
 ---
 
 ‏*مصنوع لأولئك الذين يريدون الإطلاق، لا رعاية نافذة محادثة.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 مستند واحد لنماذج المحادثة والوكلاء المثبتين
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+‏يعمل هذا البروتوكول بالطريقة نفسها سواء استخدمت:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. ‏**محادثات الويب** (ChatGPT وClaude وDeepSeek وGemini) عبر حلقة `input.txt` / `output.txt`.
+2. ‏**وكلاء البرمجة المثبتين** (Claude Code وCodex وCursor وغيرها) الذين يقرؤون المستودع وينفذون الأوامر بأنفسهم.
+
+- ‏**لا ضياع للسياق** — حالة المشروع موجودة دائمًا في المستند.
+- ‏**ابدأ محادثة جديدة متى شئت** — وتابع دون إعادة الشرح.
+- ‏**رموز أقل بنسبة تصل إلى 80%** — يطلب النموذج الملفات التي يحتاجها فقط (`--status`، `--file`).
+- ‏**عدة نماذج في وقت واحد** — وضع الفريق يمنع تصادمها (انظر أعلاه).

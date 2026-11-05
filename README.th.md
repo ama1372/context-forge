@@ -46,7 +46,7 @@
 
 ## นี่คืออะไร?
 
-**เอกสารเดี่ยว** (`PROJECT_CONTEXT.md`) ที่คุณวางในแชท AI ใดก็ได้ — DeepSeek, Claude, ChatGPT, Gemini มันเปลี่ยน AI ที่พูดมากให้เป็น **พันธมิตรโปรเจกต์ที่มีวินัย** ซึ่ง:
+**เอกสารเดี่ยว** (`PROJECT_CONTEXT.en.md`) ที่คุณวางในแชท AI ใดก็ได้ — DeepSeek, Claude, ChatGPT, Gemini มันเปลี่ยน AI ที่พูดมากให้เป็น **พันธมิตรโปรเจกต์ที่มีวินัย** ซึ่ง:
 
 - ✅ **ไม่สูญเสียบริบท** — ทุกคำตอบพาสถานะโปรเจกต์ไปข้างหน้า
 - ✅ **ไม่แก้โค้ดของคุณด้วยมือ** — ส่ง patch คุณวาง หนึ่งคำสั่งใช้
@@ -54,6 +54,7 @@
 - ✅ **ไม่บล็อกบัญชีคุณ** — โปรโตคอลต่อต้านลิมิตในตัว
 - ✅ **ไม่ขอให้รัน 10 คำสั่ง** — วาง รันหนึ่ง เสร็จ
 - ✅ **ไม่ลืมว่าคุณอยู่ไหน** — แชทถัดไปไปต่อจากที่คุณหยุด
+- ✅ **ให้ AI หลายตัวทำงานพร้อมกันได้** — Claude, ChatGPT และ DeepSeek ในโปรเจกต์เดียวกันโดยไม่เขียนทับงานของกันและกัน (โหมดทีม)
 
 **หนึ่งเอกสาร หนึ่งเครื่องมือ หนึ่งคำสั่ง แค่นั้น**
 
@@ -101,6 +102,26 @@
 
 ---
 
+## 🤝 AI หลายตัวพร้อมกัน — โหมดทีม (ใหม่ใน v2.1)
+
+ให้ Claude, ChatGPT, DeepSeek และเอเจนต์เขียนโค้ด **ทำงานในโปรเจกต์เดียวกันในเวลาเดียวกัน** แต่ละตัวตอบคุณในแชทของตัวเอง — และไม่มีตัวไหนเขียนทับงานของตัวอื่นได้
+
+- **บอร์ดกลางหนึ่งอัน** อยู่ใน `.git/` — ไม่ถูก push ขึ้นไปเลย และ AI ทุกตัวมองเห็น
+- **การจองไฟล์** — AI แต่ละตัวจองไฟล์ที่จะแก้ไขอย่างแม่นยำ ถ้าสองตัวต้องการไฟล์เดียวกัน จะได้เพียงตัวเดียว
+- **บังคับใช้จริง ไม่ใช่แค่คำแนะนำ** — `run.py` ปฏิเสธทุกแพตช์ที่แตะไฟล์ที่ยังไม่ได้จอง
+- **ผู้ประสานงานหนึ่งคน ผู้ทำงานหลายคน** — AI หนึ่งตัวตรวจทานและรวมงาน และไม่อนุมัติงานของตัวเอง การตัดสินใจสำคัญเป็นของคุณ
+- **งานเดินต่อแม้คุณพัก** — อนุมัติรายการงาน แล้วรัน `team away on` เอเจนต์ที่ติดตั้งไว้จะรับงานว่างถัดไปต่อเรื่อยๆ จะไม่มีอะไรถูก push จนกว่าคุณจะกลับมา และ `team pause` หยุดทุกตัวได้
+- **แชทหรือเอเจนต์ที่ติดตั้ง** — AI แบบแชททำทุกอย่างผ่าน `input.txt` (`#@CLAIM:`) ส่วนเอเจนต์รันคำสั่งเอง
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+กฎฉบับเต็ม: หัวข้อ 0-C-47 และ 0-C-48 ใน `PROJECT_CONTEXT.en.md`
+
+---
+
 ## ใช้ได้กับทุกภาษา
 
 Rust, Python, Node, Go, C++, อะไรก็ได้ คุณบอก `run.py` ครั้งเดียวว่าจะ build และ test โปรเจกต์อย่างไร — โปรโตคอลเหมือนกันสำหรับทุกภาษา
@@ -125,7 +146,7 @@ Rust, Python, Node, Go, C++, อะไรก็ได้ คุณบอก `run
 
 - `PROJECT_CONTEXT.en.md` — เอกสารกฎ (วางใน AI ของคุณ)
 - `run.py` — เครื่องมือ (AI ให้เมื่อใช้ครั้งแรก)
-- `README.md` + คำแปล — หน้านี้ 19 ภาษา
+- `README.md` + คำแปล — หน้านี้ 24 ภาษา
 - `LICENSE` — MIT ทำอะไรก็ได้
 
 ---
@@ -157,16 +178,17 @@ DeepSeek — ทำตามโปรโตคอลแม่นยำที่�
 ---
 
 *สร้างสำหรับคนที่อยากส่งมอบ ไม่ใช่ดูแลหน้าต่างแชท*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 เอกสารเดียวสำหรับ AI แบบแชทและเอเจนต์ที่ติดตั้ง
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+โปรโตคอลนี้ทำงานเหมือนกันไม่ว่าคุณจะใช้:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **แชทบนเว็บ** (ChatGPT, Claude, DeepSeek, Gemini) ผ่านลูป `input.txt` / `output.txt`
+2. **เอเจนต์เขียนโค้ดที่ติดตั้งไว้** (Claude Code, Codex, Cursor และอื่นๆ) ที่อ่านรีโพและรันคำสั่งเอง
+
+- **ไม่สูญเสียบริบท** — สถานะโปรเจกต์อยู่ในเอกสารเสมอ
+- **เริ่มแชทใหม่ได้ทุกเมื่อ** — ทำต่อได้โดยไม่ต้องอธิบายใหม่
+- **ประหยัดโทเคนได้ถึง 80%** — AI ขอเฉพาะไฟล์ที่ต้องใช้ (`--status`, `--file`)
+- **AI หลายตัวพร้อมกัน** — โหมดทีมป้องกันการชนกัน (ดูด้านบน)

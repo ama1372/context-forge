@@ -46,7 +46,7 @@
 
 ## Wat is het?
 
-Een **enkel document** (`PROJECT_CONTEXT.md`) dat je in elke AI-chat plakt — DeepSeek, Claude, ChatGPT, Gemini. Het verandert een praatgrage AI in een **gedisciplineerde projectpartner** die:
+Een **enkel document** (`PROJECT_CONTEXT.en.md`) dat je in elke AI-chat plakt — DeepSeek, Claude, ChatGPT, Gemini. Het verandert een praatgrage AI in een **gedisciplineerde projectpartner** die:
 
 - ✅ **Nooit de context verliest** — elk antwoord draagt de projectstatus verder.
 - ✅ **Nooit je code met de hand aanpast** — stuurt een patch, jij plakt, één commando past toe.
@@ -54,6 +54,7 @@ Een **enkel document** (`PROJECT_CONTEXT.md`) dat je in elke AI-chat plakt — D
 - ✅ **Nooit je account blokkeert** — ingebouwd anti-limietprotocol.
 - ✅ **Nooit 10 commando's vraagt** — plakken, één uitvoeren, klaar.
 - ✅ **Nooit vergeet waar jullie waren** — de volgende chat gaat verder waar je stopte.
+- ✅ **Laat meerdere AI's tegelijk werken** — Claude, ChatGPT en DeepSeek aan één project zonder elkaars werk te overschrijven (Teammodus).
 
 **Één document. Één tool. Één commando. Dat is alles.**
 
@@ -98,6 +99,26 @@ Volledige versie (Engels): zie `README.md`.
 | "Waar waren we?" | "Hier is de volgende patch." |
 
 **40–80% minder tokens. Nul contextverlies. Nul handmatige aanpassingen.**
+
+---
+
+## 🤝 Meerdere AI's tegelijk — Teammodus (nieuw in v2.1)
+
+Laat Claude, ChatGPT, DeepSeek en coding-agents **tegelijk aan hetzelfde project** werken. Elk antwoordt je in zijn eigen chat — en geen enkele kan het werk van een ander overschrijven.
+
+- **Eén gedeeld bord** in `.git/` — wordt nooit gepusht en is zichtbaar voor elke AI.
+- **Bestanden reserveren** — elke AI reserveert precies de bestanden die hij gaat bewerken; als twee hetzelfde bestand willen, krijgt er maar één het.
+- **Afgedwongen, niet alleen aangeraden** — `run.py` weigert elke patch die een niet-gereserveerd bestand raakt.
+- **Eén coördinator, veel uitvoerders** — één AI controleert en merget en keurt nooit zijn eigen werk goed; belangrijke beslissingen neem jij.
+- **Het werk gaat door terwijl je pauzeert** — keur een takenlijst goed, start `team away on`, en geïnstalleerde agents pakken steeds de volgende vrije taak; er wordt niets gepusht tot je terug bent, en `team pause` stopt iedereen.
+- **Chat of geïnstalleerde agent** — chat-AI's doen alles via `input.txt` (`#@CLAIM:`); agents voeren de commando's zelf uit.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Volledige regels: secties 0-C-47 en 0-C-48 in `PROJECT_CONTEXT.en.md`.
 
 ---
 
@@ -157,16 +178,17 @@ Alles is geversioneerd met git. Draai terug met één commando. Het document leg
 ---
 
 *Gemaakt voor mensen die willen verzenden, niet een chatvenster willen babysitten.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Eén document voor chat-AI's en geïnstalleerde agents
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Dit protocol werkt hetzelfde, of je nu gebruikt:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Webchats** (ChatGPT, Claude, DeepSeek, Gemini) via de lus `input.txt` / `output.txt`.
+2. **Geïnstalleerde coding-agents** (Claude Code, Codex, Cursor en andere) die zelf de repository lezen en commando's uitvoeren.
+
+- **Geen contextverlies** — de projectstatus staat altijd in het document.
+- **Start op elk moment een nieuwe chat** — ga verder zonder opnieuw uit te leggen.
+- **Tot 80% minder tokens** — de AI vraagt alleen de bestanden die nodig zijn (`--status`, `--file`).
+- **Meerdere AI's tegelijk** — de Teammodus voorkomt botsingen (zie hierboven).

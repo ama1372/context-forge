@@ -46,7 +46,7 @@
 
 ## Bu nedir?
 
-Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJECT_CONTEXT.md`) — DeepSeek, Claude, ChatGPT, Gemini. Geveze bir yapay zekâyı **disiplinli bir proje ortağına** dönüştürür, o:
+Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJECT_CONTEXT.en.md`) — DeepSeek, Claude, ChatGPT, Gemini. Geveze bir yapay zekâyı **disiplinli bir proje ortağına** dönüştürür, o:
 
 - ✅ **Asla bağlamı kaybetmez** — her cevap proje durumunu ileri taşır.
 - ✅ **Asla kodunu elle değiştirmez** — yama gönderir, sen yapıştırırsın, bir komut uygular.
@@ -54,6 +54,7 @@ Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJE
 - ✅ **Asla hesabını engellemez** — dahili anti-limit protokolü.
 - ✅ **Asla 10 komut istemez** — yapıştır, bir tane çalıştır, bitti.
 - ✅ **Nerede olduğunuzu asla unutmaz** — sonraki sohbet tam kaldığınız yerden devam eder.
+- ✅ **Birden çok yapay zekâyı aynı anda çalıştırır** — Claude, ChatGPT ve DeepSeek aynı projede, birbirinin işinin üzerine yazmadan (Takım modu).
 
 **Bir belge. Bir araç. Bir komut. Hepsi bu.**
 
@@ -98,6 +99,26 @@ Tam sürüm (İngilizce): `README.md`'ye bakın.
 | "Neredeydik?" | "İşte sonraki yama." |
 
 **%40–80 daha az token. Sıfır bağlam kaybı. Sıfır elle düzenleme.**
+
+---
+
+## 🤝 Aynı anda birden çok yapay zekâ — Takım modu (v2.1'de yeni)
+
+Claude, ChatGPT, DeepSeek ve kodlama ajanlarını **aynı projede aynı anda** çalıştırın. Her biri size kendi sohbetinde yanıt verir — ve hiçbiri diğerinin işinin üzerine yazamaz.
+
+- **Tek bir ortak pano** `.git/` içinde — asla push edilmez, her yapay zekâ görür.
+- **Dosya rezervasyonu** — her yapay zekâ düzenleyeceği dosyaları tam olarak rezerve eder; ikisi aynı dosyayı isterse yalnızca biri alır.
+- **Tavsiye değil, zorunlu** — `run.py`, rezerve edilmemiş bir dosyaya dokunan her yamayı reddeder.
+- **Bir koordinatör, çok çalışan** — bir yapay zekâ inceler ve birleştirir, kendi işini asla onaylamaz; önemli kararlar sizindir.
+- **Siz dinlenirken iş sürer** — bir görev listesini onaylayın, `team away on` çalıştırın; kurulu ajanlar sıradaki boş görevi almaya devam eder, siz dönene kadar hiçbir şey push edilmez ve `team pause` herkesi durdurur.
+- **Sohbet ya da kurulu ajan** — sohbet yapay zekâları her şeyi `input.txt` üzerinden yapar (`#@CLAIM:`); ajanlar komutları kendileri çalıştırır.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Tüm kurallar: `PROJECT_CONTEXT.en.md` içindeki 0-C-47 ve 0-C-48 bölümleri.
 
 ---
 
@@ -151,16 +172,17 @@ Her şey git ile sürümlenmiştir. Bir komutla geri dön. Belge açıklar.
 ---
 
 *Göndermek isteyenler için, sohbet penceresine bakmak değil.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Sohbet yapay zekâları ve kurulu ajanlar için tek belge
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Bu protokol, hangisini kullanırsanız kullanın aynı şekilde çalışır:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Web sohbetleri** (ChatGPT, Claude, DeepSeek, Gemini) — `input.txt` / `output.txt` döngüsüyle.
+2. **Kurulu kodlama ajanları** (Claude Code, Codex, Cursor ve diğerleri) — depoyu kendileri okuyup komut çalıştırır.
+
+- **Bağlam kaybı yok** — projenin durumu her zaman belgede.
+- **İstediğiniz an yeni sohbet** — yeniden anlatmadan devam edin.
+- **%80'e kadar daha az token** — yapay zekâ yalnızca gereken dosyaları ister (`--status`, `--file`).
+- **Aynı anda birden çok yapay zekâ** — Takım modu çakışmalarını önler (yukarıya bakın).

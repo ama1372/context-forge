@@ -46,7 +46,7 @@
 
 ## Co to jest?
 
-**Jeden dokument** (`PROJECT_CONTEXT.md`), który wklejasz do dowolnego czatu AI — DeepSeek, Claude, ChatGPT, Gemini. Zamienia gadatliwe AI w **zdyscyplinowanego partnera projektowego**, który:
+**Jeden dokument** (`PROJECT_CONTEXT.en.md`), który wklejasz do dowolnego czatu AI — DeepSeek, Claude, ChatGPT, Gemini. Zamienia gadatliwe AI w **zdyscyplinowanego partnera projektowego**, który:
 
 - ✅ **Nigdy nie traci kontekstu** — każda odpowiedź niesie stan projektu dalej.
 - ✅ **Nigdy nie edytuje twojego kodu ręcznie** — wysyła patch, ty wklejasz, jedna komenda stosuje.
@@ -54,6 +54,7 @@
 - ✅ **Nigdy nie blokuje twojego konta** — wbudowany protokół anty-limitowy.
 - ✅ **Nigdy nie prosi o 10 komend** — wklejasz, uruchamiasz jedną, gotowe.
 - ✅ **Nigdy nie zapomina, gdzie byliście** — następny czat kontynuuje dokładnie tam, gdzie skończyłeś.
+- ✅ **Pozwala kilku AI pracować jednocześnie** — Claude, ChatGPT i DeepSeek nad jednym projektem, bez nadpisywania sobie pracy (tryb zespołowy).
 
 **Jeden dokument. Jedno narzędzie. Jedna komenda. To wszystko.**
 
@@ -98,6 +99,26 @@ Pełna wersja (angielski): zobacz `README.md`.
 | "Gdzie byliśmy?" | "Oto następny patch." |
 
 **40–80% mniej tokenów. Zero utraty kontekstu. Zero ręcznych edycji.**
+
+---
+
+## 🤝 Kilka AI naraz — tryb zespołowy (nowość w v2.1)
+
+Uruchom Claude, ChatGPT, DeepSeek i agentów programistycznych **nad tym samym projektem w tym samym czasie**. Każdy odpowiada ci we własnym czacie — i żaden nie może nadpisać pracy innego.
+
+- **Jedna wspólna tablica** wewnątrz `.git/` — nigdy nie jest wypychana, widzi ją każde AI.
+- **Rezerwacja plików** — każde AI rezerwuje dokładnie te pliki, które będzie edytować; jeśli dwa chcą tego samego pliku, dostaje go tylko jedno.
+- **Wymuszane, nie tylko zalecane** — `run.py` odrzuca każdą łatkę, która dotyka niezarezerwowanego pliku.
+- **Jeden koordynator, wielu wykonawców** — jedno AI przegląda i scala, i nigdy nie zatwierdza własnej pracy; ważne decyzje należą do ciebie.
+- **Praca trwa, gdy odpoczywasz** — zatwierdź listę zadań, uruchom `team away on`, a zainstalowani agenci biorą kolejne wolne zadanie; nic nie zostanie wypchnięte przed twoim powrotem, a `team pause` zatrzymuje wszystkich.
+- **Czat albo zainstalowany agent** — AI w czacie robi wszystko przez `input.txt` (`#@CLAIM:`); agenci sami uruchamiają polecenia.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Pełne zasady: sekcje 0-C-47 i 0-C-48 w `PROJECT_CONTEXT.en.md`.
 
 ---
 
@@ -157,16 +178,17 @@ Wszystko jest wersjonowane przez git. Cofnij jedną komendą. Dokument wyjaśnia
 ---
 
 *Zbudowane dla ludzi, którzy chcą wysyłać, a nie pilnować okna czatu.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Jeden dokument dla AI w czacie i zainstalowanych agentów
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Ten protokół działa tak samo, niezależnie od tego, czy używasz:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Czatów w przeglądarce** (ChatGPT, Claude, DeepSeek, Gemini) z pętlą `input.txt` / `output.txt`.
+2. **Zainstalowanych agentów programistycznych** (Claude Code, Codex, Cursor i inni), którzy sami czytają repozytorium i uruchamiają polecenia.
+
+- **Bez utraty kontekstu** — stan projektu zawsze jest w dokumencie.
+- **Nowy czat w dowolnej chwili** — kontynuuj bez ponownego tłumaczenia.
+- **Do 80% mniej tokenów** — AI prosi tylko o potrzebne pliki (`--status`, `--file`).
+- **Kilka AI naraz** — tryb zespołowy zapobiega kolizjom (patrz wyżej).

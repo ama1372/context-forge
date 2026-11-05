@@ -20,6 +20,12 @@ Commands:
   python run.py verify          run test_cmd from _work/config.json
   python run.py find-dup [...]  duplicate detection
   python run.py clean           wipe _work/ (dangerous)
+  python run.py team <cmd>      team mode: several AIs at once (Section 0-C-47)
+                                (init, join, status, claim, release, state,
+                                 note, card, deliver, verify, accept, reject, log;
+                                 owner away, Section 0-C-48: backlog, next, eta,
+                                 heartbeat, away, pause, resume, report)
+  python run.py handoff         write _work/handoff.json for the next AI
 
 File filters for --file or DUMP:
   --head N   --tail N   --lines A-B   --grep PAT   --grep-i PAT
@@ -43,6 +49,10 @@ Directives (in _work/input.txt, first lines):
   #@RESUME:            retry the last failed patch (loads _work/failed/)
   #@CMD_GREP: <regex>  only keep CMD output matching pattern
   #@CMD_TAIL: <N>      only keep the last N lines of CMD output
+  #@PROJECT: <name>    must match _work/config.json "project" (Section 0-C-39)
+  #@AI: <model>        which AI wrote the patch (handoff history)
+  #@AGENT: <id>        team mode: the board agent whose claims cover this patch
+  #@CLAIM: <task> <path>... [| goal]   team mode: claim before applying
 
 Inline scripts:
   ===== PYTHON: <desc> =====
@@ -59,7 +69,7 @@ import threading, time
 from datetime import datetime
 from pathlib import Path
 
-VERSION = "2.0.13"
+VERSION = "2.1.0"
 
 WORK       = Path('_work')
 INPUT      = WORK / 'input.txt'
@@ -602,7 +612,7 @@ NEED_COMMANDS = {
 
 
 # These run as CLI commands, not flags.
-NEED_CLI_COMMANDS = {'check', 'verify', 'dump', 'find-dup', 'clean'}
+NEED_CLI_COMMANDS = {'check', 'verify', 'dump', 'find-dup', 'clean', 'team'}
 
 def need_to_args(need_args):
     if not need_args:
@@ -1309,6 +1319,13 @@ def do_apply(patch_id=None):
      commit_msg, tag_name, nodump, dump_mode, push, sync_after,
      git_add_all, commit_if, next_step, roadmap, asks, cmd_grep, cmd_tail,
      remaining) = read_directives(content)
+    if push and not FORCE_TEAM and _team_flags()[1]:
+        _txt = '\n'.join(['# MSG-SEED: ' + msg_seed(), '[APPLY]', '',
+                          '[REFUSED] the owner is away (team away on): #@PUSH waits for '
+                          'the owner. Remove #@PUSH and rerun; nothing was applied.'])
+        write(OUTPUT, _txt)
+        print(_txt)
+        return 3
     if did is not None: patch_id = did
     if asks:
         try:
@@ -1387,6 +1404,21 @@ def do_apply(patch_id=None):
                 txt = '\n'.join(out)
                 write(OUTPUT, txt); print(txt)
                 return 3
+    # Section 0-C-47: in team mode every file op must sit inside a claim
+    # held by the patch's #@AGENT. Checked before anything is touched.
+    # #@CLAIM: lines are claimed first, so a chat AI needs one round trip.
+    _claim_err = _team_header_claims(_original_input, out)
+    if _claim_err:
+        out.append('[REFUSED] ' + _claim_err)
+        txt = '\n'.join(out)
+        write(OUTPUT, txt); print(txt)
+        return 3
+    _tguard = None if FORCE_TEAM else _team_guard(_original_input, ops)
+    if _tguard:
+        out.append('[REFUSED] ' + _tguard)
+        txt = '\n'.join(out)
+        write(OUTPUT, txt); print(txt)
+        return 3
     _status_begin(f"[P{patch_id}] applying {len(ops)} op(s)")
     if BACKUP:
         _do_backup()
@@ -2452,9 +2484,13 @@ def do_capabilities():
           "--auto-verify --force --fuzzy --no-fuzzy --dry-run --backup "
           "--progress --no-progress "
           "dump[--full] check verify find-dup apply clean")
+    print("TEAM: team init|join|status|claim|release|state|note|card|deliver|"
+          "verify|accept|reject|log (Section 0-C-47; --force-team overrides the guard)")
+    print("AWAY: team backlog|next|eta|heartbeat|away|pause|resume|report (Section 0-C-48)")
     print("PATCH_TYPES: FILE CREATE DELETE MOVE MKDIR CMD PYTHON DUMP")
     print("DIRECTIVES: #@ID #@CMD #@POST #@NEED #@COMMIT #@TAG #@NODUMP #@DUMP "
-          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF #@CMD_GREP #@CMD_TAIL #@GIT_ADD_ALL")
+          "#@NEXT #@ROADMAP #@PUSH #@SYNC #@RESUME #@COMMIT_IF #@CMD_GREP #@CMD_TAIL #@GIT_ADD_ALL "
+          "#@PROJECT #@AI #@AGENT #@CLAIM")
     print("CONDITIONALS: #@IF: exists|missing|contains ... #@ELIF: ... #@ELSE: #@ENDIF:")
     print("ANCHORS: <<<FIND>>> <<<OR-FIND>>> <<<REPLACE>>> <<<END>>>")
     print("DISCIPLINE: Section 0-C-17 (file creation) | Section 0-C-18 (secrets)")
@@ -2744,6 +2780,10 @@ def do_self_test():
                  'do_apply', 'do_dump', 'main', 'dispatch'):
         if ('def %s(' % name) not in src:
             issues.append('missing function: %s' % name)
+    if '_team_guard(' in src:
+        for name in ('do_team', '_team_guard', '_team_connect', 'team_enabled'):
+            if ('def %s(' % name) not in src:
+                issues.append('missing team function: %s' % name)
 
     # 4. Cross-symbol: if ANSWERS is used, its helpers must exist
     if 'ANSWERS' in src:
@@ -3022,7 +3062,7 @@ def do_doctor():
     try:
         if Path('PROJECT_CONTEXT.en.md').exists():
             ctx = read(Path('PROJECT_CONTEXT.en.md'))
-            if ('VERSION = "2.0.13"') in ctx:
+            if ('VERSION = "%s"' % VERSION) in ctx:
                 print("  [OK] Version matches in PROJECT_CONTEXT.en.md")
             else:
                 print("  [WARN] run.py version mismatches Section 35. Run --sync-section35")
@@ -3058,6 +3098,943 @@ def do_doctor():
 
     print("\n" + "=" * 50)
     print("DIAGNOSIS COMPLETE")
+
+
+# ---------------------------------------------------------------------------
+# Section 0-C-47 — Team Mode: several AIs working on one project at once.
+# A shared board lives inside the git common dir, so every worktree sees the
+# same board and it is never committed. sqlite3 (stdlib) gives atomic claims.
+# This is a cooperative contract enforced at patch-apply time; it does not
+# sandbox CMD/PYTHON blocks and it is not an operating-system lock.
+# ---------------------------------------------------------------------------
+
+TEAM_HOLD_STATES = ('active', 'waiting', 'review')
+TEAM_STATES = TEAM_HOLD_STATES + ('done',)
+TEAM_ROLES = ('worker', 'integrator')
+FORCE_TEAM = False
+
+
+def _git_out(*args, cwd=None):
+    try:
+        r = subprocess.run(['git'] + list(args), capture_output=True, text=True,
+                           timeout=15, cwd=cwd)
+    except Exception:
+        return None
+    if r.returncode != 0:
+        return None
+    return r.stdout.strip()
+
+
+def _team_repo_root():
+    top = _git_out('rev-parse', '--show-toplevel')
+    return Path(top).resolve() if top else Path('.').resolve()
+
+
+def _team_dir():
+    common = _git_out('rev-parse', '--git-common-dir')
+    if common:
+        p = Path(common)
+        if not p.is_absolute():
+            p = (Path('.').resolve() / p)
+        return p.resolve() / 'context-forge-team'
+    return (WORK / 'team').resolve()
+
+
+def _team_db_path():
+    return _team_dir() / 'board.db'
+
+
+def team_enabled():
+    try:
+        return _team_db_path().exists()
+    except Exception:
+        return False
+
+
+def _team_connect(create=False):
+    import sqlite3
+    path = _team_db_path()
+    if not path.exists() and not create:
+        return None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(path), timeout=15, isolation_level=None)
+    con.row_factory = sqlite3.Row
+    con.execute('PRAGMA busy_timeout=15000')
+    con.executescript('''
+        CREATE TABLE IF NOT EXISTS agents(
+            id TEXT PRIMARY KEY, role TEXT NOT NULL, model TEXT,
+            worktree TEXT, joined_at TEXT, last_seen TEXT);
+        CREATE TABLE IF NOT EXISTS tasks(
+            id TEXT PRIMARY KEY, owner TEXT NOT NULL, goal TEXT,
+            state TEXT NOT NULL, base TEXT, head TEXT, note TEXT,
+            report TEXT, verdict TEXT, verdict_by TEXT, verdict_detail TEXT,
+            created_at TEXT, updated_at TEXT);
+        CREATE TABLE IF NOT EXISTS claims(
+            task_id TEXT NOT NULL, path TEXT NOT NULL,
+            PRIMARY KEY(task_id, path));
+        CREATE TABLE IF NOT EXISTS events(
+            ts TEXT, actor TEXT, action TEXT, detail TEXT);
+        CREATE TABLE IF NOT EXISTS backlog(
+            id TEXT PRIMARY KEY, goal TEXT, paths TEXT NOT NULL,
+            priority INTEGER DEFAULT 5, away_ok INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'open', taken_by TEXT,
+            created_at TEXT, updated_at TEXT);
+        CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+    ''')
+    cols = [r[1] for r in con.execute('PRAGMA table_info(tasks)')]
+    if 'eta' not in cols:
+        con.execute('ALTER TABLE tasks ADD COLUMN eta TEXT')
+    return con
+
+
+TEAM_STALE_MINUTES = 30
+
+
+def _team_get(con, key, default=None):
+    r = con.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
+    return r['value'] if r else default
+
+
+def _team_put(con, key, value):
+    if value is None:
+        con.execute('DELETE FROM settings WHERE key=?', (key,))
+    else:
+        con.execute('INSERT OR REPLACE INTO settings VALUES(?,?)', (key, str(value)))
+
+
+def _team_parse_ts(text):
+    try:
+        return datetime.strptime(text, '%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return None
+
+
+def _team_away_state(con):
+    """(active, until, max_tasks, taken). Away mode expires by itself."""
+    if _team_get(con, 'away') != '1':
+        return (False, None, None, 0)
+    until = _team_get(con, 'away_until')
+    u = _team_parse_ts(until) if until else None
+    if u and datetime.now() > u:
+        return (False, until, None, 0)
+    mx = _team_get(con, 'away_max_tasks')
+    return (True, until, int(mx) if mx and mx.isdigit() else None,
+            int(_team_get(con, 'away_taken', '0') or 0))
+
+
+def _team_flags():
+    """(paused_reason or None, away_active) without keeping a connection."""
+    if not team_enabled():
+        return (None, False)
+    con = _team_connect()
+    if con is None:
+        return (None, False)
+    try:
+        paused = _team_get(con, 'paused_reason') if _team_get(con, 'paused') == '1' else None
+        return (paused, _team_away_state(con)[0])
+    finally:
+        con.close()
+
+
+def _team_now():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
+def _team_log(con, actor, action, detail=''):
+    con.execute('INSERT INTO events VALUES(?,?,?,?)',
+                (_team_now(), actor, action, detail))
+
+
+def _team_norm_path(raw):
+    """Normalize to a repo-relative POSIX path. A trailing '/' means a
+    directory claim that covers everything below it."""
+    s = str(raw).strip().replace('\\', '/')
+    is_dir = s.endswith('/')
+    root = _team_repo_root()
+    p = Path(s)
+    if p.is_absolute():
+        try:
+            p = p.resolve().relative_to(root)
+        except ValueError:
+            return None
+    parts = [x for x in p.as_posix().split('/') if x not in ('', '.')]
+    if not parts or '..' in parts:
+        return None
+    out = '/'.join(parts)
+    return out + '/' if is_dir else out
+
+
+def _team_covers(claim, path):
+    if claim.endswith('/'):
+        return path == claim[:-1] or path.startswith(claim)
+    return path == claim
+
+
+def _team_overlap(a, b):
+    return _team_covers(a, b) or _team_covers(b, a)
+
+
+def _team_agent(con, agent_id):
+    return con.execute('SELECT * FROM agents WHERE id=?', (agent_id,)).fetchone()
+
+
+def _team_task(con, task_id):
+    return con.execute('SELECT * FROM tasks WHERE id=?', (task_id,)).fetchone()
+
+
+def _team_held_claims(con):
+    """Claims that still reserve files: task holds them and is not accepted."""
+    return con.execute(
+        "SELECT c.task_id, c.path, t.owner, t.state FROM claims c "
+        "JOIN tasks t ON t.id=c.task_id "
+        "WHERE t.state IN ('active','waiting','review') "
+        "AND COALESCE(t.verdict,'') != 'accepted'").fetchall()
+
+
+def _team_touch(con, agent_id):
+    con.execute('UPDATE agents SET last_seen=? WHERE id=?', (_team_now(), agent_id))
+
+
+def _team_card(con, task_id):
+    t = _team_task(con, task_id)
+    if not t:
+        return '[TEAM] no such task: %s' % task_id
+    a = _team_agent(con, t['owner'])
+    paths = [r['path'] for r in con.execute(
+        'SELECT path FROM claims WHERE task_id=? ORDER BY path', (task_id,))]
+    lines = [
+        '---- TEAM CARD (paste this into your chat) ----',
+        'Agent:     %s (%s%s)' % (t['owner'], a['role'] if a else '?',
+                                  (', ' + a['model']) if a and a['model'] else ''),
+        'Task:      %s' % t['id'],
+        'Goal:      %s' % (t['goal'] or '-'),
+        'Files:     %s' % (', '.join(paths) or '-'),
+        'Worktree:  %s' % ((a['worktree'] if a else None) or '-'),
+        'State:     %s%s' % (t['state'],
+                             (' | verdict: ' + t['verdict']) if t['verdict'] else ''),
+        'Note:      %s' % (t['note'] or 'no concrete suggestion'),
+        '-----------------------------------------------',
+    ]
+    return '\n'.join(lines)
+
+
+def _team_print_status(con, as_json=False):
+    agents = [dict(r) for r in con.execute('SELECT * FROM agents ORDER BY id')]
+    tasks = [dict(r) for r in con.execute(
+        'SELECT * FROM tasks ORDER BY updated_at DESC')]
+    for t in tasks:
+        t['claims'] = [r['path'] for r in con.execute(
+            'SELECT path FROM claims WHERE task_id=? ORDER BY path', (t['id'],))]
+    if as_json:
+        print(json.dumps({'board': str(_team_db_path()), 'agents': agents,
+                          'tasks': tasks}, indent=2, ensure_ascii=False))
+        return
+    print('[TEAM] board: %s' % _team_db_path())
+    if _team_get(con, 'paused') == '1':
+        print('[TEAM] MODE: PAUSED by the owner (%s) - every patch is refused.'
+              % (_team_get(con, 'paused_reason') or 'no reason'))
+    away, until, mx, taken = _team_away_state(con)
+    if away:
+        print('[TEAM] MODE: OWNER AWAY until %s - only away-ok backlog items, '
+              'no push/publish/delete; tasks taken %d/%s' % (
+                  until or 'owner returns', taken, mx if mx else 'no limit'))
+    nb = con.execute("SELECT COUNT(*) FROM backlog WHERE status='open'").fetchone()[0]
+    print('[TEAM] backlog: %d open item(s)  (python run.py team backlog)' % nb)
+    print('[TEAM] agents (%d):' % len(agents))
+    now = datetime.now()
+    for a in agents:
+        seen = _team_parse_ts(a['last_seen'] or '')
+        idle = int((now - seen).total_seconds() // 60) if seen else None
+        stale = (' [STALE: silent %d min - claims kept, owner decides]' % idle
+                 if idle is not None and idle >= TEAM_STALE_MINUTES else '')
+        print('  - %-18s %-10s %-16s last seen %s%s' % (
+            a['id'], a['role'], a['model'] or '-', a['last_seen'] or '-', stale))
+        if a['worktree']:
+            print('      worktree: %s' % a['worktree'])
+    open_tasks = [t for t in tasks if t['state'] != 'done' and t['verdict'] != 'accepted']
+    closed = len(tasks) - len(open_tasks)
+    print('[TEAM] open tasks (%d), closed %d:' % (len(open_tasks), closed))
+    for t in open_tasks:
+        print('  - %-18s owner=%-14s state=%-8s verdict=%s%s' % (
+            t['id'], t['owner'], t['state'], t['verdict'] or '-',
+            ('  eta ~' + t['eta'][11:16]) if t.get('eta') else ''))
+        if t['goal']:
+            print('      goal:   %s' % t['goal'])
+        print('      claims: %s' % (', '.join(t['claims']) or '-'))
+        if t['note']:
+            print('      note:   %s' % t['note'])
+    last = con.execute('SELECT * FROM events ORDER BY rowid DESC LIMIT 5').fetchall()
+    if last:
+        print('[TEAM] last events:')
+        for e in last:
+            print('  %s  %-14s %-8s %s' % (e['ts'], e['actor'], e['action'], e['detail']))
+
+
+def _team_opts(rest, names):
+    """Split '--name value' options out of rest. Returns (positional, opts)."""
+    pos, opts, i = [], {}, 0
+    while i < len(rest):
+        a = rest[i]
+        if a.startswith('--') and a[2:] in names:
+            opts[a[2:]] = rest[i + 1] if i + 1 < len(rest) else ''
+            i += 2
+            continue
+        if a.startswith('--') and a[2:] in ('json',):
+            opts[a[2:]] = True
+            i += 1
+            continue
+        pos.append(a)
+        i += 1
+    return pos, opts
+
+
+TEAM_USAGE = '''usage: python run.py team <command> ...
+  init                                   create the shared board (once per repo)
+  join  <agent> [--role worker|integrator] [--model M] [--worktree PATH]
+  status [--json]                        agents, open tasks, claims, last events
+  claim <agent> <task> <path>... [--goal TEXT]
+                                         atomic reservation of exact files;
+                                         a trailing '/' claims a directory
+  release <agent> <task>                 owner closes the task (state=done)
+  state <agent> <task> active|waiting|review
+  note  <agent> <task> <text>            replace the task's note (owner only)
+  card  <task>                           announcement card to paste in chat
+  deliver <agent> <task> [--head REF] [--report TEXT]
+                                         state=review, record head commit
+  verify <integrator> <task>             files changed base..head within claim?
+  accept <integrator> <task>             after a in_scope verdict + merge
+  reject <integrator> <task> <reason>    send it back (verdict=rejected)
+  log [N]                                last N board events (default 20)
+ Working while the owner is away (Section 0-C-48):
+  backlog [list]                         open backlog items, best first
+  backlog add <id> <path>... --goal T [--priority 1-9] [--away-ok]
+                                         only the owner sets --away-ok
+  backlog drop <id>
+  next <agent> [--claim]                 first free backlog item for this agent;
+                                         blocked items show when they free up
+  eta <agent> <task> <minutes>           expected finish (a hint, never a release)
+  heartbeat <agent>                      "still alive" while working long steps
+  away on [--hours N] [--max-tasks N] | away off
+  pause [reason] | resume                owner's stop switch for every agent
+  report [--hours N]                     what happened while you were away
+Patch directive: #@AGENT: <agent>  - required in input.txt while team mode is on.'''
+
+
+def do_team(args):
+    sub = args[0] if args else 'status'
+    rest = args[1:]
+    if sub in ('-h', '--help', 'help'):
+        print(TEAM_USAGE); return 0
+    if sub == 'init':
+        existed = team_enabled()
+        con = _team_connect(create=True)
+        _team_log(con, '-', 'init', 'board ready')
+        con.close()
+        print('[TEAM] board %s: %s' % ('already present' if existed else 'created',
+                                       _team_db_path()))
+        print('[TEAM] team mode is ON: every patch now needs #@AGENT: <id> '
+              'and may only touch files that agent has claimed.')
+        print('[TEAM] next: python run.py team join <agent> --role integrator')
+        return 0
+    con = _team_connect()
+    if con is None:
+        print('[TEAM] team mode is off (no board). Start it with: python run.py team init')
+        return 1 if sub != 'status' else 0
+    try:
+        return _team_dispatch(con, sub, rest)
+    finally:
+        con.close()
+
+
+def _team_require_owner(con, agent_id, task_id):
+    t = _team_task(con, task_id)
+    if not t:
+        return None, '[TEAM] no such task: %s' % task_id
+    if t['owner'] != agent_id:
+        return None, ('[TEAM] refused: task %s belongs to %s. Agents never change '
+                      'another agent\'s task - leave a note in your own task instead.'
+                      % (task_id, t['owner']))
+    return t, None
+
+
+def _team_dispatch(con, sub, rest):
+    if sub == 'status':
+        pos, opts = _team_opts(rest, ())
+        _team_print_status(con, as_json=bool(opts.get('json')))
+        return 0
+
+    if sub == 'join':
+        pos, opts = _team_opts(rest, ('role', 'model', 'worktree'))
+        if not pos:
+            print(TEAM_USAGE); return 1
+        agent = pos[0]
+        role = (opts.get('role') or 'worker').lower()
+        if role not in TEAM_ROLES:
+            print('[TEAM] role must be worker or integrator'); return 1
+        wt = opts.get('worktree') or str(_team_repo_root())
+        con.execute('BEGIN IMMEDIATE')
+        if role == 'integrator':
+            other = con.execute("SELECT id FROM agents WHERE role='integrator' "
+                                "AND id != ?", (agent,)).fetchone()
+            if other:
+                con.execute('ROLLBACK')
+                print('[TEAM] refused: %s is already the integrator. One integrator '
+                      'per board; the user decides any change.' % other['id'])
+                return 1
+        old = _team_agent(con, agent)
+        if old:
+            con.execute('UPDATE agents SET role=?, model=?, worktree=?, last_seen=? '
+                        'WHERE id=?', (role, opts.get('model') or old['model'], wt,
+                                       _team_now(), agent))
+        else:
+            con.execute('INSERT INTO agents VALUES(?,?,?,?,?,?)',
+                        (agent, role, opts.get('model'), wt, _team_now(), _team_now()))
+        _team_log(con, agent, 'join', '%s %s' % (role, wt))
+        con.execute('COMMIT')
+        print('[TEAM] %s joined as %s (worktree %s)' % (agent, role, wt))
+        return 0
+
+    if sub == 'card':
+        if not rest:
+            print(TEAM_USAGE); return 1
+        print(_team_card(con, rest[0])); return 0
+
+    if sub == 'log':
+        n = int(rest[0]) if rest and rest[0].isdigit() else 20
+        for e in reversed(con.execute('SELECT * FROM events ORDER BY rowid DESC LIMIT ?',
+                                      (n,)).fetchall()):
+            print('%s  %-14s %-8s %s' % (e['ts'], e['actor'], e['action'], e['detail']))
+        return 0
+
+    if sub == 'claim':
+        pos, opts = _team_opts(rest, ('goal',))
+        if len(pos) < 3:
+            print(TEAM_USAGE); return 1
+        agent, task_id, raw_paths = pos[0], pos[1], pos[2:]
+        paths = []
+        for rp in raw_paths:
+            n = _team_norm_path(rp)
+            if not n:
+                print('[TEAM] refused: bad or outside-repo path: %s' % rp); return 1
+            if n not in paths:
+                paths.append(n)
+        con.execute('BEGIN IMMEDIATE')
+        if not _team_agent(con, agent):
+            con.execute('ROLLBACK')
+            print('[TEAM] refused: %s has not joined. Run: python run.py team join %s'
+                  % (agent, agent)); return 1
+        t = _team_task(con, task_id)
+        if t and t['owner'] != agent:
+            con.execute('ROLLBACK')
+            print('[TEAM] refused: task %s belongs to %s.' % (task_id, t['owner']))
+            return 1
+        conflicts = []
+        for h in _team_held_claims(con):
+            if h['task_id'] == task_id:
+                continue
+            for p in paths:
+                if _team_overlap(h['path'], p):
+                    conflicts.append('%s (held by %s, task %s, %s)' % (
+                        p, h['owner'], h['task_id'], h['state']))
+        if conflicts:
+            con.execute('ROLLBACK')
+            print('[TEAM] refused - nothing was claimed. Overlaps:')
+            for c in conflicts:
+                print('  - ' + c)
+            print('[TEAM] pick other files, wait, or ask the owner of that task in chat.')
+            return 1
+        now = _team_now()
+        if not t:
+            base = _git_out('rev-parse', 'HEAD')
+            con.execute('INSERT INTO tasks(id, owner, goal, state, base, created_at, '
+                        'updated_at) VALUES(?,?,?,?,?,?,?)',
+                        (task_id, agent, opts.get('goal'), 'active', base, now, now))
+        else:
+            con.execute("UPDATE tasks SET state='active', goal=COALESCE(?, goal), "
+                        "verdict=NULL, verdict_by=NULL, verdict_detail=NULL, "
+                        "updated_at=? WHERE id=?", (opts.get('goal'), now, task_id))
+        for p in paths:
+            con.execute('INSERT OR IGNORE INTO claims VALUES(?,?)', (task_id, p))
+        _team_touch(con, agent)
+        _team_log(con, agent, 'claim', '%s: %s' % (task_id, ', '.join(paths)))
+        con.execute('COMMIT')
+        print('[TEAM] claimed for %s: %s' % (task_id, ', '.join(paths)))
+        print(_team_card(con, task_id))
+        return 0
+
+    if sub in ('release', 'state', 'note', 'deliver'):
+        pos, opts = _team_opts(rest, ('head', 'report'))
+        if len(pos) < 2:
+            print(TEAM_USAGE); return 1
+        agent, task_id = pos[0], pos[1]
+        con.execute('BEGIN IMMEDIATE')
+        t, err = _team_require_owner(con, agent, task_id)
+        if err:
+            con.execute('ROLLBACK'); print(err); return 1
+        now = _team_now()
+        if sub == 'release':
+            con.execute("UPDATE tasks SET state='done', updated_at=? WHERE id=?",
+                        (now, task_id))
+            con.execute("UPDATE backlog SET status='done', updated_at=? WHERE id=?",
+                        (now, task_id))
+            msg = '[TEAM] %s released; its files are free.' % task_id
+        elif sub == 'state':
+            new = (pos[2] if len(pos) > 2 else '').lower()
+            if new not in TEAM_HOLD_STATES:
+                con.execute('ROLLBACK')
+                print('[TEAM] state must be one of: %s (use release for done)'
+                      % ', '.join(TEAM_HOLD_STATES)); return 1
+            con.execute('UPDATE tasks SET state=?, updated_at=? WHERE id=?',
+                        (new, now, task_id))
+            msg = '[TEAM] %s -> %s' % (task_id, new)
+        elif sub == 'note':
+            text = ' '.join(pos[2:]).strip()
+            con.execute('UPDATE tasks SET note=?, updated_at=? WHERE id=?',
+                        (text, now, task_id))
+            msg = '[TEAM] note set on %s' % task_id
+        else:  # deliver
+            head = _git_out('rev-parse', opts.get('head') or 'HEAD')
+            if not head:
+                con.execute('ROLLBACK')
+                print('[TEAM] refused: cannot resolve head commit. Commit your work '
+                      'in your worktree first.'); return 1
+            con.execute("UPDATE tasks SET state='review', head=?, report=?, verdict=NULL, "
+                        "verdict_by=NULL, verdict_detail=NULL, updated_at=? WHERE id=?",
+                        (head, opts.get('report'), now, task_id))
+            msg = ('[TEAM] %s delivered for review at %s. A green report is not '
+                   'acceptance - the integrator verifies and merges.' % (task_id, head[:12]))
+        _team_touch(con, agent)
+        _team_log(con, agent, sub, task_id)
+        con.execute('COMMIT')
+        print(msg)
+        return 0
+
+    if sub in ('verify', 'accept', 'reject'):
+        if len(rest) < 2:
+            print(TEAM_USAGE); return 1
+        agent, task_id = rest[0], rest[1]
+        a = _team_agent(con, agent)
+        if not a or a['role'] != 'integrator':
+            print('[TEAM] refused: only the integrator may %s.' % sub); return 1
+        t = _team_task(con, task_id)
+        if not t:
+            print('[TEAM] no such task: %s' % task_id); return 1
+        if t['owner'] == agent and sub != 'reject':
+            print('[TEAM] refused: the integrator never verifies or accepts its own '
+                  'task. Ask another agent or the user to review it.'); return 1
+        now = _team_now()
+        if sub == 'verify':
+            if t['state'] != 'review' or not t['head']:
+                print('[TEAM] refused: %s has not been delivered (state=%s).'
+                      % (task_id, t['state'])); return 1
+            base = t['base'] or ''
+            names = _git_out('diff', '--name-only', '%s..%s' % (base, t['head'])) \
+                if base else None
+            if names is None:
+                print('[TEAM] cannot diff %s..%s - is the commit reachable from '
+                      'this checkout?' % (base[:12], t['head'][:12])); return 1
+            changed = [n.strip() for n in names.splitlines() if n.strip()]
+            claims = [r['path'] for r in con.execute(
+                'SELECT path FROM claims WHERE task_id=?', (task_id,))]
+            outside = [c for c in changed
+                       if not any(_team_covers(cl, c) for cl in claims)]
+            verdict = 'in_scope' if not outside else 'out_of_scope'
+            detail = ('%d file(s) changed' % len(changed)) if not outside else \
+                ('outside claim: ' + ', '.join(outside))
+            con.execute('UPDATE tasks SET verdict=?, verdict_by=?, verdict_detail=?, '
+                        'updated_at=? WHERE id=?', (verdict, agent, detail, now, task_id))
+            _team_log(con, agent, 'verify', '%s %s' % (task_id, verdict))
+            print('[TEAM] %s: %s (%s)' % (task_id, verdict, detail))
+            for c in changed:
+                print('  %s %s' % ('OK ' if c not in outside else 'OUT', c))
+            print('[TEAM] in_scope only proves the scope. Tests and review '
+                  'still decide acceptance.')
+            return 0 if verdict == 'in_scope' else 1
+        if sub == 'accept':
+            if t['verdict'] != 'in_scope':
+                print('[TEAM] refused: run "team verify" first and get in_scope '
+                      '(current verdict: %s).' % (t['verdict'] or '-')); return 1
+            con.execute("UPDATE tasks SET verdict='accepted', verdict_by=?, "
+                        "updated_at=? WHERE id=?", (agent, now, task_id))
+            con.execute("UPDATE backlog SET status='done', updated_at=? WHERE id=?",
+                        (now, task_id))
+            _team_log(con, agent, 'accept', task_id)
+            print('[TEAM] %s accepted; its claims no longer block other agents.' % task_id)
+            return 0
+        reason = ' '.join(rest[2:]).strip() or 'no reason given'
+        con.execute("UPDATE tasks SET verdict='rejected', verdict_by=?, verdict_detail=?, "
+                    "updated_at=? WHERE id=?", (agent, reason, now, task_id))
+        _team_log(con, agent, 'reject', '%s: %s' % (task_id, reason))
+        print('[TEAM] %s rejected: %s (claims stay held until the owner fixes or '
+              'releases it)' % (task_id, reason))
+        return 0
+
+    if sub == 'backlog':
+        return _team_backlog(con, rest)
+    if sub == 'next':
+        return _team_next(con, rest)
+    if sub == 'eta':
+        if len(rest) < 3 or not rest[2].isdigit():
+            print(TEAM_USAGE); return 1
+        agent, task_id, mins = rest[0], rest[1], int(rest[2])
+        con.execute('BEGIN IMMEDIATE')
+        t, err = _team_require_owner(con, agent, task_id)
+        if err:
+            con.execute('ROLLBACK'); print(err); return 1
+        from datetime import timedelta
+        eta = (datetime.now() + timedelta(minutes=mins)).strftime('%Y-%m-%d %H:%M:%S')
+        con.execute('UPDATE tasks SET eta=?, updated_at=? WHERE id=?',
+                    (eta, _team_now(), task_id))
+        _team_touch(con, agent)
+        _team_log(con, agent, 'eta', '%s ~%s' % (task_id, eta[11:16]))
+        con.execute('COMMIT')
+        print('[TEAM] %s expected free ~%s. This is a hint for other agents; the '
+              'claim is only freed by release/accept, never by the clock.'
+              % (task_id, eta[11:16]))
+        return 0
+    if sub == 'heartbeat':
+        if not rest or not _team_agent(con, rest[0]):
+            print('[TEAM] heartbeat needs a joined agent id'); return 1
+        _team_touch(con, rest[0])
+        print('[TEAM] %s alive at %s' % (rest[0], _team_now()))
+        return 0
+    if sub == 'away':
+        pos, opts = _team_opts(rest, ('hours', 'max-tasks'))
+        mode = (pos[0] if pos else '').lower()
+        if mode == 'on':
+            from datetime import timedelta
+            until = None
+            if (opts.get('hours') or '').isdigit():
+                until = (datetime.now() + timedelta(hours=int(opts['hours']))
+                         ).strftime('%Y-%m-%d %H:%M:%S')
+            _team_put(con, 'away', '1')
+            _team_put(con, 'away_until', until)
+            mx = opts.get('max-tasks')
+            _team_put(con, 'away_max_tasks', mx if mx and mx.isdigit() else None)
+            _team_put(con, 'away_taken', '0')
+            _team_put(con, 'away_since', _team_now())
+            _team_log(con, 'owner', 'away', 'on until %s' % (until or 'off'))
+            print('[TEAM] owner away until %s. Agents take only away-ok backlog items; '
+                  '#@PUSH is refused; anything irreversible waits for you.'
+                  % (until or 'you run "team away off"'))
+            return 0
+        if mode == 'off':
+            _team_put(con, 'away', None)
+            _team_log(con, 'owner', 'away', 'off')
+            print('[TEAM] welcome back. Run: python run.py team report')
+            return 0
+        print('[TEAM] usage: team away on [--hours N] [--max-tasks N] | team away off')
+        return 1
+    if sub == 'pause':
+        reason = ' '.join(rest).strip() or 'owner stop'
+        _team_put(con, 'paused', '1')
+        _team_put(con, 'paused_reason', reason)
+        _team_log(con, 'owner', 'pause', reason)
+        print('[TEAM] PAUSED: every patch is refused until "team resume".')
+        return 0
+    if sub == 'resume':
+        _team_put(con, 'paused', None)
+        _team_log(con, 'owner', 'resume', '')
+        print('[TEAM] resumed.')
+        return 0
+    if sub == 'report':
+        pos, opts = _team_opts(rest, ('hours',))
+        return _team_report(con, int(opts['hours']) if (opts.get('hours') or '').isdigit()
+                            else None)
+
+    print('[TEAM] unknown team command: %s' % sub)
+    print(TEAM_USAGE)
+    return 1
+
+
+def _team_backlog(con, rest):
+    sub = rest[0] if rest else 'list'
+    if sub == 'add':
+        pos, opts = _team_opts(rest[1:], ('goal', 'priority'))
+        away_ok = '--away-ok' in pos
+        pos = [x for x in pos if x != '--away-ok']
+        if len(pos) < 2:
+            print(TEAM_USAGE); return 1
+        item, paths = pos[0], []
+        for rp in pos[1:]:
+            n = _team_norm_path(rp)
+            if not n:
+                print('[TEAM] refused: bad or outside-repo path: %s' % rp); return 1
+            paths.append(n)
+        pr = opts.get('priority') or '5'
+        pr = int(pr) if pr.isdigit() and 1 <= int(pr) <= 9 else 5
+        now = _team_now()
+        con.execute('INSERT OR REPLACE INTO backlog(id, goal, paths, priority, away_ok, '
+                    'status, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)',
+                    (item, opts.get('goal'), ' '.join(paths), pr, 1 if away_ok else 0,
+                     'open', now, now))
+        _team_log(con, '-', 'backlog', 'add %s' % item)
+        print('[TEAM] backlog item %s (priority %d%s): %s' % (
+            item, pr, ', away-ok' if away_ok else '', ' '.join(paths)))
+        return 0
+    if sub == 'drop':
+        if len(rest) < 2:
+            print(TEAM_USAGE); return 1
+        con.execute("UPDATE backlog SET status='dropped', updated_at=? WHERE id=?",
+                    (_team_now(), rest[1]))
+        _team_log(con, '-', 'backlog', 'drop %s' % rest[1])
+        print('[TEAM] backlog item %s dropped' % rest[1])
+        return 0
+    rows = con.execute("SELECT * FROM backlog WHERE status IN ('open','taken') "
+                       "ORDER BY status, priority, created_at").fetchall()
+    if not rows:
+        print('[TEAM] backlog is empty. The owner (or the integrator, from the '
+              'document\'s open-work list) adds items with "team backlog add".')
+        return 0
+    for b in rows:
+        print('  [%s] %-16s p%d%s  %s%s' % (
+            b['status'], b['id'], b['priority'], ' away-ok' if b['away_ok'] else '',
+            b['paths'], ('  - ' + b['goal']) if b['goal'] else ''))
+        if b['taken_by']:
+            print('        taken by %s' % b['taken_by'])
+    return 0
+
+
+def _team_next(con, rest):
+    pos, opts = _team_opts(rest, ())
+    do_claim = '--claim' in pos
+    pos = [x for x in pos if x != '--claim']
+    if not pos:
+        print(TEAM_USAGE); return 1
+    agent = pos[0]
+    if not _team_agent(con, agent):
+        print('[TEAM] refused: %s has not joined.' % agent); return 1
+    _team_touch(con, agent)
+    if _team_get(con, 'paused') == '1':
+        print('[TEAM] PAUSED by the owner (%s). Stop and wait.'
+              % (_team_get(con, 'paused_reason') or '')); return 2
+    away, until, mx, taken = _team_away_state(con)
+    if away and mx is not None and taken >= mx:
+        print('[TEAM] the owner\'s away budget is used (%d/%d tasks). Finish, '
+              'deliver, and stop - no new task.' % (taken, mx)); return 2
+    mine = con.execute("SELECT id FROM tasks WHERE owner=? AND state='active' "
+                       "AND COALESCE(verdict,'') != 'accepted'", (agent,)).fetchall()
+    if mine and do_claim:
+        print('[TEAM] refused: you still hold active task(s): %s. Deliver or release '
+              'first - one active task per agent.' % ', '.join(r['id'] for r in mine))
+        return 1
+    held = _team_held_claims(con)
+    eta_of = {t['id']: t['eta'] for t in con.execute('SELECT id, eta FROM tasks')}
+    free, blocked, skipped = None, [], 0
+    for b in con.execute("SELECT * FROM backlog WHERE status='open' "
+                         "ORDER BY priority, created_at"):
+        if away and not b['away_ok']:
+            skipped += 1
+            continue
+        hits = [h for h in held for pth in b['paths'].split()
+                if _team_overlap(h['path'], pth)]
+        if hits:
+            h = hits[0]
+            blocked.append((b, h['owner'], h['task_id'], eta_of.get(h['task_id'])))
+            continue
+        free = b
+        break
+    for b, owner, tid, eta in blocked:
+        print('[TEAM] blocked: %-14s by %s/%s%s' % (
+            b['id'], owner, tid,
+            ('  free ~' + eta[11:16] + ' -> recheck then') if eta else '  (no eta)'))
+    if skipped:
+        print('[TEAM] %d item(s) skipped: not marked away-ok by the owner.' % skipped)
+    if not free:
+        etas = sorted(e for _, _, _, e in blocked if e)
+        print('[TEAM] no free item for %s. %s' % (
+            agent, ('Earliest expected release ~%s: do read-only review until then, '
+                    'then run "team next" again.' % etas[0][11:16]) if etas else
+            'Do read-only review, deliver what you have, or stop.'))
+        return 2
+    print('[TEAM] next for %s: %s (p%d) %s%s' % (
+        agent, free['id'], free['priority'], free['paths'],
+        ('  - ' + free['goal']) if free['goal'] else ''))
+    if not do_claim:
+        print('[TEAM] claim it with: python run.py team next %s --claim' % agent)
+        return 0
+    args = [agent, free['id']] + free['paths'].split()
+    if free['goal']:
+        args += ['--goal', free['goal']]
+    rc = _team_dispatch(con, 'claim', args)
+    if rc == 0:
+        con.execute("UPDATE backlog SET status='taken', taken_by=?, updated_at=? "
+                    "WHERE id=?", (agent, _team_now(), free['id']))
+        if away:
+            _team_put(con, 'away_taken', str(taken + 1))
+    return rc
+
+
+def _team_report(con, hours=None):
+    since = _team_get(con, 'away_since') if hours is None else None
+    if hours is not None or not since:
+        from datetime import timedelta
+        since = (datetime.now() - timedelta(hours=hours or 12)).strftime('%Y-%m-%d %H:%M:%S')
+    print('[TEAM] report since %s' % since)
+    ev = con.execute('SELECT * FROM events WHERE ts >= ? ORDER BY rowid', (since,)).fetchall()
+    counts = {}
+    for e in ev:
+        counts[e['action']] = counts.get(e['action'], 0) + 1
+    print('  events: ' + (', '.join('%s %d' % kv for kv in sorted(counts.items())) or 'none'))
+    for label, action in (('accepted', 'accept'), ('rejected', 'reject'),
+                          ('delivered', 'deliver')):
+        items = [e['detail'] for e in ev if e['action'] == action]
+        if items:
+            print('  %s: %s' % (label, ', '.join(items)))
+    review = con.execute("SELECT id, owner, verdict FROM tasks WHERE state='review' "
+                         "AND COALESCE(verdict,'') != 'accepted'").fetchall()
+    if review:
+        print('  waiting for review / your approval:')
+        for t in review:
+            print('    - %s by %s (verdict %s)' % (t['id'], t['owner'], t['verdict'] or '-'))
+    waiting = con.execute("SELECT id, owner, note FROM tasks WHERE state='waiting'").fetchall()
+    for t in waiting:
+        print('  blocked: %s by %s - %s' % (t['id'], t['owner'], t['note'] or 'no note'))
+    nb = con.execute("SELECT COUNT(*) FROM backlog WHERE status='open'").fetchone()[0]
+    print('  backlog still open: %d' % nb)
+    print('  nothing was pushed or published by team mode while away; check '
+          '"git log" and the review list above before you push.')
+    return 0
+
+
+def _team_patch_agent(content):
+    for ln in content.split('\n')[:60]:
+        s = ln.strip()
+        if not s:
+            continue
+        if not s.startswith('#'):
+            break
+        m = re.match(r'^#@AGENT:\s*(\S+)', s)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
+def _team_header_claims(content, out):
+    """Process '#@CLAIM: <task> <path>... [| goal]' header lines (chat mode).
+    Returns None on success, else the refusal reason. Atomic per line."""
+    if not team_enabled():
+        return None
+    lines = []
+    for ln in content.split('\n')[:60]:
+        st = ln.strip()
+        if not st:
+            continue
+        if not st.startswith('#'):
+            break
+        m = re.match(r'^#@CLAIM:\s*(.+)$', st)
+        if m:
+            lines.append(m.group(1))
+    if not lines:
+        return None
+    agent = _team_patch_agent(content)
+    if not agent:
+        return "#@CLAIM: needs an '#@AGENT: <id>' line. Nothing was applied."
+    import io, contextlib
+    for body in lines:
+        goal = None
+        if '|' in body:
+            body, goal = body.split('|', 1)
+            goal = goal.strip() or None
+        try:
+            parts = shlex.split(body)
+        except ValueError:
+            parts = body.split()
+        if len(parts) < 2:
+            return "#@CLAIM: needs '<task> <path>...'. Nothing was applied."
+        args = ['claim', agent] + parts + (['--goal', goal] if goal else [])
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = do_team(args)
+        for l in buf.getvalue().rstrip().split('\n'):
+            if l:
+                out.append(l)
+        if rc != 0:
+            return 'claim for task %s refused (see above). Nothing was applied.' % parts[0]
+    out.append('')
+    return None
+
+
+def _team_guard(content, ops):
+    """Refuse a patch that touches files its agent has not claimed.
+    Returns None when allowed, else a one-line reason."""
+    if not team_enabled():
+        return None
+    kinds = {op.get('kind') for op in ops}
+    writes = kinds & {'file', 'create', 'delete', 'mkdir', 'move'}
+    paused, _away = _team_flags()
+    if paused and (writes or kinds & {'cmd', 'python'}):
+        return ("the owner paused the team board (%s). Nothing was applied. "
+                "The owner resumes with: python run.py team resume" % paused)
+    if not writes:
+        return None  # read-only patch (NEED/DUMP): no claim needed
+    agent = _team_patch_agent(content)
+    if not agent:
+        return ("team mode is on: this patch has no '#@AGENT: <id>' line. Nothing was "
+                "applied. Add it near the top of input.txt (see Section 0-C-47).")
+    con = _team_connect()
+    if con is None:
+        return None
+    try:
+        if not _team_agent(con, agent):
+            return ("agent '%s' has not joined the board. Nothing was applied. Run: "
+                    "python run.py team join %s" % (agent, agent))
+        mine = [r['path'] for r in con.execute(
+            "SELECT c.path FROM claims c JOIN tasks t ON t.id=c.task_id "
+            "WHERE t.owner=? AND t.state IN ('active','waiting','review') "
+            "AND COALESCE(t.verdict,'') != 'accepted'", (agent,))]
+        cwd = Path('.').resolve()
+        root = _team_repo_root()
+        outside = []
+        for op in ops:
+            kind = op.get('kind')
+            if kind in ('file', 'create', 'delete', 'mkdir'):
+                targets = [op.get('path', '')]
+            elif kind == 'move':
+                targets = [op.get('src', ''), op.get('dst', '')]
+            else:
+                continue
+            for raw in targets:
+                try:
+                    rel = (cwd / raw).resolve().relative_to(root).as_posix()
+                except Exception:
+                    rel = str(raw).replace('\\', '/')
+                if not any(_team_covers(c, rel) for c in mine):
+                    outside.append(rel)
+        _team_touch(con, agent)
+        if outside:
+            return ("agent '%s' has not claimed: %s. Nothing was applied. Claim them "
+                    "first: python run.py team claim %s <task> <path>..."
+                    % (agent, ', '.join(sorted(set(outside))), agent))
+        return None
+    finally:
+        con.close()
+
+
+def _team_snapshot():
+    """Compact board summary for handoff.json (None when team mode is off)."""
+    con = _team_connect() if team_enabled() else None
+    if con is None:
+        return None
+    try:
+        tasks = []
+        for t in con.execute("SELECT * FROM tasks WHERE state != 'done' "
+                             "AND COALESCE(verdict,'') != 'accepted'"):
+            tasks.append({'task': t['id'], 'owner': t['owner'], 'state': t['state'],
+                          'goal': t['goal'], 'verdict': t['verdict'], 'note': t['note'],
+                          'claims': [r['path'] for r in con.execute(
+                              'SELECT path FROM claims WHERE task_id=?', (t['id'],))]})
+        agents = [{'agent': a['id'], 'role': a['role'], 'model': a['model']}
+                  for a in con.execute('SELECT * FROM agents')]
+        backlog = [{'item': b['id'], 'goal': b['goal'], 'paths': b['paths'],
+                    'priority': b['priority'], 'away_ok': bool(b['away_ok'])}
+                   for b in con.execute("SELECT * FROM backlog WHERE status='open' "
+                                        "ORDER BY priority, created_at")]
+        return {'agents': agents, 'open_tasks': tasks, 'backlog': backlog,
+                'paused': _team_get(con, 'paused') == '1',
+                'owner_away': _team_away_state(con)[0]}
+    finally:
+        con.close()
 
 
 def do_revert(patch_id_str):
@@ -3149,6 +4126,9 @@ def do_handoff():
         "last_patch_content": last_patch_content,
         "project_root": str(Path('.').resolve())
     }
+    _team = _team_snapshot()
+    if _team:
+        handoff["team"] = _team
     
     out_file = WORK / 'handoff.json'
     write(out_file, json.dumps(handoff, indent=2, ensure_ascii=False))
@@ -3172,6 +4152,11 @@ def dispatch(args):
     if cmd == '--git-hint':             do_git_hint(); return 0
     if cmd == '--doctor':               do_doctor(); return 0
     if cmd == 'handoff':                do_handoff(); return 0
+    if cmd == 'team':                   return do_team(args[1:])
+    if cmd == '--force-team':
+        global FORCE_TEAM
+        FORCE_TEAM = True
+        return dispatch(args[1:]) if args[1:] else (do_apply() if INPUT.read_text(encoding='utf-8').strip() else 0)
     if cmd == 'revert':
         if len(args) > 1:
             return do_revert(args[1])
@@ -3317,7 +4302,11 @@ def main():
         if '--dry-run' in args: DRY_RUN = True
         if '--backup' in args: BACKUP = True
         if '--no-progress' in args: PROGRESS = False
-        return dispatch(args)
+        rc = dispatch(args)
+        if rc is not None:
+            return rc
+        # Only mode flags were given (e.g. --no-progress): fall through to
+        # the smart default instead of silently doing nothing.
 
     if INPUT.read_text(encoding='utf-8').strip():
         return do_apply()

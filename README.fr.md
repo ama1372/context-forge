@@ -46,7 +46,7 @@
 
 ## Qu'est-ce que c'est ?
 
-Un **document unique** (`PROJECT_CONTEXT.md`) que vous collez dans n'importe quel chat IA — DeepSeek, Claude, ChatGPT, Gemini. Il transforme une IA bavarde en **partenaire de projet discipliné** qui :
+Un **document unique** (`PROJECT_CONTEXT.en.md`) que vous collez dans n'importe quel chat IA — DeepSeek, Claude, ChatGPT, Gemini. Il transforme une IA bavarde en **partenaire de projet discipliné** qui :
 
 - ✅ **Ne perd jamais le contexte** — chaque réponse fait avancer l'état du projet.
 - ✅ **Ne modifie jamais votre code à la main** — envoie un patch, vous collez, une commande applique.
@@ -54,6 +54,7 @@ Un **document unique** (`PROJECT_CONTEXT.md`) que vous collez dans n'importe que
 - ✅ **Ne bloque jamais votre compte** — protocole anti-limite intégré.
 - ✅ **Ne vous demande jamais 10 commandes** — collez, lancez une commande, terminé.
 - ✅ **N'oublie jamais où vous étiez** — le prochain chat reprend exactement où vous l'avez laissé.
+- ✅ **Fait travailler plusieurs IA en même temps** — Claude, ChatGPT et DeepSeek sur un même projet sans écraser le travail des autres (mode Équipe).
 
 **Un document. Un outil. Une commande. C'est tout.**
 
@@ -98,6 +99,26 @@ Version complète (anglais) : voir `README.md`.
 | "Où en étions-nous ?" | "Voici le prochain patch." |
 
 **40–80% de tokens en moins. Zéro perte de contexte. Zéro édition manuelle.**
+
+---
+
+## 🤝 Plusieurs IA en même temps — mode Équipe (nouveau en v2.1)
+
+Faites travailler Claude, ChatGPT, DeepSeek et des agents de code **sur le même projet en même temps**. Chacun vous répond dans son propre chat — et aucun ne peut écraser le travail d'un autre.
+
+- **Un tableau partagé** dans `.git/` — jamais poussé, visible par toutes les IA.
+- **Réservation de fichiers** — chaque IA réserve exactement les fichiers qu'elle va modifier ; si deux veulent le même, une seule l'obtient.
+- **Imposé, pas seulement conseillé** — `run.py` refuse tout patch qui touche un fichier non réservé.
+- **Un coordinateur, plusieurs exécutants** — une IA relit et fusionne, sans jamais valider son propre travail ; les décisions importantes restent les vôtres.
+- **Le travail continue pendant votre pause** — validez une liste de tâches, lancez `team away on`, et les agents installés prennent la tâche libre suivante ; rien n'est poussé avant votre retour, et `team pause` arrête tout le monde.
+- **Chat ou agent installé** — les IA de chat font tout via `input.txt` (`#@CLAIM:`) ; les agents lancent les commandes eux-mêmes.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Règles complètes : sections 0-C-47 et 0-C-48 de `PROJECT_CONTEXT.en.md`.
 
 ---
 
@@ -151,16 +172,17 @@ Tout est versionné avec git. Revenez en arrière avec une commande. Le document
 ---
 
 *Fait pour ceux qui veulent livrer, pas surveiller une fenêtre de chat.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Un seul document pour les IA de chat et les agents installés
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Ce protocole fonctionne de la même façon que vous utilisiez :
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Des chats web** (ChatGPT, Claude, DeepSeek, Gemini) avec la boucle `input.txt` / `output.txt`.
+2. **Des agents de code installés** (Claude Code, Codex, Cursor et d'autres) qui lisent le dépôt et lancent les commandes eux-mêmes.
+
+- **Aucune perte de contexte** — l'état du projet vit toujours dans le document.
+- **Ouvrez un nouveau chat quand vous voulez** — continuez sans tout réexpliquer.
+- **Jusqu'à 80 % de tokens en moins** — l'IA ne demande que les fichiers nécessaires (`--status`, `--file`).
+- **Plusieurs IA en même temps** — le mode Équipe évite les collisions (voir plus haut).

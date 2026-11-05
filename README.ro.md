@@ -46,7 +46,7 @@
 
 ## Ce este?
 
-Un **singur document** (`PROJECT_CONTEXT.md`) pe care îl lipești în orice chat AI — DeepSeek, Claude, ChatGPT, Gemini. Transformă un AI vorbăreț într-un **partener disciplinat de proiect** care:
+Un **singur document** (`PROJECT_CONTEXT.en.md`) pe care îl lipești în orice chat AI — DeepSeek, Claude, ChatGPT, Gemini. Transformă un AI vorbăreț într-un **partener disciplinat de proiect** care:
 
 - ✅ **Nu pierde niciodată contextul** — fiecare răspuns duce starea proiectului mai departe.
 - ✅ **Nu editează niciodată codul manual** — trimite un patch, tu lipești, o comandă aplică.
@@ -54,6 +54,7 @@ Un **singur document** (`PROJECT_CONTEXT.md`) pe care îl lipești în orice cha
 - ✅ **Nu blochează niciodată contul tău** — protocol anti-limită integrat.
 - ✅ **Nu cere niciodată 10 comenzi** — lipești, rulezi una, gata.
 - ✅ **Nu uită niciodată unde erați** — următorul chat continuă exact de unde ai rămas.
+- ✅ **Lasă mai multe AI să lucreze simultan** — Claude, ChatGPT și DeepSeek pe același proiect, fără să-și suprascrie munca (modul Echipă).
 
 **Un document. Un instrument. O comandă. Atât.**
 
@@ -98,6 +99,26 @@ Versiune completă (engleză): vezi `README.md`.
 | "Unde eram?" | "Iată următorul patch." |
 
 **40–80% mai puține tokenuri. Zero pierdere de context. Zero editări manuale.**
+
+---
+
+## 🤝 Mai multe AI simultan — modul Echipă (nou în v2.1)
+
+Pune Claude, ChatGPT, DeepSeek și agenți de programare **pe același proiect în același timp**. Fiecare îți răspunde în propriul chat — și niciunul nu poate suprascrie munca altuia.
+
+- **Un panou comun** în `.git/` — nu este trimis niciodată pe remote și îl văd toate AI-urile.
+- **Rezervarea fișierelor** — fiecare AI rezervă exact fișierele pe care le va edita; dacă două vor același fișier, doar unul îl primește.
+- **Impus, nu doar recomandat** — `run.py` respinge orice patch care atinge un fișier nerezervat.
+- **Un coordonator, mulți executanți** — un AI revizuiește și integrează și nu își aprobă niciodată propria muncă; deciziile importante sunt ale tale.
+- **Munca continuă cât te odihnești** — aprobă o listă de sarcini, rulează `team away on`, iar agenții instalați preiau următoarea sarcină liberă; nimic nu e trimis până nu revii, iar `team pause` îi oprește pe toți.
+- **Chat sau agent instalat** — AI-urile din chat fac totul prin `input.txt` (`#@CLAIM:`); agenții rulează singuri comenzile.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Regulile complete: secțiunile 0-C-47 și 0-C-48 din `PROJECT_CONTEXT.en.md`.
 
 ---
 
@@ -157,16 +178,17 @@ Totul este versionat cu git. Revino cu o comandă. Documentul explică cum.
 ---
 
 *Construit pentru oameni care vor să livreze, nu să îngrijească o fereastră de chat.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Un singur document pentru AI-uri de chat și agenți instalați
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Acest protocol funcționează la fel, indiferent dacă folosești:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Chaturi web** (ChatGPT, Claude, DeepSeek, Gemini) prin bucla `input.txt` / `output.txt`.
+2. **Agenți de programare instalați** (Claude Code, Codex, Cursor și alții) care citesc singuri depozitul și rulează comenzi.
+
+- **Fără pierderea contextului** — starea proiectului stă mereu în document.
+- **Pornești un chat nou oricând** — continui fără să explici din nou.
+- **Până la 80% mai puțini tokeni** — AI-ul cere doar fișierele de care are nevoie (`--status`, `--file`).
+- **Mai multe AI simultan** — modul Echipă le împiedică să se ciocnească (vezi mai sus).

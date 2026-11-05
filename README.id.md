@@ -46,7 +46,7 @@
 
 ## Apa ini?
 
-Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.md`) yang kamu tempel ke chat AI apa pun — DeepSeek, Claude, ChatGPT, Gemini. Ini mengubah AI yang banyak bicara menjadi **mitra proyek yang disiplin** yang:
+Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.en.md`) yang kamu tempel ke chat AI apa pun — DeepSeek, Claude, ChatGPT, Gemini. Ini mengubah AI yang banyak bicara menjadi **mitra proyek yang disiplin** yang:
 
 - ✅ **Tidak pernah kehilangan konteks** — setiap balasan membawa status proyek maju.
 - ✅ **Tidak pernah mengedit kodemu dengan tangan** — mengirim patch, kamu tempel, satu perintah menerapkan.
@@ -54,6 +54,7 @@ Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.md`) yang kamu tempel ke chat AI ap
 - ✅ **Tidak pernah memblokir akunmu** — protokol anti-limit bawaan.
 - ✅ **Tidak pernah meminta 10 perintah** — tempel, jalankan satu, selesai.
 - ✅ **Tidak pernah lupa di mana kamu berada** — chat berikutnya melanjutkan tepat dari tempatmu berhenti.
+- ✅ **Membuat beberapa AI bekerja bersamaan** — Claude, ChatGPT, dan DeepSeek di satu proyek tanpa saling menimpa pekerjaan (Mode Tim).
 
 **Satu dokumen. Satu alat. Satu perintah. Itu saja.**
 
@@ -101,6 +102,26 @@ Versi lengkap (Inggris): lihat `README.md`.
 
 ---
 
+## 🤝 Beberapa AI sekaligus — Mode Tim (baru di v2.1)
+
+Jalankan Claude, ChatGPT, DeepSeek, dan agen coding **di proyek yang sama pada saat yang sama**. Masing-masing menjawab di chat-nya sendiri — dan tidak ada yang bisa menimpa pekerjaan yang lain.
+
+- **Satu papan bersama** di dalam `.git/` — tidak pernah di-push dan terlihat oleh semua AI.
+- **Klaim file** — setiap AI mengklaim tepat file yang akan diubahnya; jika dua AI menginginkan file yang sama, hanya satu yang mendapatkannya.
+- **Dipaksakan, bukan sekadar saran** — `run.py` menolak setiap patch yang menyentuh file yang belum diklaim.
+- **Satu koordinator, banyak pekerja** — satu AI meninjau dan menggabungkan, dan tidak pernah menyetujui pekerjaannya sendiri; keputusan penting tetap milikmu.
+- **Pekerjaan berlanjut saat kamu istirahat** — setujui daftar tugas, jalankan `team away on`, dan agen terpasang terus mengambil tugas kosong berikutnya; tidak ada yang di-push sampai kamu kembali, dan `team pause` menghentikan semuanya.
+- **Chat atau agen terpasang** — AI chat melakukan semuanya lewat `input.txt` (`#@CLAIM:`); agen menjalankan perintah sendiri.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Aturan lengkap: bagian 0-C-47 dan 0-C-48 di `PROJECT_CONTEXT.en.md`.
+
+---
+
 ## Bekerja dengan bahasa apa pun
 
 Rust, Python, Node, Go, C++, apa saja. Kamu beri tahu `run.py` sekali cara membangun dan menguji proyekmu — protokolnya sama untuk setiap bahasa.
@@ -125,7 +146,7 @@ Dokumen aturan **hanya bahasa Inggris** — agar setiap AI memparsenya identik, 
 
 - `PROJECT_CONTEXT.en.md` — dokumen aturan (tempel ke AI-mu)
 - `run.py` — alat (diberikan AI saat pertama kali digunakan)
-- `README.md` + terjemahan — halaman ini, 19 bahasa
+- `README.md` + terjemahan — halaman ini, 24 bahasa
 - `LICENSE` — MIT, lakukan sesukamu
 
 ---
@@ -157,16 +178,17 @@ Semuanya diberi versi dengan git. Kembali dengan satu perintah. Dokumen menjelas
 ---
 
 *Dibuat untuk orang yang ingin mengirim, bukan mengasuh jendela chat.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Satu dokumen untuk AI chat dan agen terpasang
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Protokol ini bekerja sama baiknya, baik kamu memakai:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Chat web** (ChatGPT, Claude, DeepSeek, Gemini) lewat siklus `input.txt` / `output.txt`.
+2. **Agen coding terpasang** (Claude Code, Codex, Cursor, dan lainnya) yang membaca repositori dan menjalankan perintah sendiri.
+
+- **Konteks tidak pernah hilang** — status proyek selalu ada di dokumen.
+- **Mulai chat baru kapan saja** — lanjutkan tanpa menjelaskan ulang.
+- **Hingga 80% lebih sedikit token** — AI hanya meminta file yang dibutuhkan (`--status`, `--file`).
+- **Beberapa AI sekaligus** — Mode Tim mencegah bentrokan (lihat di atas).

@@ -54,6 +54,7 @@
 - ‏✅ **هرگز اکانتت را بلاک نمی‌کند** — پروتکل ضد لیمیت داخلی.
 - ‏✅ **هرگز ۱۰ تا دستور نمی‌دهد** — پیست کن، یک دستور بزن، تمام.
 - ‏✅ **هرگز «کجا بودیم؟» نمی‌پرسد** — چت بعدی دقیقاً از همان‌جا ادامه می‌دهد.
+- ‏✅ **چند هوش مصنوعی را همزمان به کار می‌گیرد** — Claude، ChatGPT و DeepSeek روی یک پروژه، بدون اینکه کار همدیگر را خراب کنند (حالت تیمی).
 
 ‏**یک سند. یک ابزار. یک دستور. تمام.**
 
@@ -172,6 +173,26 @@ AI باید متوقف شود، سند را دوباره بخواند، و در 
 
 ---
 
+## 🤝 چند هوش مصنوعی همزمان — حالت تیمی (جدید در نسخهٔ ۲٫۱)
+
+‏Claude، ChatGPT، DeepSeek و عامل‌های برنامه‌نویسی را **همزمان روی یک پروژه** کار بده. هر کدام در چت خودش جوابت را می‌دهد — و هیچ‌کدام نمی‌تواند کار دیگری را بازنویسی کند.
+
+- ‏**یک تابلوی مشترک** داخل `.git/` — هرگز push نمی‌شود و همهٔ هوش‌ها آن را می‌بینند.
+- ‏**رزرو فایل** — هر هوش مصنوعی دقیقاً فایل‌هایی را که ویرایش می‌کند رزرو می‌کند؛ اگر دو تا یک فایل را بخواهند، فقط یکی می‌گیرد.
+- ‏**اجباری، نه فقط توصیه** — `run.py` هر پچی را که به فایل رزرونشده دست بزند رد می‌کند.
+- ‏**یک هماهنگ‌کننده، چند کارگر** — یک هوش مصنوعی بازبینی و ادغام می‌کند و هرگز کار خودش را تأیید نمی‌کند؛ تصمیم‌های مهم با خودت است.
+- ‏**وقتی استراحت می‌کنی، کار ادامه دارد** — فهرست کارها را تأیید کن و `team away on` را بزن؛ عامل‌های نصب‌شده کار آزاد بعدی را برمی‌دارند، تا برنگردی چیزی push نمی‌شود و `team pause` همه را متوقف می‌کند.
+- ‏**چت یا عامل نصب‌شده** — هوش‌های چتی همه‌چیز را از راه `input.txt` انجام می‌دهند (`#@CLAIM:`)؛ عامل‌ها خودشان دستورها را اجرا می‌کنند.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+‏قوانین کامل: بخش‌های 0-C-47 و 0-C-48 در `PROJECT_CONTEXT.en.md`.
+
+---
+
 ## با هر زبانی کار می‌کند
 
 ‏‎Rust‎، ‎Python‎، ‎Node‎، ‎Go‎، ‎C++‎، هر چیزی. یک بار به ‎`run.py`‎ می‌گویی چطور پروژه‌ات را ‎build‎ و ‎test‎ کند — پروتکل برای همه‌ی زبان‌ها یکی است.
@@ -189,10 +210,10 @@ AI باید متوقف شود، سند را دوباره بخواند، و در 
 ## ترجمه‌های موجود ‎README‎
 
 - [English](README.md)
-- ‏[فارسی](‎README.fa.md‎)
+- [فارسی](README.fa.md)
 - [中文](README.zh.md)
 - [Español](README.es.md)
-- ‏[العربية](‎README.ar.md‎)
+- [العربية](README.ar.md)
 - [हिन्दी](README.hi.md)
 - [Français](README.fr.md)
 - [Русский](README.ru.md)
@@ -202,6 +223,16 @@ AI باید متوقف شود، سند را دوباره بخواند، و در 
 - [한국어](README.ko.md)
 - [Türkçe](README.tr.md)
 - [Italiano](README.it.md)
+- [Bahasa Indonesia](README.id.md)
+- [Tiếng Việt](README.vi.md)
+- [ไทย](README.th.md)
+- [עברית](README.he.md)
+- [Українська](README.uk.md)
+- [Polski](README.pl.md)
+- [Nederlands](README.nl.md)
+- [Ελληνικά](README.el.md)
+- [Svenska](README.sv.md)
+- [Română](README.ro.md)
 
 ---
 
@@ -209,7 +240,7 @@ AI باید متوقف شود، سند را دوباره بخواند، و در 
 
 - ‏‎`PROJECT_CONTEXT.en.md`‎ — سند قانون (این را در ‎AI‎ پیست کن)
 - ‏‎`run.py`‎ — ابزار (اولین بار ‎AI‎ به تو می‌دهد)
-- ‏‎`README.md`‎ + ترجمه‌ها — همین صفحه، ۱۴ زبان
+- ‏‎`README.md`‎ + ترجمه‌ها — همین صفحه، ۲۴ زبان
 - ‏‎`LICENSE`‎ — ‎MIT‎، هر کاری خواستی بکن
 
 ---
@@ -241,16 +272,17 @@ AI باید متوقف شود، سند را دوباره بخواند، و در 
 ---
 
 ‏*ساخته‌شده برای کسانی که می‌خواهند بسازند، نه اینکه چت را بپرستند.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 یک سند برای هوش‌های چتی و عامل‌های نصب‌شده
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+‏این پروتکل در هر دو حالت یکسان کار می‌کند:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. ‏**چت‌های وب** (ChatGPT، Claude، DeepSeek، Gemini) با چرخهٔ `input.txt` / `output.txt`.
+2. ‏**عامل‌های برنامه‌نویسی نصب‌شده** (Claude Code، Codex، Cursor و…) که خودشان مخزن را می‌خوانند و دستور اجرا می‌کنند.
+
+- ‏**کانتکست گم نمی‌شود** — وضعیت پروژه همیشه در سند است.
+- ‏**هر وقت خواستی چت تازه باز کن** — بدون توضیح دوباره ادامه بده.
+- ‏**تا ۸۰٪ توکن کمتر** — هوش مصنوعی فقط فایل‌های لازم را می‌خواهد (`--status`، `--file`).
+- ‏**چند هوش مصنوعی همزمان** — حالت تیمی جلوی برخوردشان را می‌گیرد (بالا را ببین).

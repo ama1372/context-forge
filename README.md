@@ -62,6 +62,7 @@ A **single document** (`PROJECT_CONTEXT.en.md`) you paste into any AI chat — D
 - ✅ **Never blocks your account** — built-in anti-rate-limit protocol.
 - ✅ **Never asks you to run 10 commands** — you paste, run one command, done.
 - ✅ **Never forgets where you were** — next chat picks up from exactly where you left.
+- ✅ **Lets several AIs work at once** — Claude, ChatGPT and DeepSeek on one project without overwriting each other (Team Mode).
 
 **One document. One tool. One command. That's it.**
 
@@ -180,6 +181,26 @@ Experienced users write the **entire project spec in the first message** — ful
 
 ---
 
+## 🤝 Several AIs at once — Team Mode (new in v2.1)
+
+Run Claude, ChatGPT, DeepSeek and coding agents **on the same project at the same time**. Each one answers you in its own chat — and none of them can overwrite another's work.
+
+- **One shared board** inside `.git/` — never pushed, visible to every AI.
+- **File claims** — each AI reserves the exact files it will edit; if two want the same file, only one gets it.
+- **Enforced, not just advised** — `run.py` refuses any patch that touches a file its AI has not claimed.
+- **One coordinator, many workers** — one AI reviews and merges and never approves its own work; you decide everything important.
+- **Keeps working while you rest** — approve a backlog, run `team away on`, and installed agents keep taking the next free task; nothing is pushed until you are back, and `team pause` stops everyone.
+- **Chat or installed agent** — chat AIs do everything through `input.txt` (`#@CLAIM:`); agents run the commands themselves.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Full rules: Sections 0-C-47 and 0-C-48 of `PROJECT_CONTEXT.en.md`.
+
+---
+
 ## Works with any language
 
 Rust, Python, Node, Go, C++, anything. You tell `run.py` once how to build and test your project — the protocol stays the same for every language.
@@ -197,19 +218,29 @@ The rule document is **English only** — so every AI parses it identically, and
 ## Available README translations
 
 - [English](README.md)
-- [فارسی (Persian)](README.fa.md)
-- [中文 (Chinese)](README.zh.md)
-- [Español (Spanish)](README.es.md)
-- [العربية (Arabic)](README.ar.md)
-- [हिन्दी (Hindi)](README.hi.md)
-- [Français (French)](README.fr.md)
-- [Русский (Russian)](README.ru.md)
-- [Português (Portuguese)](README.pt.md)
-- [Deutsch (German)](README.de.md)
-- [日本語 (Japanese)](README.ja.md)
-- [한국어 (Korean)](README.ko.md)
-- [Türkçe (Turkish)](README.tr.md)
-- [Italiano (Italian)](README.it.md)
+- [فارسی](README.fa.md)
+- [中文](README.zh.md)
+- [Español](README.es.md)
+- [العربية](README.ar.md)
+- [हिन्दी](README.hi.md)
+- [Français](README.fr.md)
+- [Русский](README.ru.md)
+- [Português](README.pt.md)
+- [Deutsch](README.de.md)
+- [日本語](README.ja.md)
+- [한국어](README.ko.md)
+- [Türkçe](README.tr.md)
+- [Italiano](README.it.md)
+- [Bahasa Indonesia](README.id.md)
+- [Tiếng Việt](README.vi.md)
+- [ไทย](README.th.md)
+- [עברית](README.he.md)
+- [Українська](README.uk.md)
+- [Polski](README.pl.md)
+- [Nederlands](README.nl.md)
+- [Ελληνικά](README.el.md)
+- [Svenska](README.sv.md)
+- [Română](README.ro.md)
 
 ---
 
@@ -217,7 +248,7 @@ The rule document is **English only** — so every AI parses it identically, and
 
 - `PROJECT_CONTEXT.en.md` — the rule document (paste this into your AI)
 - `run.py` — the tool (given to you by the AI on first use)
-- `README.md` + translations — this page, 14 languages
+- `README.md` + translations — this page, 24 languages
 - `LICENSE` — MIT, do whatever you want
 
 ---
@@ -249,16 +280,17 @@ Everything is versioned with git. Roll back with one command. The document expla
 ---
 
 *Built for people who want to ship, not babysit a chat window.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 One document for chat AIs and installed agents
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+This protocol works the same way whether you use:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Web chats** (ChatGPT, Claude, DeepSeek, Gemini) through the `input.txt` / `output.txt` loop.
+2. **Installed coding agents** (Claude Code, Codex, Cursor and others) that read the repository and run commands themselves.
+
+- **No context loss** — the project state always lives in the document.
+- **Start a new chat anytime** — continue without re-explaining.
+- **Up to 80% fewer tokens** — the AI asks only for the files it needs (`--status`, `--file`).
+- **Several AIs at once** — Team Mode keeps them from colliding (see above).

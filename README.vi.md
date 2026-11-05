@@ -46,7 +46,7 @@
 
 ## Đây là gì?
 
-Một **tài liệu duy nhất** (`PROJECT_CONTEXT.md`) bạn dán vào bất kỳ chat AI nào — DeepSeek, Claude, ChatGPT, Gemini. Nó biến một AI nói nhiều thành **đối tác dự án có kỷ luật** mà:
+Một **tài liệu duy nhất** (`PROJECT_CONTEXT.en.md`) bạn dán vào bất kỳ chat AI nào — DeepSeek, Claude, ChatGPT, Gemini. Nó biến một AI nói nhiều thành **đối tác dự án có kỷ luật** mà:
 
 - ✅ **Không bao giờ mất ngữ cảnh** — mỗi phản hồi mang trạng thái dự án tiến lên.
 - ✅ **Không bao giờ sửa code của bạn bằng tay** — gửi một patch, bạn dán, một lệnh áp dụng.
@@ -54,6 +54,7 @@ Một **tài liệu duy nhất** (`PROJECT_CONTEXT.md`) bạn dán vào bất k�
 - ✅ **Không bao giờ khóa tài khoản của bạn** — giao thức chống giới hạn tích hợp.
 - ✅ **Không bao giờ yêu cầu 10 lệnh** — bạn dán, chạy một, xong.
 - ✅ **Không bao giờ quên bạn đang ở đâu** — chat tiếp theo tiếp tục đúng nơi bạn dừng.
+- ✅ **Cho nhiều AI cùng làm việc một lúc** — Claude, ChatGPT và DeepSeek trên cùng một dự án mà không ghi đè công việc của nhau (Chế độ Nhóm).
 
 **Một tài liệu. Một công cụ. Một lệnh. Chỉ vậy thôi.**
 
@@ -101,6 +102,26 @@ Phiên bản đầy đủ (tiếng Anh): xem `README.md`.
 
 ---
 
+## 🤝 Nhiều AI cùng lúc — Chế độ Nhóm (mới trong v2.1)
+
+Cho Claude, ChatGPT, DeepSeek và các agent lập trình **làm việc trên cùng một dự án cùng một lúc**. Mỗi AI trả lời bạn trong cuộc trò chuyện riêng — và không AI nào có thể ghi đè công việc của AI khác.
+
+- **Một bảng dùng chung** nằm trong `.git/` — không bao giờ bị push, AI nào cũng thấy.
+- **Giữ chỗ tệp** — mỗi AI giữ chỗ chính xác những tệp nó sẽ sửa; nếu hai AI cùng muốn một tệp, chỉ một AI nhận được.
+- **Bắt buộc, không chỉ là lời khuyên** — `run.py` từ chối mọi bản vá chạm vào tệp chưa được giữ chỗ.
+- **Một điều phối viên, nhiều người làm** — một AI xem xét và hợp nhất, không bao giờ tự duyệt công việc của mình; quyết định quan trọng là của bạn.
+- **Công việc tiếp tục khi bạn nghỉ** — duyệt danh sách việc, chạy `team away on`, và các agent đã cài sẽ tiếp tục nhận việc trống tiếp theo; không có gì được push cho đến khi bạn quay lại, và `team pause` dừng tất cả.
+- **Chat hay agent đã cài** — AI chat làm mọi thứ qua `input.txt` (`#@CLAIM:`); agent tự chạy lệnh.
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+Quy tắc đầy đủ: mục 0-C-47 và 0-C-48 trong `PROJECT_CONTEXT.en.md`.
+
+---
+
 ## Hoạt động với mọi ngôn ngữ
 
 Rust, Python, Node, Go, C++, bất cứ thứ gì. Bạn nói với `run.py` một lần cách build và test dự án của bạn — giao thức giống nhau cho mọi ngôn ngữ.
@@ -125,7 +146,7 @@ Tài liệu quy tắc **chỉ tiếng Anh** — để mọi AI phân tích giố
 
 - `PROJECT_CONTEXT.en.md` — tài liệu quy tắc (dán vào AI của bạn)
 - `run.py` — công cụ (AI đưa khi dùng lần đầu)
-- `README.md` + bản dịch — trang này, 19 ngôn ngữ
+- `README.md` + bản dịch — trang này, 24 ngôn ngữ
 - `LICENSE` — MIT, làm gì cũng được
 
 ---
@@ -157,16 +178,17 @@ Mọi thứ được đánh phiên bản với git. Quay lại bằng một lệ
 ---
 
 *Được làm cho người muốn giao hàng, không phải trông cửa sổ chat.*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 Một tài liệu cho AI chat và agent đã cài
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+Giao thức này hoạt động như nhau dù bạn dùng:
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Chat trên web** (ChatGPT, Claude, DeepSeek, Gemini) qua vòng lặp `input.txt` / `output.txt`.
+2. **Agent lập trình đã cài** (Claude Code, Codex, Cursor và các công cụ khác) tự đọc kho mã và chạy lệnh.
+
+- **Không mất ngữ cảnh** — trạng thái dự án luôn nằm trong tài liệu.
+- **Mở chat mới bất cứ lúc nào** — tiếp tục mà không cần giải thích lại.
+- **Tiết kiệm đến 80% token** — AI chỉ yêu cầu những tệp cần thiết (`--status`, `--file`).
+- **Nhiều AI cùng lúc** — Chế độ Nhóm ngăn chúng xung đột (xem ở trên).

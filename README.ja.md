@@ -46,7 +46,7 @@
 
 ## これは何?
 
-**単一のドキュメント**(`PROJECT_CONTEXT.md`)を、任意の AI チャット — DeepSeek、Claude、ChatGPT、Gemini — に貼り付けます。おしゃべりな AI を**規律あるプロジェクトパートナー**に変えます:
+**単一のドキュメント**(`PROJECT_CONTEXT.en.md`)を、任意の AI チャット — DeepSeek、Claude、ChatGPT、Gemini — に貼り付けます。おしゃべりな AI を**規律あるプロジェクトパートナー**に変えます:
 
 - ✅ **コンテキストを失わない** — すべての返信がプロジェクトの状態を前へ進める。
 - ✅ **手動でコードを編集しない** — パッチを送り、あなたが貼り付け、1 つのコマンドが適用する。
@@ -54,6 +54,7 @@
 - ✅ **アカウントをブロックしない** — 組み込みのレート制限対策プロトコル。
 - ✅ **10 個のコマンドを要求しない** — 貼り付け、1 つ実行、完了。
 - ✅ **どこにいたかを忘れない** — 次のチャットは離れた場所から正確に再開する。
+- ✅ **複数の AI を同時に働かせられる** — Claude・ChatGPT・DeepSeek が同じプロジェクトで、互いの作業を上書きせずに協力（チームモード）。
 
 **1 つのドキュメント。1 つのツール。1 つのコマンド。それだけ。**
 
@@ -98,6 +99,26 @@
 | 「どこにいた?」 | 「次のパッチはこちら。」 |
 
 **トークン 40–80% 削減。コンテキスト損失ゼロ。手動編集ゼロ。**
+
+---
+
+## 🤝 複数の AI を同時に — チームモード（v2.1 の新機能）
+
+Claude、ChatGPT、DeepSeek、コーディングエージェントを**同じプロジェクトで同時に**動かせます。それぞれが自分のチャットで返答し、誰も他の AI の作業を上書きできません。
+
+- **共有ボードは 1 つ**、`.git/` の中に置かれます — push されることはなく、すべての AI から見えます。
+- **ファイルの予約** — 各 AI は編集するファイルを正確に予約します。2 つの AI が同じファイルを欲しがっても、取れるのは 1 つだけ。
+- **助言ではなく強制** — 予約していないファイルに触れるパッチは `run.py` がすべて拒否します。
+- **調整役 1 人、作業役は複数** — 1 つの AI がレビューとマージを担当し、自分の作業は決して自分で承認しません。重要な判断はあなたが行います。
+- **休憩中も作業が進む** — タスク一覧を承認して `team away on` を実行すると、インストール型エージェントが次の空きタスクを取り続けます。あなたが戻るまで何も push されず、`team pause` で全員を止められます。
+- **チャットでもインストール型エージェントでも** — チャット AI はすべて `input.txt` 経由（`#@CLAIM:`）、エージェントはコマンドを自分で実行します。
+
+    python run.py team init
+    python run.py team join gpt --model GPT
+    python run.py team claim gpt docs-01 docs/
+    python run.py team status
+
+詳しいルール：`PROJECT_CONTEXT.en.md` のセクション 0-C-47 と 0-C-48。
 
 ---
 
@@ -151,16 +172,17 @@ DeepSeek — プロトコルを最も正確に守る。Claude、ChatGPT、Gemini
 ---
 
 *配信したい人のために、チャットウィンドウの世話ではなく。*
+
 ---
 
-## 🌐 Universal Continuity: Chat Patches & Coding Agents
+## 🌐 チャット AI にもインストール型エージェントにも使える 1 つのドキュメント
 
-This protocol is **universal**. It works perfectly whether you use:
-1. **Direct-Chat Patching** (like standard ChatGPT, Claude, or DeepSeek web chats) using the `input.txt` / `output.txt` loop.
-2. **Autonomous Coding Agents** (like Claude Code, OpenAI Codex, or DeepSeek Harness) reading the repository directly.
+このプロトコルは、次のどちらを使っても同じように動きます：
 
-### Why is it essential for both?
-- **No more 1M+ token context loss**: Whether you hit the chat limit or an agent forgets the background, the project context is always preserved.
-- **Start a new chat anytime**: Seamlessly continue without re-explaining your project.
-- **Up to 80% token savings**: The pull-based architecture (`--status`, `--file`) only requests what's needed.
-- **Higher Quality & Speed**: Both human and AI focus strictly on the task at hand, with an upgraded protocol that ensures code never turns into spaghetti.
+1. **Web チャット**（ChatGPT、Claude、DeepSeek、Gemini）— `input.txt` / `output.txt` のループで。
+2. **インストール型コーディングエージェント**（Claude Code、Codex、Cursor など）— リポジトリを自分で読み、コマンドを実行。
+
+- **コンテキストが失われない** — プロジェクトの状態は常にドキュメントにあります。
+- **いつでも新しいチャットを開始** — 説明し直さずに続けられます。
+- **トークンを最大 80% 節約** — AI は必要なファイルだけを要求します（`--status`、`--file`）。
+- **複数の AI を同時に** — チームモードが衝突を防ぎます（上記参照）。
