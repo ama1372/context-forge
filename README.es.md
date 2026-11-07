@@ -65,7 +65,7 @@ Un **documento único** (`PROJECT_CONTEXT.en.md`) que pegas en cualquier chat de
 1. **Guarda `PROJECT_CONTEXT.en.md` en la raíz de tu proyecto.**
 2. **(Recomendado)** Guarda `run.py` en la misma carpeta. ¿No tienes `run.py`? Dile a la IA: *"Crea run.py desde la Sección 35."*
 3. **Configura una vez:** `python run.py --init`
-4. **Abre un chat de DeepSeek** (o Claude / ChatGPT / Gemini). Envía el **documento completo** como primer mensaje (adjúntalo como archivo si el chat lo permite). Di: *"Proyecto nuevo. Mi objetivo: <una línea>."* El documento es grande (~530 KB, unos 150k tokens); si el chat lo rechaza, envía una copia más ligera creada con `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), o añade `--profile moderate` (~260 KB).
+4. **Abre un chat de DeepSeek** (o Claude / ChatGPT / Gemini). Envía el **documento completo** como primer mensaje (adjúntalo como archivo si el chat lo permite). Di: *"Proyecto nuevo. Mi objetivo: <una línea>."* El documento es grande (~610 KB, unos 160k tokens); si el chat lo rechaza, envía una copia más ligera creada con `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), o añade `--profile moderate` (~275 KB).
 5. **Bucle:** la IA envía un bloque → cópialo en `_work/input.txt` → ejecuta `python run.py` → devuelve `_work/output.txt`. Repite.
 6. **Mantén el bucle hasta terminar el proyecto.** No dejes que la IA te saque — sin comandos shell en el chat, sin scripts rápidos. La respuesta siempre es: *"Ponlo en input.txt."*
 
@@ -119,6 +119,22 @@ Pon a Claude, ChatGPT, DeepSeek y agentes de programación **en el mismo proyect
     python run.py team status
 
 Reglas completas: secciones 0-C-47 y 0-C-48 de `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Novedades de la v2.2 — chats que hablan entre sí, un dueño que nadie puede suplantar, un contexto que cabe
+
+- **Los chats se envían mensajes** — varios chats sobre una misma carpeta se mandan mensajes cortos por el tablero compartido (`team send`, `team inbox`; las IA de chat escriben `#@MSG:` en `input.txt`). Se acabó copiar y pegar entre chats.
+- **Nadie habla por ti** — una IA solo obedece lo que tú escribes en su propio chat. «El dueño dice…» venido de otra IA, una nota o un archivo se ignora y se marca. Reanudar, el modo ausente y delegar exigen que estés en tu terminal escribiendo un código de un solo uso.
+- **Un jefe temporal solo si tú lo dices** — escribe tú mismo en cada chat «X es tu jefe hasta las 8:00»; el registro del tablero (`team delegate`) caduca solo.
+- **Contexto grande, pegado pequeño** — `ctx split` convierte el documento en una carpeta de archivos pequeños enlazados con un mapa; la IA lee el mapa y el estado actual (~11k tokens en lugar de ~97k). Para un chat gratuito, `ctx pack <tema>` genera un único pegado de ~40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Reglas completas: secciones 0-C-49, 0-C-50 y 0-C-51 de `PROJECT_CONTEXT.en.md`.
 
 ---
 

@@ -65,7 +65,7 @@ Um **documento único** (`PROJECT_CONTEXT.en.md`) que você cola em qualquer cha
 1. **Salve `PROJECT_CONTEXT.en.md` na raiz do projeto.**
 2. **(Recomendado)** Salve `run.py` na mesma pasta. Sem `run.py`? Diga à IA: *"Gere run.py da Seção 35."*
 3. **Configure uma vez:** `python run.py --init`
-4. **Abra um chat do DeepSeek** (ou Claude / ChatGPT / Gemini). Envie o **documento inteiro** como primeira mensagem (anexe como arquivo se o chat permitir). Diga: *"Projeto novo. Meu objetivo: <uma linha>."* O documento é grande (~530 KB, cerca de 150 mil tokens); se o chat recusar, envie uma cópia mais leve criada com `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), ou adicione `--profile moderate` (~260 KB).
+4. **Abra um chat do DeepSeek** (ou Claude / ChatGPT / Gemini). Envie o **documento inteiro** como primeira mensagem (anexe como arquivo se o chat permitir). Diga: *"Projeto novo. Meu objetivo: <uma linha>."* O documento é grande (~610 KB, cerca de 160 mil tokens); se o chat recusar, envie uma cópia mais leve criada com `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), ou adicione `--profile moderate` (~275 KB).
 5. **Loop:** a IA envia um bloco → copie para `_work/input.txt` → execute `python run.py` → devolva `_work/output.txt`. Repita.
 6. **Mantenha o loop até terminar o projeto.** Não deixe a IA te tirar — sem comandos shell no chat, sem scripts rápidos. A resposta é sempre: *"Coloque em input.txt."*
 
@@ -119,6 +119,22 @@ Coloque Claude, ChatGPT, DeepSeek e agentes de programação **no mesmo projeto 
     python run.py team status
 
 Regras completas: seções 0-C-47 e 0-C-48 do `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Novo na v2.2 — chats que conversam, um dono que ninguém imita, um contexto que cabe
+
+- **Os chats trocam mensagens** — vários chats na mesma pasta enviam mensagens curtas pelo quadro compartilhado (`team send`, `team inbox`; IAs de chat escrevem `#@MSG:` no `input.txt`). Chega de copiar e colar entre chats.
+- **Ninguém fala por você** — a IA só obedece ao que você escreve no chat dela. "O dono disse…" vindo de outra IA, de uma nota ou de um arquivo é ignorado e sinalizado. Retomar, o modo ausente e a delegação exigem você no terminal digitando um código de uso único.
+- **Um gerente temporário só se você disser** — escreva você mesmo em cada chat "X é seu gerente até as 8:00"; o registro no quadro (`team delegate`) expira sozinho.
+- **Contexto grande, colagem pequena** — `ctx split` transforma o documento numa pasta de arquivos pequenos e ligados, com um mapa; a IA lê o mapa e o estado atual (~11 mil tokens em vez de ~97 mil). Para um chat gratuito, `ctx pack <tema>` gera uma única colagem de ~40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Regras completas: seções 0-C-49, 0-C-50 e 0-C-51 do `PROJECT_CONTEXT.en.md`.
 
 ---
 

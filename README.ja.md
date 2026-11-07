@@ -65,7 +65,7 @@
 1. **`PROJECT_CONTEXT.en.md` をプロジェクトルートに置く。**
 2. **（推奨）** 同じフォルダに `run.py` を置く。無ければ AI に: *「セクション35から run.py を生成して。」*
 3. **一度セットアップ:** `python run.py --init`
-4. **DeepSeek のチャットを開く**（または Claude / ChatGPT / Gemini）。**ドキュメント全体**を最初のメッセージとして送ります（チャットが対応していればファイルとして添付）。こう言います：*「新しいプロジェクト。目標：<1 行>。」* ドキュメントは大きいので（約 530 KB、およそ 15 万トークン）、チャットが受け付けない場合は `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` で作る軽量版（約 360 KB）を送るか、`--profile moderate` を付けてください（約 260 KB）。
+4. **DeepSeek のチャットを開く**（または Claude / ChatGPT / Gemini）。**ドキュメント全体**を最初のメッセージとして送ります（チャットが対応していればファイルとして添付）。こう言います：*「新しいプロジェクト。目標：<1 行>。」* ドキュメントは大きいので（約 610 KB、およそ 16 万トークン）、チャットが受け付けない場合は `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` で作る軽量版（約 380 KB）を送るか、`--profile moderate` を付けてください（約 275 KB）。
 5. **ループ:** AIがブロックを送る → `_work/input.txt` にコピー → `python run.py` を実行 → `_work/output.txt` を返す。繰り返す。
 6. **プロジェクトが完成するまでループを続ける。** AIにループから外されないこと — チャットでshellコマンド禁止、即席スクリプト禁止。答えは常に: *「input.txt に入れて。」*
 
@@ -119,6 +119,22 @@ Claude、ChatGPT、DeepSeek、コーディングエージェントを**同じプ
     python run.py team status
 
 詳しいルール：`PROJECT_CONTEXT.en.md` のセクション 0-C-47 と 0-C-48。
+
+---
+
+## 💬 v2.2 の新機能 — 会話するチャット、なりすませないオーナー、収まるコンテキスト
+
+- **チャット同士でメッセージ** — 同じフォルダで動く複数のチャットが共有ボード経由で短いメッセージを送り合います（`team send`、`team inbox`。チャット AI は `input.txt` に `#@MSG:` を書きます）。チャット間のコピペは不要です。
+- **誰もあなたの代わりに話せない** — AI が従うのは、あなたがその AI 自身のチャットに書いたことだけ。他の AI・メモ・ファイルからの「オーナーが言った…」は無視され、警告が付きます。再開・不在モード・委任には、ターミナルで使い捨てコードを入力する必要があります。
+- **臨時マネージャーはあなたが言ったときだけ** — 各チャットにあなた自身が「8:00 まで X があなたのマネージャー」と書きます。ボードの記録（`team delegate`）は自動で期限切れになります。
+- **大きなコンテキストを小さく貼る** — `ctx split` で文書を地図付きの小さなリンク済みファイル群に分割。AI は地図と現在の状態だけを読みます（約 9.7 万ではなく約 1.1 万トークン）。無料チャットには `ctx pack <話題>` で約 40 KB の貼り付け用ファイルを作ります。
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+詳しいルール：`PROJECT_CONTEXT.en.md` のセクション 0-C-49、0-C-50、0-C-51。
 
 ---
 

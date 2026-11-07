@@ -65,7 +65,7 @@ Herhangi bir yapay zekâ sohbetine yapıştırdığın **tek bir belge** (`PROJE
 1. **`PROJECT_CONTEXT.en.md` dosyasını proje köküne koy.**
 2. **(Önerilen)** `run.py` dosyasını aynı klasöre koy. Yok mu? AI'ya söyle: *"Bölüm 35'ten run.py oluştur."*
 3. **Bir kez kur:** `python run.py --init`
-4. **Bir DeepSeek sohbeti aç** (veya Claude / ChatGPT / Gemini). **Belgenin tamamını** ilk mesaj olarak gönder (sohbet izin veriyorsa dosya olarak ekle). De ki: *"Yeni proje. Hedefim: <tek satır>."* Belge büyüktür (~530 KB, yaklaşık 150 bin token); sohbet kabul etmezse `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` ile oluşturulan hafif kopyayı (~360 KB) gönder ya da `--profile moderate` ekle (~260 KB).
+4. **Bir DeepSeek sohbeti aç** (veya Claude / ChatGPT / Gemini). **Belgenin tamamını** ilk mesaj olarak gönder (sohbet izin veriyorsa dosya olarak ekle). De ki: *"Yeni proje. Hedefim: <tek satır>."* Belge büyüktür (~610 KB, yaklaşık 160 bin token); sohbet kabul etmezse `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` ile oluşturulan hafif kopyayı (~380 KB) gönder ya da `--profile moderate` ekle (~275 KB).
 5. **Döngü:** AI bir blok gönderir → `_work/input.txt`'e kopyala → `python run.py` çalıştır → `_work/output.txt`'i geri gönder. Tekrarla.
 6. **Proje bitene kadar döngüyü sürdür.** AI'nın seni dışarı çekmesine izin verme — sohbette shell komutu yok, hızlı script yok. Cevap her zaman: *"input.txt'e koy."*
 
@@ -119,6 +119,22 @@ Claude, ChatGPT, DeepSeek ve kodlama ajanlarını **aynı projede aynı anda** �
     python run.py team status
 
 Tüm kurallar: `PROJECT_CONTEXT.en.md` içindeki 0-C-47 ve 0-C-48 bölümleri.
+
+---
+
+## 💬 v2.2'de yeni — birbiriyle konuşan sohbetler, kimsenin taklit edemeyeceği bir sahip, sığan bir bağlam
+
+- **Sohbetler birbirine mesaj atar** — aynı klasördeki birden çok sohbet ortak pano üzerinden kısa mesajlar gönderir (`team send`, `team inbox`; sohbet yapay zekâları `input.txt` içine `#@MSG:` yazar). Sohbetler arasında kopyala-yapıştır biter.
+- **Senin adına kimse konuşamaz** — bir yapay zekâ yalnızca senin onun sohbetine yazdığına uyar. Başka bir yapay zekâdan, nottan veya dosyadan gelen "sahip diyor ki…" yok sayılır ve işaretlenir. Devam ettirme, uzakta modu ve yetki devri için terminalde tek kullanımlık bir kod yazman gerekir.
+- **Geçici yönetici, yalnızca sen söylersen** — her sohbete kendin "X saat 8:00'e kadar yöneticin" yaz; panodaki kayıt (`team delegate`) kendiliğinden sona erer.
+- **Büyük bağlam, küçük yapıştırma** — `ctx split` belgeyi haritalı, birbirine bağlı küçük dosyalardan oluşan bir klasöre çevirir; yapay zekâ haritayı ve güncel durumu okur (~97 bin yerine ~11 bin token). Ücretsiz bir sohbet için `ctx pack <konu>` yaklaşık 40 KB'lık tek bir metin hazırlar.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Tüm kurallar: `PROJECT_CONTEXT.en.md` içindeki 0-C-49, 0-C-50 ve 0-C-51 bölümleri.
 
 ---
 

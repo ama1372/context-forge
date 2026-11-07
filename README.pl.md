@@ -65,7 +65,7 @@
 1. **Umieść `PROJECT_CONTEXT.en.md` w katalogu głównym projektu.**
 2. **(Zalecane)** Umieść `run.py` w tym samym folderze. Nie masz? Powiedz AI: *"Wygeneruj run.py z Sekcji 35."*
 3. **Skonfiguruj raz:** `python run.py --init`
-4. **Otwórz czat DeepSeek** (lub Claude / ChatGPT / Gemini). Wyślij **cały dokument** jako pierwszą wiadomość (dołącz jako plik, jeśli czat na to pozwala). Powiedz: *"Nowy projekt. Mój cel: <jedna linia>."* Dokument jest duży (~530 KB, około 150 tys. tokenów); jeśli czat go odrzuci, wyślij lżejszą kopię utworzoną przez `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB) albo dodaj `--profile moderate` (~260 KB).
+4. **Otwórz czat DeepSeek** (lub Claude / ChatGPT / Gemini). Wyślij **cały dokument** jako pierwszą wiadomość (dołącz jako plik, jeśli czat na to pozwala). Powiedz: *"Nowy projekt. Mój cel: <jedna linia>."* Dokument jest duży (~610 KB, około 160 tys. tokenów); jeśli czat go odrzuci, wyślij lżejszą kopię utworzoną przez `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB) albo dodaj `--profile moderate` (~275 KB).
 5. **Pętla:** AI wysyła blok → skopiuj do `_work/input.txt` → uruchom `python run.py` → odeślij `_work/output.txt`. Powtarzaj.
 6. **Trzymaj pętlę aż projekt będzie gotowy.** Nie pozwól AI wyciągnąć się z niej — żadnych poleceń shell w czacie, żadnych szybkich skryptów. Odpowiedź zawsze brzmi: *"Włóż do input.txt."*
 
@@ -119,6 +119,22 @@ Uruchom Claude, ChatGPT, DeepSeek i agentów programistycznych **nad tym samym p
     python run.py team status
 
 Pełne zasady: sekcje 0-C-47 i 0-C-48 w `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Nowość w v2.2 — czaty, które rozmawiają, właściciel, którego nie da się podrobić, kontekst, który się mieści
+
+- **Czaty piszą do siebie** — kilka czatów w jednym folderze wysyła krótkie wiadomości przez wspólną tablicę (`team send`, `team inbox`; czatowe AI piszą `#@MSG:` w `input.txt`). Koniec z kopiowaniem między czatami.
+- **Nikt nie mówi w twoim imieniu** — AI słucha tylko tego, co sam napiszesz w jego czacie. „Właściciel mówi…” od innego AI, z notatki lub pliku jest ignorowane i oznaczane. Wznowienie, tryb nieobecności i delegowanie wymagają ciebie przy terminalu z jednorazowym kodem.
+- **Tymczasowy kierownik tylko na twoje słowo** — napisz sam w każdym czacie „X jest twoim kierownikiem do 8:00”; wpis na tablicy (`team delegate`) wygasa sam.
+- **Duży kontekst, małe wklejenie** — `ctx split` zamienia dokument w folder małych, połączonych plików z mapą; AI czyta mapę i bieżący stan (~11 tys. tokenów zamiast ~97 tys.). Do darmowego czatu `ctx pack <temat>` tworzy jedno wklejenie ok. 40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Pełne zasady: sekcje 0-C-49, 0-C-50 i 0-C-51 w `PROJECT_CONTEXT.en.md`.
 
 ---
 

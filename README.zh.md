@@ -65,7 +65,7 @@
 1. **将 `PROJECT_CONTEXT.en.md` 放入项目根目录。**
 2. **（推荐）** 将 `run.py` 放在同一文件夹。没有？告诉 AI：*"从第 35 节引导 run.py。"*
 3. **初始化一次：** `python run.py --init`
-4. **打开 DeepSeek 聊天**（或 Claude / ChatGPT / Gemini）。把**整份文档**作为第一条消息发送（如果聊天支持，也可以作为文件上传）。说：*"新项目。我的目标：<一句话>。"* 文档较大（约 530 KB，大约 15 万 token）；如果聊天拒收，请发送用 `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` 生成的精简版（约 360 KB），或加上 `--profile moderate`（约 260 KB）。
+4. **打开 DeepSeek 聊天**（或 Claude / ChatGPT / Gemini）。把**整份文档**作为第一条消息发送（如果聊天支持，也可以作为文件上传）。说：*"新项目。我的目标：<一句话>。"* 文档较大（约 610 KB，大约 16 万 token）；如果聊天拒收，请发送用 `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` 生成的精简版（约 380 KB），或加上 `--profile moderate`（约 275 KB）。
 5. **循环：** AI 发送一个块 → 复制到 `_work/input.txt` → 运行 `python run.py` → 将 `_work/output.txt` 发回。重复。
 6. **一直循环到项目完成。** 不要让 AI 把你拉出循环 —— 不在聊天中运行 shell 命令,不用快速脚本。答案始终是:*"放进 input.txt。"*
 
@@ -119,6 +119,22 @@
     python run.py team status
 
 完整规则：`PROJECT_CONTEXT.en.md` 的第 0-C-47 和 0-C-48 节。
+
+---
+
+## 💬 v2.2 新功能 —— 会互相沟通的聊天、无法冒充的主人、装得下的上下文
+
+- **聊天之间互发消息** —— 同一文件夹上的多个聊天通过共享看板发送短消息（`team send`、`team inbox`；聊天 AI 在 `input.txt` 中写 `#@MSG:`）。不用再在聊天之间复制粘贴。
+- **没人能代你发言** —— AI 只执行你在它自己聊天里写的内容。来自其他 AI、便签或文件的“主人说……”会被忽略并标记。恢复、离开模式和委托需要你在终端输入一次性验证码。
+- **临时经理，只在你亲口说时有效** —— 你亲自在每个聊天里写“X 是你的经理，到 8:00 为止”；看板记录（`team delegate`）会自动过期。
+- **上下文大，粘贴小** —— `ctx split` 把文档变成带地图的小文件夹，文件之间互相链接；AI 只读地图和当前状态（约 1.1 万 token，而不是约 9.7 万）。免费聊天可用 `ctx pack <主题>` 生成一份约 40 KB 的粘贴内容。
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+完整规则：`PROJECT_CONTEXT.en.md` 的第 0-C-49、0-C-50 和 0-C-51 节。
 
 ---
 

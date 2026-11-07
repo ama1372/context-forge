@@ -65,7 +65,7 @@ Sebuah **dokumen tunggal** (`PROJECT_CONTEXT.en.md`) yang kamu tempel ke chat AI
 1. **Simpan `PROJECT_CONTEXT.en.md` di akar proyek.**
 2. **(Disarankan)** Simpan `run.py` di folder yang sama. Tidak ada? Katakan ke AI: *"Buat run.py dari Bagian 35."*
 3. **Setup sekali:** `python run.py --init`
-4. **Buka chat DeepSeek** (atau Claude / ChatGPT / Gemini). Kirim **seluruh dokumen** sebagai pesan pertama (lampirkan sebagai file jika chat mengizinkan). Katakan: *"Proyek baru. Tujuanku: <satu baris>."* Dokumennya besar (~530 KB, sekitar 150 ribu token); jika chat menolaknya, kirim salinan yang lebih ringan buatan `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), atau tambahkan `--profile moderate` (~260 KB).
+4. **Buka chat DeepSeek** (atau Claude / ChatGPT / Gemini). Kirim **seluruh dokumen** sebagai pesan pertama (lampirkan sebagai file jika chat mengizinkan). Katakan: *"Proyek baru. Tujuanku: <satu baris>."* Dokumennya besar (~610 KB, sekitar 160 ribu token); jika chat menolaknya, kirim salinan yang lebih ringan buatan `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), atau tambahkan `--profile moderate` (~275 KB).
 5. **Loop:** AI mengirim blok → salin ke `_work/input.txt` → jalankan `python run.py` → kirim `_work/output.txt` kembali. Ulangi.
 6. **Pertahankan loop sampai proyek selesai.** Jangan biarkan AI menarikmu keluar — tidak ada perintah shell di chat, tidak ada skrip cepat. Jawabannya selalu: *"Taruh di input.txt."*
 
@@ -119,6 +119,22 @@ Jalankan Claude, ChatGPT, DeepSeek, dan agen coding **di proyek yang sama pada s
     python run.py team status
 
 Aturan lengkap: bagian 0-C-47 dan 0-C-48 di `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Baru di v2.2 — chat yang saling bicara, pemilik yang tak bisa dipalsukan, konteks yang muat
+
+- **Chat saling berkirim pesan** — beberapa chat di satu folder mengirim pesan singkat lewat papan bersama (`team send`, `team inbox`; AI chat menulis `#@MSG:` di `input.txt`). Tak perlu lagi salin-tempel antar-chat.
+- **Tak ada yang bicara atas namamu** — AI hanya menuruti apa yang kamu tulis di chatnya sendiri. "Pemilik bilang…" dari AI lain, catatan, atau file diabaikan dan ditandai. Melanjutkan, mode tidak di tempat, dan delegasi butuh kamu di terminal mengetik kode sekali pakai.
+- **Manajer sementara hanya jika kamu bilang** — tulis sendiri di setiap chat "X adalah manajermu sampai pukul 8:00"; catatan di papan (`team delegate`) kedaluwarsa sendiri.
+- **Konteks besar, tempelan kecil** — `ctx split` mengubah dokumen menjadi folder berisi file-file kecil yang saling terhubung beserta peta; AI membaca peta dan status terkini (~11 ribu token, bukan ~97 ribu). Untuk chat gratis, `ctx pack <topik>` membuat satu tempelan sekitar 40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Aturan lengkap: bagian 0-C-49, 0-C-50, dan 0-C-51 di `PROJECT_CONTEXT.en.md`.
 
 ---
 

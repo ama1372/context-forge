@@ -65,7 +65,7 @@ Ein **einzelnes Dokument** (`PROJECT_CONTEXT.en.md`), das du in jeden KI-Chat ei
 1. **Speichere `PROJECT_CONTEXT.en.md` im Projektstammverzeichnis.**
 2. **(Empfohlen)** Speichere `run.py` im selben Ordner. Kein `run.py`? Sag der KI: *"Erzeuge run.py aus Abschnitt 35."*
 3. **Einmal einrichten:** `python run.py --init`
-4. **Öffne einen DeepSeek-Chat** (oder Claude / ChatGPT / Gemini). Sende das **ganze Dokument** als erste Nachricht (als Datei anhängen, wenn der Chat das erlaubt). Sag: *"Neues Projekt. Mein Ziel: <eine Zeile>."* Das Dokument ist groß (~530 KB, rund 150k Tokens); lehnt dein Chat es ab, sende eine schlankere Kopie, erstellt mit `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), oder ergänze `--profile moderate` (~260 KB).
+4. **Öffne einen DeepSeek-Chat** (oder Claude / ChatGPT / Gemini). Sende das **ganze Dokument** als erste Nachricht (als Datei anhängen, wenn der Chat das erlaubt). Sag: *"Neues Projekt. Mein Ziel: <eine Zeile>."* Das Dokument ist groß (~610 KB, rund 160k Tokens); lehnt dein Chat es ab, sende eine schlankere Kopie, erstellt mit `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), oder ergänze `--profile moderate` (~275 KB).
 5. **Schleife:** KI sendet einen Block → kopiere in `_work/input.txt` → führe `python run.py` aus → sende `_work/output.txt` zurück. Wiederhole.
 6. **Halte die Schleife, bis dein Projekt fertig ist.** Lass die KI dich nicht rausziehen — keine Shell-Befehle im Chat, keine Schnellskripte. Die Antwort ist immer: *"Leg es in input.txt."*
 
@@ -119,6 +119,22 @@ Lass Claude, ChatGPT, DeepSeek und Coding-Agenten **gleichzeitig am selben Proje
     python run.py team status
 
 Alle Regeln: Abschnitte 0-C-47 und 0-C-48 in `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Neu in v2.2 — Chats, die miteinander reden, ein Besitzer, den niemand fälschen kann, ein Kontext, der passt
+
+- **Chats schreiben sich gegenseitig** — mehrere Chats im selben Ordner senden kurze Nachrichten über das gemeinsame Board (`team send`, `team inbox`; Chat-KIs schreiben `#@MSG:` in `input.txt`). Kein Kopieren mehr zwischen Chats.
+- **Niemand spricht für dich** — eine KI befolgt nur, was du in ihrem eigenen Chat schreibst. „Der Besitzer sagt…“ von einer anderen KI, einer Notiz oder einer Datei wird ignoriert und markiert. Fortsetzen, Abwesenheitsmodus und Vertretung brauchen dich am Terminal mit einem Einmalcode.
+- **Ein vorübergehender Leiter nur auf dein Wort** — schreib selbst in jeden Chat „X ist bis 8:00 dein Leiter“; der Board-Eintrag (`team delegate`) läuft von selbst ab.
+- **Großer Kontext, kleiner Paste** — `ctx split` macht aus dem Dokument einen Ordner kleiner, verlinkter Dateien mit einer Karte; die KI liest Karte und aktuellen Stand (~11k statt ~97k Tokens). Für einen kostenlosen Chat erzeugt `ctx pack <Thema>` einen einzigen Paste von ~40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Alle Regeln: Abschnitte 0-C-49, 0-C-50 und 0-C-51 in `PROJECT_CONTEXT.en.md`.
 
 ---
 

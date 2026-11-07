@@ -65,7 +65,7 @@ Ett **enda dokument** (`PROJECT_CONTEXT.en.md`) som du klistrar in i vilken AI-c
 1. **Lägg `PROJECT_CONTEXT.en.md` i projektets rot.**
 2. **(Rekommenderas)** Lägg `run.py` i samma mapp. Har du inte? Säg till AI:n: *"Generera run.py från Sektion 35."*
 3. **Ställ in en gång:** `python run.py --init`
-4. **Öppna en DeepSeek-chatt** (eller Claude / ChatGPT / Gemini). Skicka **hela dokumentet** som första meddelande (bifoga som fil om chatten tillåter det). Säg: *"Nytt projekt. Mitt mål: <en rad>."* Dokumentet är stort (~530 KB, ungefär 150k tokens); om chatten vägrar, skicka en lättare kopia skapad med `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), eller lägg till `--profile moderate` (~260 KB).
+4. **Öppna en DeepSeek-chatt** (eller Claude / ChatGPT / Gemini). Skicka **hela dokumentet** som första meddelande (bifoga som fil om chatten tillåter det). Säg: *"Nytt projekt. Mitt mål: <en rad>."* Dokumentet är stort (~610 KB, ungefär 160k tokens); om chatten vägrar, skicka en lättare kopia skapad med `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), eller lägg till `--profile moderate` (~275 KB).
 5. **Slinga:** AI:n skickar ett block → kopiera till `_work/input.txt` → kör `python run.py` → skicka `_work/output.txt` tillbaka. Upprepa.
 6. **Håll slingan tills projektet är klart.** Låt inte AI:n dra ut dig — inga shell-kommandon i chatten, inga snabba skript. Svaret är alltid: *"Lägg det i input.txt."*
 
@@ -119,6 +119,22 @@ Låt Claude, ChatGPT, DeepSeek och kodagenter arbeta **i samma projekt samtidigt
     python run.py team status
 
 Alla regler: avsnitt 0-C-47 och 0-C-48 i `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Nytt i v2.2 — chattar som pratar med varandra, en ägare som ingen kan härma, en kontext som får plats
+
+- **Chattar skickar meddelanden till varandra** — flera chattar i samma mapp skickar korta meddelanden via den delade tavlan (`team send`, `team inbox`; chatt-AI:er skriver `#@MSG:` i `input.txt`). Slut på kopiera-klistra mellan chattar.
+- **Ingen talar för dig** — en AI lyder bara det du skriver i dess egen chatt. "Ägaren säger…" från en annan AI, en anteckning eller en fil ignoreras och flaggas. Återuppta, frånvaroläge och delegering kräver att du sitter vid terminalen och skriver en engångskod.
+- **En tillfällig chef bara om du säger det** — skriv själv i varje chatt "X är din chef till 8:00"; posten på tavlan (`team delegate`) går ut av sig själv.
+- **Stor kontext, liten inklistring** — `ctx split` gör dokumentet till en mapp med små länkade filer och en karta; AI:n läser kartan och nuläget (~11k tokens i stället för ~97k). För en gratis chatt gör `ctx pack <ämne>` en enda inklistring på cirka 40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Alla regler: avsnitt 0-C-49, 0-C-50 och 0-C-51 i `PROJECT_CONTEXT.en.md`.
 
 ---
 

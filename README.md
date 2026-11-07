@@ -73,7 +73,7 @@ A **single document** (`PROJECT_CONTEXT.en.md`) you paste into any AI chat — D
 1. **Save `PROJECT_CONTEXT.en.md` in your project root.**
 2. **(Recommended)** Save `run.py` in the same folder. No `run.py`? Ask the AI: *"Bootstrap run.py from Section 35."*
 3. **Set up once:** `python run.py --init`
-4. **Open a DeepSeek chat** (or Claude / ChatGPT / Gemini). Send the **whole document** as your first message (attach it as a file if your chat allows). Say: *"New project. My goal: <one line>."* The document is large (~530 KB, roughly 150k tokens); if your chat refuses it, send a lighter copy made with `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), or add `--profile moderate` (~260 KB).
+4. **Open a DeepSeek chat** (or Claude / ChatGPT / Gemini). Send the **whole document** as your first message (attach it as a file if your chat allows). Say: *"New project. My goal: <one line>."* The document is large (~610 KB, roughly 160k tokens); if your chat refuses it, send a lighter copy made with `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), or add `--profile moderate` (~275 KB).
 5. **Loop:** AI sends a block → copy into `_work/input.txt` → run `python run.py` → send `_work/output.txt` back. Repeat.
 6. **Keep the loop until your project is done.** Don't let the AI pull you out — no shell commands in chat, no quick scripts. The answer is always: *"Put it in input.txt."*
 
@@ -198,6 +198,22 @@ Run Claude, ChatGPT, DeepSeek and coding agents **on the same project at the sam
     python run.py team status
 
 Full rules: Sections 0-C-47 and 0-C-48 of `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 New in v2.2 — chats that talk, an owner nobody can fake, a context that fits
+
+- **Chats message each other** — several chats on one folder send short messages through the shared board (`team send`, `team inbox`; chat AIs write `#@MSG:` in `input.txt`). No more copy-pasting between chats.
+- **Nobody speaks for you** — an AI obeys only what you write in its own chat. "The owner says…" from another AI, a note or a file is ignored and flagged. Resume, away mode and delegation need you at your terminal typing a one-time code.
+- **A temporary manager only if you say so** — tell each chat yourself "X is your manager until 8:00"; the board record (`team delegate`) expires on its own.
+- **Big context, small paste** — `ctx split` turns the document into a folder of small linked files with a map; an AI reads the map and the current state (~11k tokens instead of ~97k). For a free chat, `ctx pack <topic>` makes one ~40 KB paste.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Full rules: Sections 0-C-49, 0-C-50 and 0-C-51 of `PROJECT_CONTEXT.en.md`.
 
 ---
 

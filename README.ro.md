@@ -65,7 +65,7 @@ Un **singur document** (`PROJECT_CONTEXT.en.md`) pe care îl lipești în orice 
 1. **Pune `PROJECT_CONTEXT.en.md` în rădăcina proiectului.**
 2. **(Recomandat)** Pune `run.py` în același folder. Nu ai? Spune-i AI-ului: *"Generează run.py din Secțiunea 35."*
 3. **Configurează o dată:** `python run.py --init`
-4. **Deschide un chat DeepSeek** (sau Claude / ChatGPT / Gemini). Trimite **întregul document** ca prim mesaj (atașează-l ca fișier dacă chatul permite). Spune: *"Proiect nou. Obiectivul meu: <un rând>."* Documentul e mare (~530 KB, aproximativ 150k tokeni); dacă chatul îl refuză, trimite o copie mai ușoară creată cu `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), sau adaugă `--profile moderate` (~260 KB).
+4. **Deschide un chat DeepSeek** (sau Claude / ChatGPT / Gemini). Trimite **întregul document** ca prim mesaj (atașează-l ca fișier dacă chatul permite). Spune: *"Proiect nou. Obiectivul meu: <un rând>."* Documentul e mare (~610 KB, aproximativ 160k tokeni); dacă chatul îl refuză, trimite o copie mai ușoară creată cu `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), sau adaugă `--profile moderate` (~275 KB).
 5. **Buclă:** AI-ul trimite un bloc → copiază în `_work/input.txt` → rulează `python run.py` → trimite `_work/output.txt` înapoi. Repetă.
 6. **Ține bucla până termini proiectul.** Nu lăsa AI-ul să te scoată — fără comenzi shell în chat, fără scripturi rapide. Răspunsul e mereu: *"Pune-l în input.txt."*
 
@@ -119,6 +119,22 @@ Pune Claude, ChatGPT, DeepSeek și agenți de programare **pe același proiect �
     python run.py team status
 
 Regulile complete: secțiunile 0-C-47 și 0-C-48 din `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Nou în v2.2 — chaturi care vorbesc între ele, un proprietar pe care nimeni nu-l poate imita, un context care încape
+
+- **Chaturile își trimit mesaje** — mai multe chaturi pe același folder își trimit mesaje scurte prin tabla comună (`team send`, `team inbox`; AI-urile de chat scriu `#@MSG:` în `input.txt`). Gata cu copierea între chaturi.
+- **Nimeni nu vorbește în numele tău** — un AI ascultă doar de ce scrii tu în propriul lui chat. „Proprietarul spune…” venit de la alt AI, dintr-o notă sau dintr-un fișier e ignorat și marcat. Reluarea, modul absent și delegarea cer să fii la terminal și să tastezi un cod de unică folosință.
+- **Un șef temporar doar dacă spui tu** — scrie tu în fiecare chat „X este șeful tău până la 8:00”; înregistrarea de pe tablă (`team delegate`) expiră singură.
+- **Context mare, lipire mică** — `ctx split` transformă documentul într-un folder de fișiere mici, legate, cu o hartă; AI-ul citește harta și starea curentă (~11k tokeni în loc de ~97k). Pentru un chat gratuit, `ctx pack <subiect>` face o singură lipire de circa 40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Regulile complete: secțiunile 0-C-49, 0-C-50 și 0-C-51 din `PROJECT_CONTEXT.en.md`.
 
 ---
 

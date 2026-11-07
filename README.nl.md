@@ -65,7 +65,7 @@ Een **enkel document** (`PROJECT_CONTEXT.en.md`) dat je in elke AI-chat plakt �
 1. **Plaats `PROJECT_CONTEXT.en.md` in de projectroot.**
 2. **(Aanbevolen)** Zet `run.py` in dezelfde map. Niet? Zeg tegen de AI: *"Genereer run.py uit Sectie 35."*
 3. **Eenmalig instellen:** `python run.py --init`
-4. **Open een DeepSeek-chat** (of Claude / ChatGPT / Gemini). Stuur het **hele document** als eerste bericht (voeg het toe als bestand als de chat dat toestaat). Zeg: *"Nieuw project. Mijn doel: <één regel>."* Het document is groot (~530 KB, ongeveer 150k tokens); weigert je chat het, stuur dan een lichtere kopie gemaakt met `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), of voeg `--profile moderate` toe (~260 KB).
+4. **Open een DeepSeek-chat** (of Claude / ChatGPT / Gemini). Stuur het **hele document** als eerste bericht (voeg het toe als bestand als de chat dat toestaat). Zeg: *"Nieuw project. Mijn doel: <één regel>."* Het document is groot (~610 KB, ongeveer 160k tokens); weigert je chat het, stuur dan een lichtere kopie gemaakt met `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), of voeg `--profile moderate` toe (~275 KB).
 5. **Loop:** AI stuurt een blok → kopieer naar `_work/input.txt` → voer `python run.py` uit → stuur `_work/output.txt` terug. Herhaal.
 6. **Houd de loop tot je project klaar is.** Laat de AI je er niet uit trekken — geen shell-commando's in de chat, geen snelle scripts. Het antwoord is altijd: *"Zet het in input.txt."*
 
@@ -119,6 +119,22 @@ Laat Claude, ChatGPT, DeepSeek en coding-agents **tegelijk aan hetzelfde project
     python run.py team status
 
 Volledige regels: secties 0-C-47 en 0-C-48 in `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Nieuw in v2.2 — chats die met elkaar praten, een eigenaar die niemand kan nadoen, een context die past
+
+- **Chats sturen elkaar berichten** — meerdere chats op één map sturen korte berichten via het gedeelde bord (`team send`, `team inbox`; chat-AI's schrijven `#@MSG:` in `input.txt`). Geen kopiëren en plakken meer tussen chats.
+- **Niemand spreekt namens jou** — een AI volgt alleen wat jij in zijn eigen chat schrijft. "De eigenaar zegt…" van een andere AI, een notitie of een bestand wordt genegeerd en gemarkeerd. Hervatten, afwezigheidsmodus en delegeren vereisen dat jij aan je terminal een eenmalige code typt.
+- **Een tijdelijke manager alleen als jij het zegt** — schrijf zelf in elke chat "X is je manager tot 8:00"; de vermelding op het bord (`team delegate`) verloopt vanzelf.
+- **Grote context, kleine plak** — `ctx split` maakt van het document een map met kleine, gekoppelde bestanden en een kaart; de AI leest de kaart en de huidige stand (~11k tokens in plaats van ~97k). Voor een gratis chat maakt `ctx pack <onderwerp>` één plak van ongeveer 40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Volledige regels: secties 0-C-49, 0-C-50 en 0-C-51 in `PROJECT_CONTEXT.en.md`.
 
 ---
 

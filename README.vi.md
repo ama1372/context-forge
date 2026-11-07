@@ -65,7 +65,7 @@ Một **tài liệu duy nhất** (`PROJECT_CONTEXT.en.md`) bạn dán vào bất
 1. **Lưu `PROJECT_CONTEXT.en.md` vào thư mục gốc dự án.**
 2. **(Khuyến nghị)** Lưu `run.py` cùng thư mục. Chưa có? Nói với AI: *"Tạo run.py từ Mục 35."*
 3. **Cấu hình một lần:** `python run.py --init`
-4. **Mở một cuộc trò chuyện DeepSeek** (hoặc Claude / ChatGPT / Gemini). Gửi **toàn bộ tài liệu** làm tin nhắn đầu tiên (đính kèm dạng tệp nếu chat cho phép). Nói: *"Dự án mới. Mục tiêu của tôi: <một dòng>."* Tài liệu khá lớn (~530 KB, khoảng 150 nghìn token); nếu chat từ chối, hãy gửi bản nhẹ hơn tạo bằng `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~360 KB), hoặc thêm `--profile moderate` (~260 KB).
+4. **Mở một cuộc trò chuyện DeepSeek** (hoặc Claude / ChatGPT / Gemini). Gửi **toàn bộ tài liệu** làm tin nhắn đầu tiên (đính kèm dạng tệp nếu chat cho phép). Nói: *"Dự án mới. Mục tiêu của tôi: <một dòng>."* Tài liệu khá lớn (~610 KB, khoảng 160 nghìn token); nếu chat từ chối, hãy gửi bản nhẹ hơn tạo bằng `python run.py --slim-context --to PROJECT_CONTEXT.slim.md` (~380 KB), hoặc thêm `--profile moderate` (~275 KB).
 5. **Vòng lặp:** AI gửi một khối → sao chép vào `_work/input.txt` → chạy `python run.py` → gửi `_work/output.txt` trả lại. Lặp lại.
 6. **Giữ vòng lặp cho đến khi dự án xong.** Đừng để AI kéo bạn ra — không lệnh shell trong chat, không script nhanh. Câu trả lời luôn là: *"Đặt vào input.txt."*
 
@@ -119,6 +119,22 @@ Cho Claude, ChatGPT, DeepSeek và các agent lập trình **làm việc trên c�
     python run.py team status
 
 Quy tắc đầy đủ: mục 0-C-47 và 0-C-48 trong `PROJECT_CONTEXT.en.md`.
+
+---
+
+## 💬 Mới trong v2.2 — các chat nói chuyện với nhau, chủ dự án không ai giả mạo được, ngữ cảnh vừa khít
+
+- **Các chat nhắn tin cho nhau** — nhiều chat trên cùng một thư mục gửi tin nhắn ngắn qua bảng chung (`team send`, `team inbox`; AI dạng chat viết `#@MSG:` trong `input.txt`). Không còn phải sao chép qua lại giữa các chat.
+- **Không ai nói thay bạn** — AI chỉ làm theo những gì bạn viết trong chính chat của nó. "Chủ dự án nói…" đến từ AI khác, ghi chú hay tệp sẽ bị bỏ qua và gắn cảnh báo. Tiếp tục lại, chế độ vắng mặt và ủy quyền đều cần bạn ngồi ở terminal gõ một mã dùng một lần.
+- **Quản lý tạm thời chỉ khi bạn nói** — tự viết vào từng chat "X là quản lý của bạn đến 8:00"; bản ghi trên bảng (`team delegate`) tự hết hạn.
+- **Ngữ cảnh lớn, dán nhỏ** — `ctx split` biến tài liệu thành một thư mục gồm các tệp nhỏ liên kết với nhau kèm bản đồ; AI đọc bản đồ và trạng thái hiện tại (~11 nghìn token thay vì ~97 nghìn). Với chat miễn phí, `ctx pack <chủ đề>` tạo một đoạn dán khoảng 40 KB.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+Quy tắc đầy đủ: mục 0-C-49, 0-C-50 và 0-C-51 trong `PROJECT_CONTEXT.en.md`.
 
 ---
 

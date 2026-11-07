@@ -65,7 +65,7 @@
 1. **`PROJECT_CONTEXT.en.md`를 프로젝트 루트에 저장.**
 2. **(권장)** 같은 폴더에 `run.py` 저장. 없다면 AI에게: *"섹션 35에서 run.py를 생성해줘."*
 3. **한 번 설정:** `python run.py --init`
-4. **DeepSeek 채팅을 엽니다** (또는 Claude / ChatGPT / Gemini). **문서 전체**를 첫 메시지로 보냅니다 (채팅이 허용하면 파일로 첨부). 이렇게 말하세요: *"새 프로젝트. 내 목표: <한 줄>."* 문서가 큽니다 (~530 KB, 약 15만 토큰). 채팅이 거부하면 `python run.py --slim-context --to PROJECT_CONTEXT.slim.md`로 만든 가벼운 사본(~360 KB)을 보내거나 `--profile moderate`를 추가하세요 (~260 KB).
+4. **DeepSeek 채팅을 엽니다** (또는 Claude / ChatGPT / Gemini). **문서 전체**를 첫 메시지로 보냅니다 (채팅이 허용하면 파일로 첨부). 이렇게 말하세요: *"새 프로젝트. 내 목표: <한 줄>."* 문서가 큽니다 (~610 KB, 약 16만 토큰). 채팅이 거부하면 `python run.py --slim-context --to PROJECT_CONTEXT.slim.md`로 만든 가벼운 사본(~380 KB)을 보내거나 `--profile moderate`를 추가하세요 (~275 KB).
 5. **루프:** AI가 블록 전송 → `_work/input.txt`에 복사 → `python run.py` 실행 → `_work/output.txt` 반환. 반복.
 6. **프로젝트가 끝날 때까지 루프 유지.** AI가 루프 밖으로 끌어내지 못하게 — 채팅에서 shell 명령 금지, 즉석 스크립트 금지. 답은 항상: *"input.txt에 넣어."*
 
@@ -119,6 +119,22 @@ Claude, ChatGPT, DeepSeek, 코딩 에이전트를 **같은 프로젝트에서 �
     python run.py team status
 
 전체 규칙: `PROJECT_CONTEXT.en.md`의 섹션 0-C-47과 0-C-48.
+
+---
+
+## 💬 v2.2 새 기능 — 서로 대화하는 채팅, 아무도 사칭할 수 없는 소유자, 들어가는 컨텍스트
+
+- **채팅끼리 메시지** — 같은 폴더의 여러 채팅이 공유 보드로 짧은 메시지를 주고받습니다(`team send`, `team inbox`; 채팅 AI는 `input.txt`에 `#@MSG:`를 씁니다). 채팅 사이 복사·붙여넣기가 필요 없습니다.
+- **아무도 당신을 대신해 말하지 못함** — AI는 당신이 그 AI의 채팅에 직접 쓴 것만 따릅니다. 다른 AI·메모·파일에서 온 "소유자가 말하길…"은 무시되고 표시됩니다. 재개, 부재 모드, 위임은 터미널에서 일회용 코드를 입력해야 합니다.
+- **임시 관리자는 당신이 말할 때만** — 각 채팅에 직접 "8:00까지 X가 너의 관리자"라고 쓰세요. 보드 기록(`team delegate`)은 스스로 만료됩니다.
+- **큰 컨텍스트, 작은 붙여넣기** — `ctx split`은 문서를 지도가 있는 작은 연결 파일 폴더로 바꿉니다. AI는 지도와 현재 상태만 읽습니다(약 9.7만 대신 약 1.1만 토큰). 무료 채팅에는 `ctx pack <주제>`로 약 40 KB 붙여넣기 하나를 만듭니다.
+
+    python run.py team send gpt claude "docs-01 is ready for review" --kind request
+    python run.py team inbox claude
+    python run.py ctx split
+    python run.py ctx pack auth login
+
+전체 규칙: `PROJECT_CONTEXT.en.md`의 섹션 0-C-49, 0-C-50, 0-C-51.
 
 ---
 
